@@ -4,7 +4,7 @@
 
     <groupId>io.github.de-gupta</groupId>
     <artifactId>cleanCrud</artifactId>
-    <version>0.0.3-SNAPSHOT</version>
+    <version>0.0.2-SNAPSHOT</version>
 
     <properties>
         <maven.compiler.source>24</maven.compiler.source>
