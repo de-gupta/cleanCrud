@@ -97,13 +97,13 @@
         </plugins>
     </build>
 
-    <distributionManagement>
-        <repository>
-            <id>ossrh</id>
-            <name>OSSRH (Maven Central via Sonatype)</name>
-            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-        </repository>
-    </distributionManagement>
+<!--    <distributionManagement>-->
+<!--        <repository>-->
+<!--            <id>ossrh</id>-->
+<!--            <name>OSSRH (Maven Central via Sonatype)</name>-->
+<!--            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>-->
+<!--        </repository>-->
+<!--    </distributionManagement>-->
 
 
     <licenses>
