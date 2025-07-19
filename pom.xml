@@ -4,7 +4,7 @@
 
     <groupId>io.github.de-gupta</groupId>
     <artifactId>cleanCrud</artifactId>
-    <version>0.0.2-SNAPSHOT</version>
+    <version>0.0.2</version>
 
     <properties>
         <maven.compiler.source>24</maven.compiler.source>
@@ -54,7 +54,7 @@
         <connection>scm:git:ssh://git@github.com/de-gupta/cleanCrud.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/de-gupta/cleanCrud.git</developerConnection>
         <url>https://github.com/de-gupta/cleanCrud.git</url>
-        <tag>HEAD</tag>
+        <tag>v0.0.2</tag>
     </scm>
 
     <build>
