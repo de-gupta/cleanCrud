@@ -52,8 +52,8 @@
     </dependencies>
 
     <scm>
-        <connection>scm:git:ssh://git@github.com:de-gupta/cleanCrud.git</connection>
-        <developerConnection>scm:git:ssh://git@github.com:de-gupta/cleanCrud.git</developerConnection>
+        <connection>scm:git:ssh://git@github.com/de-gupta/cleanCrud.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/de-gupta/cleanCrud.git</developerConnection>
         <url>https://github.com/de-gupta/cleanCrud.git</url>
         <tag>HEAD</tag>
     </scm>
