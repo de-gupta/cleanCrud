@@ -6,6 +6,10 @@
     <artifactId>cleanCrud</artifactId>
     <version>0.0.2-SNAPSHOT</version>
 
+    <name>cleaCrud</name>
+    <description>A library for implementing clean architecture based crud operations</description>
+    <url>https://github.com/de-gupta/cleanCrud.git</url>
+
     <properties>
         <maven.compiler.source>24</maven.compiler.source>
         <maven.compiler.target>24</maven.compiler.target>
