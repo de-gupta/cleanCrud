@@ -16,13 +16,11 @@ public abstract class AbstractPropertyQueryServiceFacade<Property, DomainID, Dom
 	public Collection<APIModelResponse> findAll(final String propertyName, final Property propertyValue,
 												final ComparisonType comparisonType)
 	{
-		return service.findAll(propertyName, propertyValue, comparisonType)
-					  .stream()
-					  .map(responseMapper::mapToAPIModelResponse)
-					  .toList();
+		return service.findAll(propertyName, propertyValue, comparisonType).stream()
+					  .map(responseMapper::mapToAPIModelResponse).toList();
 	}
 
-	AbstractPropertyQueryServiceFacade(
+	protected AbstractPropertyQueryServiceFacade(
 			final PropertyQueryService<Property, DomainID, DomainModelResponse> service,
 			final DomainToAPIResponseAdapter<APIModelResponse, DomainID, DomainModelResponse> responseMapper)
 	{
