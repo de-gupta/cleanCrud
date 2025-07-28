@@ -13,10 +13,10 @@ public abstract class AbstractPropertyQueryServiceFacade<Property, DomainID, Dom
 	private final DomainToAPIResponseAdapter<APIModelResponse, DomainID, DomainModelResponse> responseMapper;
 
 	@Override
-	public Collection<APIModelResponse> findAll(final String propertyName, final Property propertyValue,
+	public Collection<APIModelResponse> queryBy(final String propertyName, final Property propertyValue,
 												final ComparisonType comparisonType)
 	{
-		return service.findAll(propertyName, propertyValue, comparisonType).stream()
+		return service.queryBy(propertyName, propertyValue, comparisonType).stream()
 					  .map(responseMapper::mapToAPIModelResponse).toList();
 	}
 

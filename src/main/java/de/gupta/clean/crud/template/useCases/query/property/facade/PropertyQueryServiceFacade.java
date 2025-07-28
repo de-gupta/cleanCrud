@@ -6,6 +6,6 @@ import java.util.Collection;
 
 public interface PropertyQueryServiceFacade<Property, APIModelResponse>
 {
-	Collection<APIModelResponse> findAll(final String propertyName, final Property propertyValue,
+	Collection<APIModelResponse> queryBy(final String propertyName, final Property propertyValue,
 										 final ComparisonType comparisonType);
 }

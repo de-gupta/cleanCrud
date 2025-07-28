@@ -13,10 +13,10 @@ public abstract class AbstractSpringRestPropertyQueryController<Property, APIMod
 	private final PropertyQueryServiceFacade<Property, APIModelResponse> service;
 
 	@Override
-	public ResponseEntity<Collection<APIModelResponse>> findAll(final Property propertyValue,
+	public ResponseEntity<Collection<APIModelResponse>> queryBy(final Property propertyValue,
 																final ComparisonType comparisonType)
 	{
-		return ResponseEntity.ok(service.findAll(propertyName, propertyValue, comparisonType));
+		return ResponseEntity.ok(service.queryBy(propertyName, propertyValue, comparisonType));
 	}
 
 	protected AbstractSpringRestPropertyQueryController(

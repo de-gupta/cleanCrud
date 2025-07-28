@@ -7,7 +7,7 @@ import java.util.Collection;
 
 public interface PropertyQueryService<Property, DomainID, DomainModelResponse>
 {
-	Collection<IdentifiedModel<DomainID, DomainModelResponse>> findAll(final String propertyName,
+	Collection<IdentifiedModel<DomainID, DomainModelResponse>> queryBy(final String propertyName,
 																	   final Property property,
 																	   final ComparisonType comparisonType);
 }

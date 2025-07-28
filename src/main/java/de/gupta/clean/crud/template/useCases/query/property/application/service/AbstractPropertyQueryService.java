@@ -22,7 +22,7 @@ public abstract class AbstractPropertyQueryService<Property, DomainID, DomainMod
 	private final DomainSecurityPolicy<DomainModel> domainSecurityPolicy;
 
 	@Override
-	public Collection<IdentifiedModel<DomainID, DomainModelResponse>> findAll(final String propertyName,
+	public Collection<IdentifiedModel<DomainID, DomainModelResponse>> queryBy(final String propertyName,
 																			  final Property property,
 																			  final ComparisonType comparisonType)
 	{
