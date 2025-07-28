@@ -11,20 +11,22 @@ import org.springframework.data.domain.Pageable;
 import java.util.Collection;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 public abstract class AbstractFetchService<DomainModelResponse, DomainID, DomainModel>
 		implements FetchService<DomainModelResponse, DomainID>
 {
 	private final FetchPersistenceService<DomainID, DomainModel> persistenceService;
 	private final DomainResponseBuilder<DomainModel, DomainModelResponse> modelMapper;
-	private final DomainSecurityPolicy<DomainModel> domainSecurityPolicy;
+
+	private final Predicate<DomainModel> accessAndDomainFilter;
 
 	@Override
 	public Collection<IdentifiedModel<DomainID, DomainModelResponse>> findAll()
 	{
 		return persistenceService.findAll()
 								 .stream()
-								 .filter(this::isThisModelAccessible)
+								 .filter(convertFilter(accessAndDomainFilter))
 								 .map(this::identifiedModel)
 								 .toList();
 	}
@@ -34,7 +36,7 @@ public abstract class AbstractFetchService<DomainModelResponse, DomainID, Domain
 	{
 		return PageUtility.mapPage(
 				PageUtility.mapPageAndFilter(persistenceService.findAll(pageable), Function.identity(),
-						im -> domainSecurityPolicy.isAccessAllowed(im.model())),
+						convertFilter(accessAndDomainFilter)),
 				this::identifiedModel);
 	}
 
@@ -42,7 +44,7 @@ public abstract class AbstractFetchService<DomainModelResponse, DomainID, Domain
 	public IdentifiedModel<DomainID, DomainModelResponse> findById(final DomainID domainID)
 	{
 		return persistenceService.findById(domainID)
-								 .filter(this::isThisModelAccessible)
+								 .filter(convertFilter(accessAndDomainFilter))
 								 .map(this::identifiedModel)
 								 .orElseThrow(() -> ResourceNotFoundException.withId(domainID));
 	}
@@ -51,13 +53,13 @@ public abstract class AbstractFetchService<DomainModelResponse, DomainID, Domain
 	public Collection<IdentifiedModel<DomainID, DomainModelResponse>> findByIds(final Set<DomainID> IDs)
 	{
 		return persistenceService.findByIds(IDs).stream()
-								 .filter(this::isThisModelAccessible)
+								 .filter(convertFilter(accessAndDomainFilter))
 								 .map(this::identifiedModel).toList();
 	}
 
-	private boolean isThisModelAccessible(final IdentifiedModel<?, DomainModel> identifiedModel)
+	private Predicate<IdentifiedModel<DomainID, DomainModel>> convertFilter(final Predicate<DomainModel> filter)
 	{
-		return domainSecurityPolicy.isAccessAllowed(identifiedModel.model());
+		return im -> filter.test(im.model());
 	}
 
 	private IdentifiedModel<DomainID, DomainModelResponse> identifiedModel(
@@ -71,8 +73,18 @@ public abstract class AbstractFetchService<DomainModelResponse, DomainID, Domain
 			final DomainResponseBuilder<DomainModel, DomainModelResponse> modelMapper,
 			final DomainSecurityPolicy<DomainModel> domainSecurityPolicy)
 	{
+		this(persistenceService, modelMapper, domainSecurityPolicy, Set.of());
+	}
+
+	protected AbstractFetchService(
+			final FetchPersistenceService<DomainID, DomainModel> persistenceService,
+			final DomainResponseBuilder<DomainModel, DomainModelResponse> modelMapper,
+			final DomainSecurityPolicy<DomainModel> domainSecurityPolicy,
+			final Set<Predicate<DomainModel>> additionalFilters)
+	{
 		this.persistenceService = persistenceService;
 		this.modelMapper = modelMapper;
-		this.domainSecurityPolicy = domainSecurityPolicy;
+		this.accessAndDomainFilter =
+				additionalFilters.stream().reduce(domainSecurityPolicy::isAccessAllowed, Predicate::and);
 	}
 }
