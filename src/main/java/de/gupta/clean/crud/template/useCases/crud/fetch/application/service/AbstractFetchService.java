@@ -10,24 +10,21 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.Collection;
 import java.util.Set;
-import java.util.function.Function;
-import java.util.function.Predicate;
 
 public abstract class AbstractFetchService<DomainModelResponse, DomainID, DomainModel>
 		implements FetchService<DomainModelResponse, DomainID>
 {
 	private final FetchPersistenceService<DomainID, DomainModel> persistenceService;
 	private final DomainResponseBuilder<DomainModel, DomainModelResponse> modelMapper;
-
-	private final Predicate<DomainModel> accessAndDomainFilter;
+	private final DomainFilterPipeline<DomainModel> filterPipeline;
 
 	@Override
 	public Collection<IdentifiedModel<DomainID, DomainModelResponse>> findAll()
 	{
 		return persistenceService.findAll()
 								 .stream()
-								 .filter(convertFilter(accessAndDomainFilter))
-								 .map(this::identifiedModel)
+								 .filter(this::isVisible)
+								 .map(this::respond)
 								 .toList();
 	}
 
@@ -35,17 +32,16 @@ public abstract class AbstractFetchService<DomainModelResponse, DomainID, Domain
 	public Page<IdentifiedModel<DomainID, DomainModelResponse>> findAll(final Pageable pageable)
 	{
 		return PageUtility.mapPage(
-				PageUtility.mapPageAndFilter(persistenceService.findAll(pageable), Function.identity(),
-						convertFilter(accessAndDomainFilter)),
-				this::identifiedModel);
+				PageUtility.filterPage(persistenceService.findAll(pageable), this::isVisible),
+				this::respond);
 	}
 
 	@Override
 	public IdentifiedModel<DomainID, DomainModelResponse> findById(final DomainID domainID)
 	{
 		return persistenceService.findById(domainID)
-								 .filter(convertFilter(accessAndDomainFilter))
-								 .map(this::identifiedModel)
+								 .filter(this::isVisible)
+								 .map(this::respond)
 								 .orElseThrow(() -> ResourceNotFoundException.withId(domainID));
 	}
 
@@ -53,16 +49,17 @@ public abstract class AbstractFetchService<DomainModelResponse, DomainID, Domain
 	public Collection<IdentifiedModel<DomainID, DomainModelResponse>> findByIds(final Set<DomainID> IDs)
 	{
 		return persistenceService.findByIds(IDs).stream()
-								 .filter(convertFilter(accessAndDomainFilter))
-								 .map(this::identifiedModel).toList();
+								 .filter(this::isVisible)
+								 .map(this::respond)
+								 .toList();
 	}
 
-	private Predicate<IdentifiedModel<DomainID, DomainModel>> convertFilter(final Predicate<DomainModel> filter)
+	private boolean isVisible(IdentifiedModel<DomainID, DomainModel> identifiedModel)
 	{
-		return im -> filter.test(im.model());
+		return filterPipeline.allows(identifiedModel.model());
 	}
 
-	private IdentifiedModel<DomainID, DomainModelResponse> identifiedModel(
+	private IdentifiedModel<DomainID, DomainModelResponse> respond(
 			final IdentifiedModel<DomainID, DomainModel> domainModel)
 	{
 		return IdentifiedModel.of(domainModel.id(), modelMapper.toResponse(domainModel.model()));
@@ -73,18 +70,19 @@ public abstract class AbstractFetchService<DomainModelResponse, DomainID, Domain
 			final DomainResponseBuilder<DomainModel, DomainModelResponse> modelMapper,
 			final DomainSecurityPolicy<DomainModel> domainSecurityPolicy)
 	{
-		this(persistenceService, modelMapper, domainSecurityPolicy, Set.of());
+		this(persistenceService, modelMapper, domainSecurityPolicy, DomainFilterPipeline.allowing());
 	}
 
 	protected AbstractFetchService(
 			final FetchPersistenceService<DomainID, DomainModel> persistenceService,
 			final DomainResponseBuilder<DomainModel, DomainModelResponse> modelMapper,
 			final DomainSecurityPolicy<DomainModel> domainSecurityPolicy,
-			final Set<Predicate<DomainModel>> additionalFilters)
+			final DomainFilterPipeline<DomainModel> additionalFilter)
 	{
 		this.persistenceService = persistenceService;
 		this.modelMapper = modelMapper;
-		this.accessAndDomainFilter =
-				additionalFilters.stream().reduce(domainSecurityPolicy::isAccessAllowed, Predicate::and);
+		this.filterPipeline = DomainFilterPipeline
+				.of(domainSecurityPolicy::isAccessAllowed)
+				.and(additionalFilter);
 	}
 }
