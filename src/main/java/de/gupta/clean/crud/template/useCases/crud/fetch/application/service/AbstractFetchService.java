@@ -10,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.Collection;
 import java.util.Set;
+import java.util.function.Function;
 
 public abstract class AbstractFetchService<DomainModelResponse, DomainID, DomainModel>
 		implements FetchService<DomainModelResponse, DomainID>
@@ -31,7 +32,10 @@ public abstract class AbstractFetchService<DomainModelResponse, DomainID, Domain
 	@Override
 	public Page<IdentifiedModel<DomainID, DomainModelResponse>> findAll(final Pageable pageable)
 	{
-		return PageUtility.mapPage(persistenceService.findAll(pageable), this::identifiedModel);
+		return PageUtility.mapPage(
+				PageUtility.mapPageAndFilter(persistenceService.findAll(pageable), Function.identity(),
+						im -> domainSecurityPolicy.isAccessAllowed(im.model())),
+				this::identifiedModel);
 	}
 
 	@Override

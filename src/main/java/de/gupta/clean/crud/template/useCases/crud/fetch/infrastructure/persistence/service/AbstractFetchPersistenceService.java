@@ -1,5 +1,6 @@
 package de.gupta.clean.crud.template.useCases.crud.fetch.infrastructure.persistence.service;
 
+import de.gupta.clean.crud.template.domain.model.exceptions.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.id.adapter.DomainPersistenceIDAdapter;
 import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.model.DomainPersistenceModelAdapter;
@@ -30,7 +31,10 @@ public abstract class AbstractFetchPersistenceService<DomainID, DomainModel, Per
 	public Page<IdentifiedModel<DomainID, DomainModel>> findAll(final Pageable pageable)
 	{
 		Page<? extends PersistenceModel> persistenceModelPage = repository.findAll(pageable);
-		return PageUtility.mapPageOptionallyAndFilter(persistenceModelPage, this::identifiedModel);
+		return PageUtility.mapPage(persistenceModelPage,
+				m -> this.identifiedModel(m)
+						 .orElseThrow(() -> ResourceNotFoundException.withMessage(
+								 "The resources with id " + m.id() + " was not found")));
 	}
 
 	@Override

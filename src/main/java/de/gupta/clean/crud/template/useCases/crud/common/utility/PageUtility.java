@@ -4,8 +4,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 public final class PageUtility
 {
@@ -18,12 +18,13 @@ public final class PageUtility
 		return new PageImpl<>(mappedContent, sourcePage.getPageable(), sourcePage.getTotalElements());
 	}
 
-	public static <S, T> Page<T> mapPageOptionallyAndFilter(Page<? extends S> sourcePage,
-															Function<S, Optional<T>> mappingFunction)
+	public static <S, T> Page<T> mapPageAndFilter(Page<? extends S> sourcePage,
+												  Function<S, T> mappingFunction,
+												  Predicate<T> filter)
 	{
 		List<T> mappedContent = sourcePage.getContent().stream()
 										  .map(mappingFunction)
-										  .flatMap(Optional::stream)
+										  .filter(filter)
 										  .toList();
 
 		return new PageImpl<>(mappedContent, sourcePage.getPageable(), sourcePage.getTotalElements());
