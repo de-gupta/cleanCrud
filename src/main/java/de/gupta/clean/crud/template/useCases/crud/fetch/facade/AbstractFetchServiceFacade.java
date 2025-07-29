@@ -1,5 +1,6 @@
 package de.gupta.clean.crud.template.useCases.crud.fetch.facade;
 
+import de.gupta.clean.crud.template.domain.mapping.fetch.DomainResponseBuilder;
 import de.gupta.clean.crud.template.useCases.crud.common.adapter.id.APIDomainIDAdapter;
 import de.gupta.clean.crud.template.useCases.crud.common.adapter.model.DomainToAPIResponseAdapter;
 import de.gupta.clean.crud.template.useCases.crud.common.utility.PageUtility;
@@ -13,17 +14,19 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public abstract class AbstractFetchServiceFacade<APIModelResponse, APIModelID,
-		DomainModelResponse, DomainID>
+		DomainModel, DomainModelResponse, DomainID>
 		implements FetchServiceFacade<APIModelResponse, APIModelID>
 {
-	private final FetchService<DomainModelResponse, DomainID> service;
+	private final FetchService<DomainModel, DomainID> service;
 	private final DomainToAPIResponseAdapter<APIModelResponse, DomainID, DomainModelResponse> responseMapper;
+	private final DomainResponseBuilder<DomainModel, DomainModelResponse> domainResponseBuilder;
 	private final APIDomainIDAdapter<APIModelID, DomainID> idAdapter;
 
 	@Override
 	public Collection<APIModelResponse> findAll()
 	{
 		return service.findAll().stream()
+					  .map(domainResponseBuilder::toResponse)
 					  .map(responseMapper::mapToAPIModelResponse)
 					  .toList();
 	}
@@ -31,14 +34,15 @@ public abstract class AbstractFetchServiceFacade<APIModelResponse, APIModelID,
 	@Override
 	public Page<APIModelResponse> findAll(final Pageable pageable)
 	{
-		return PageUtility.mapPage(service.findAll(pageable), responseMapper::mapToAPIModelResponse);
+		return PageUtility.mapPage(PageUtility.mapPage(service.findAll(pageable), domainResponseBuilder::toResponse),
+				responseMapper::mapToAPIModelResponse);
 	}
 
 	@Override
 	public APIModelResponse findById(final APIModelID id)
 	{
 		return responseMapper.mapToAPIModelResponse(
-				service.findById(idAdapter.mapToDomainID(id)));
+				domainResponseBuilder.toResponse(service.findById(idAdapter.mapToDomainID(id))));
 	}
 
 	@Override
@@ -48,17 +52,22 @@ public abstract class AbstractFetchServiceFacade<APIModelResponse, APIModelID,
 
 		return service.findByIds(domainIDs)
 					  .stream()
-					  .collect(Collectors.toMap(im -> idAdapter.mapToAPIModelID(im.id()),
-							  responseMapper::mapToAPIModelResponse));
+					  .map(domainResponseBuilder::toResponse)
+					  .collect(Collectors.toMap(
+							  im -> idAdapter.mapToAPIModelID(im.id()),
+							  responseMapper::mapToAPIModelResponse)
+					  );
 	}
 
 	protected AbstractFetchServiceFacade(
-			final FetchService<DomainModelResponse, DomainID> service,
+			final FetchService<DomainModel, DomainID> service,
 			final DomainToAPIResponseAdapter<APIModelResponse, DomainID, DomainModelResponse> responseMapper,
+			final DomainResponseBuilder<DomainModel, DomainModelResponse> domainResponseBuilder,
 			final APIDomainIDAdapter<APIModelID, DomainID> idAdapter)
 	{
 		this.service = service;
 		this.responseMapper = responseMapper;
+		this.domainResponseBuilder = domainResponseBuilder;
 		this.idAdapter = idAdapter;
 	}
 }

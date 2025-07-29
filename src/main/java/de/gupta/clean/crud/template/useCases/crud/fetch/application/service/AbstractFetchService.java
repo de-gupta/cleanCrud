@@ -1,6 +1,5 @@
 package de.gupta.clean.crud.template.useCases.crud.fetch.application.service;
 
-import de.gupta.clean.crud.template.domain.mapping.fetch.DomainResponseBuilder;
 import de.gupta.clean.crud.template.domain.model.exceptions.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
@@ -10,69 +9,54 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.Collection;
 import java.util.Set;
-import java.util.function.Function;
 
-public abstract class AbstractFetchService<DomainModelResponse, DomainID, DomainModel>
-		implements FetchService<DomainModelResponse, DomainID>
+public abstract class AbstractFetchService<DomainID, DomainModel>
+		implements FetchService<DomainModel, DomainID>
 {
 	private final FetchPersistenceService<DomainID, DomainModel> persistenceService;
-	private final DomainResponseBuilder<DomainModel, DomainModelResponse> modelMapper;
-	private final DomainSecurityPolicy<DomainModel> domainSecurityPolicy;
+	private final DomainFilterPipeline<DomainModel> baseFilterPipeline;
 
 	@Override
-	public Collection<IdentifiedModel<DomainID, DomainModelResponse>> findAll()
+	public Collection<IdentifiedModel<DomainID, DomainModel>> findAll()
 	{
 		return persistenceService.findAll()
 								 .stream()
-								 .filter(this::isThisModelAccessible)
-								 .map(this::identifiedModel)
+								 .filter(this::isVisible)
 								 .toList();
 	}
 
 	@Override
-	public Page<IdentifiedModel<DomainID, DomainModelResponse>> findAll(final Pageable pageable)
+	public Page<IdentifiedModel<DomainID, DomainModel>> findAll(final Pageable pageable)
 	{
-		return PageUtility.mapPage(
-				PageUtility.mapPageAndFilter(persistenceService.findAll(pageable), Function.identity(),
-						im -> domainSecurityPolicy.isAccessAllowed(im.model())),
-				this::identifiedModel);
+		return PageUtility.filterPage(persistenceService.findAll(pageable), this::isVisible);
 	}
 
 	@Override
-	public IdentifiedModel<DomainID, DomainModelResponse> findById(final DomainID domainID)
+	public IdentifiedModel<DomainID, DomainModel> findById(final DomainID domainID)
 	{
 		return persistenceService.findById(domainID)
-								 .filter(this::isThisModelAccessible)
-								 .map(this::identifiedModel)
+								 .filter(this::isVisible)
 								 .orElseThrow(() -> ResourceNotFoundException.withId(domainID));
 	}
 
 	@Override
-	public Collection<IdentifiedModel<DomainID, DomainModelResponse>> findByIds(final Set<DomainID> IDs)
+	public Collection<IdentifiedModel<DomainID, DomainModel>> findByIds(final Set<DomainID> IDs)
 	{
 		return persistenceService.findByIds(IDs).stream()
-								 .filter(this::isThisModelAccessible)
-								 .map(this::identifiedModel).toList();
+								 .filter(this::isVisible)
+								 .toList();
 	}
 
-	private boolean isThisModelAccessible(final IdentifiedModel<?, DomainModel> identifiedModel)
+	private boolean isVisible(IdentifiedModel<DomainID, DomainModel> identifiedModel)
 	{
-		return domainSecurityPolicy.isAccessAllowed(identifiedModel.model());
-	}
-
-	private IdentifiedModel<DomainID, DomainModelResponse> identifiedModel(
-			final IdentifiedModel<DomainID, DomainModel> domainModel)
-	{
-		return IdentifiedModel.of(domainModel.id(), modelMapper.toResponse(domainModel.model()));
+		return baseFilterPipeline.allows(identifiedModel.model());
 	}
 
 	protected AbstractFetchService(
 			final FetchPersistenceService<DomainID, DomainModel> persistenceService,
-			final DomainResponseBuilder<DomainModel, DomainModelResponse> modelMapper,
 			final DomainSecurityPolicy<DomainModel> domainSecurityPolicy)
 	{
 		this.persistenceService = persistenceService;
-		this.modelMapper = modelMapper;
-		this.domainSecurityPolicy = domainSecurityPolicy;
+		this.baseFilterPipeline = DomainFilterPipeline.of(domainSecurityPolicy::isAccessAllowed);
 	}
 }

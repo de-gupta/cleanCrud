@@ -18,12 +18,9 @@ public final class PageUtility
 		return new PageImpl<>(mappedContent, sourcePage.getPageable(), sourcePage.getTotalElements());
 	}
 
-	public static <S, T> Page<T> mapPageAndFilter(Page<? extends S> sourcePage,
-												  Function<S, T> mappingFunction,
-												  Predicate<T> filter)
+	public static <S> Page<S> filterPage(Page<S> sourcePage, Predicate<S> filter)
 	{
-		List<T> mappedContent = sourcePage.getContent().stream()
-										  .map(mappingFunction)
+		List<S> mappedContent = sourcePage.getContent().stream()
 										  .filter(filter)
 										  .toList();
 
