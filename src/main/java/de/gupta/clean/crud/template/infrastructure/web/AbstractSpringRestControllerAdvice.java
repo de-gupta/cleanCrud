@@ -107,6 +107,12 @@ public class AbstractSpringRestControllerAdvice
 		return badRequest(e);
 	}
 
+	@ExceptionHandler(ComparisonNotAllowedException.class)
+	public ResponseEntity<String> handleComparisonNotAllowedException(final ComparisonNotAllowedException e)
+	{
+		return badRequest(e);
+	}
+
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<String> handleException(final Exception e)
 	{
