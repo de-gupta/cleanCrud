@@ -1,6 +1,7 @@
 package de.gupta.clean.crud.template.useCases.crud.fetch.application.service;
 
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 @FunctionalInterface
 public interface DomainFilterPipeline<T>
@@ -21,4 +22,9 @@ public interface DomainFilterPipeline<T>
 	}
 
 	boolean allows(T model);
+
+	default DomainFilterPipeline<T> and(Supplier<DomainFilterPipeline<T>> other)
+	{
+		return model -> this.allows(model) && other.get().allows(model);
+	}
 }

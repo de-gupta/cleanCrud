@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.Collection;
+import java.util.Optional;
 import java.util.Set;
 
 public abstract class AbstractFetchService<DomainModelResponse, DomainID, DomainModel>
@@ -16,7 +17,7 @@ public abstract class AbstractFetchService<DomainModelResponse, DomainID, Domain
 {
 	private final FetchPersistenceService<DomainID, DomainModel> persistenceService;
 	private final DomainResponseBuilder<DomainModel, DomainModelResponse> modelMapper;
-	private final DomainFilterPipeline<DomainModel> filterPipeline;
+	private final DomainFilterPipeline<DomainModel> baseFilterPipeline;
 
 	@Override
 	public Collection<IdentifiedModel<DomainID, DomainModelResponse>> findAll()
@@ -56,7 +57,7 @@ public abstract class AbstractFetchService<DomainModelResponse, DomainID, Domain
 
 	private boolean isVisible(IdentifiedModel<DomainID, DomainModel> identifiedModel)
 	{
-		return filterPipeline.allows(identifiedModel.model());
+		return baseFilterPipeline.allows(identifiedModel.model());
 	}
 
 	private IdentifiedModel<DomainID, DomainModelResponse> respond(
@@ -65,24 +66,38 @@ public abstract class AbstractFetchService<DomainModelResponse, DomainID, Domain
 		return IdentifiedModel.of(domainModel.id(), modelMapper.toResponse(domainModel.model()));
 	}
 
-	protected AbstractFetchService(
-			final FetchPersistenceService<DomainID, DomainModel> persistenceService,
-			final DomainResponseBuilder<DomainModel, DomainModelResponse> modelMapper,
-			final DomainSecurityPolicy<DomainModel> domainSecurityPolicy)
+	protected Collection<IdentifiedModel<DomainID, DomainModelResponse>> filterAndMap(
+			Collection<IdentifiedModel<DomainID, DomainModel>> input,
+			DomainFilterPipeline<DomainModel> additionalFilter)
 	{
-		this(persistenceService, modelMapper, domainSecurityPolicy, DomainFilterPipeline.allowing());
+		return input.stream()
+					.filter(im -> baseFilterPipeline.and(additionalFilter).allows(im.model()))
+					.map(this::respond)
+					.toList();
+	}
+
+	protected Collection<IdentifiedModel<DomainID, DomainModel>> findAllRaw()
+	{
+		return persistenceService.findAll();
+	}
+
+	protected Collection<IdentifiedModel<DomainID, DomainModel>> findByIdsRaw(Set<DomainID> ids)
+	{
+		return persistenceService.findByIds(ids);
+	}
+
+	protected Optional<IdentifiedModel<DomainID, DomainModel>> findByIdRaw(DomainID id)
+	{
+		return persistenceService.findById(id);
 	}
 
 	protected AbstractFetchService(
 			final FetchPersistenceService<DomainID, DomainModel> persistenceService,
 			final DomainResponseBuilder<DomainModel, DomainModelResponse> modelMapper,
-			final DomainSecurityPolicy<DomainModel> domainSecurityPolicy,
-			final DomainFilterPipeline<DomainModel> additionalFilter)
+			final DomainSecurityPolicy<DomainModel> domainSecurityPolicy)
 	{
 		this.persistenceService = persistenceService;
 		this.modelMapper = modelMapper;
-		this.filterPipeline = DomainFilterPipeline
-				.of(domainSecurityPolicy::isAccessAllowed)
-				.and(additionalFilter);
+		this.baseFilterPipeline = DomainFilterPipeline.of(domainSecurityPolicy::isAccessAllowed);
 	}
 }
