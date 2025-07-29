@@ -2,10 +2,8 @@ package de.gupta.clean.crud.template.useCases.query.property.application.service
 
 import de.gupta.clean.crud.template.domain.mapping.fetch.DomainResponseBuilder;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
-import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
-import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.AbstractFetchService;
 import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.DomainFilterPipeline;
-import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.FetchPersistenceService;
+import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.FetchService;
 import de.gupta.commons.utility.comparison.ComparisonType;
 import de.gupta.commons.utility.comparison.ComparisonUtility;
 
@@ -13,11 +11,12 @@ import java.util.Collection;
 import java.util.Comparator;
 
 public abstract class AbstractPropertyQueryService<Property, DomainID, DomainModel, DomainModelResponse>
-		extends AbstractFetchService<DomainModelResponse, DomainID, DomainModel>
 		implements PropertyQueryService<Property, DomainID, DomainModelResponse>
 {
 	private final PropertyExtractor<DomainModel, Property> propertyExtractor;
 	private final Comparator<Property> propertyComparator;
+	private final FetchService<DomainModel, DomainID> fetchService;
+	private final DomainResponseBuilder<DomainModel, DomainModelResponse> domainResponseBuilder;
 
 	@Override
 	public Collection<IdentifiedModel<DomainID, DomainModelResponse>> queryBy(final String propertyName,
@@ -32,18 +31,21 @@ public abstract class AbstractPropertyQueryService<Property, DomainID, DomainMod
 						propertyComparator)
 		);
 
-		return filterAndMap(findAllRaw(), dynamicFilter);
+		return fetchService.findAll()
+						   .stream()
+						   .filter(m -> dynamicFilter.allows(m.model()))
+						   .map(domainResponseBuilder::toResponse)
+						   .toList();
 	}
 
-	protected AbstractPropertyQueryService(final FetchPersistenceService<DomainID, DomainModel> persistenceService,
-										   final DomainResponseBuilder<DomainModel, DomainModelResponse> modelMapper,
-										   final DomainSecurityPolicy<DomainModel> domainSecurityPolicy,
+	protected AbstractPropertyQueryService(final FetchService<DomainModel, DomainID> fetchService,
 										   final PropertyExtractor<DomainModel, Property> propertyExtractor,
-										   final Comparator<Property> propertyComparator
-	)
+										   final Comparator<Property> propertyComparator,
+										   final DomainResponseBuilder<DomainModel, DomainModelResponse> domainResponseBuilder)
 	{
-		super(persistenceService, modelMapper, domainSecurityPolicy);
+		this.fetchService = fetchService;
 		this.propertyExtractor = propertyExtractor;
 		this.propertyComparator = propertyComparator;
+		this.domainResponseBuilder = domainResponseBuilder;
 	}
 }

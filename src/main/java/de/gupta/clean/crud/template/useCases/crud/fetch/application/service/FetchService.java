@@ -7,13 +7,13 @@ import org.springframework.data.domain.Pageable;
 import java.util.Collection;
 import java.util.Set;
 
-public interface FetchService<DomainModelResponse, DomainID>
+public interface FetchService<DomainModel, DomainID>
 {
-	Collection<IdentifiedModel<DomainID, DomainModelResponse>> findAll();
+	Collection<IdentifiedModel<DomainID, DomainModel>> findAll();
 
-	Page<IdentifiedModel<DomainID, DomainModelResponse>> findAll(final Pageable pageable);
+	Page<IdentifiedModel<DomainID, DomainModel>> findAll(final Pageable pageable);
 
-	IdentifiedModel<DomainID, DomainModelResponse> findById(final DomainID id);
+	IdentifiedModel<DomainID, DomainModel> findById(final DomainID id);
 
-	Collection<IdentifiedModel<DomainID, DomainModelResponse>> findByIds(final Set<DomainID> IDs);
+	Collection<IdentifiedModel<DomainID, DomainModel>> findByIds(final Set<DomainID> IDs);
 }
