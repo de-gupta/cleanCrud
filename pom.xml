@@ -4,7 +4,7 @@
 
     <groupId>io.github.de-gupta</groupId>
     <artifactId>cleanCrud</artifactId>
-    <version>0.0.5-SNAPSHOT</version>
+    <version>0.0.7-SNAPSHOT</version>
 
     <name>cleaCrud</name>
     <description>A library for implementing clean architecture based crud operations</description>
@@ -77,7 +77,7 @@
                 <artifactId>maven-release-plugin</artifactId>
                 <version>${maven.release.plugin.version}</version>
                 <configuration>
-                    <goals>install</goals>
+                    <goals>deploy</goals>
                     <tagNameFormat>v@{project.version}</tagNameFormat>
                 </configuration>
             </plugin>
