@@ -6,5 +6,6 @@ import java.util.Collection;
 
 public interface PropertyQueryApplicationController<Property, APIModelResponse>
 {
-	Collection<APIModelResponse> queryBy(final Property propertyValue, final ComparisonType comparisonType);
+	Collection<APIModelResponse> queryBy(final String propertyName,
+										 final Property propertyValue, final ComparisonType comparisonType);
 }

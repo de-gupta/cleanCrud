@@ -8,19 +8,18 @@ import java.util.Collection;
 public abstract class AbstractPropertyQueryApplicationController<Property, APIModelResponse>
 		implements PropertyQueryApplicationController<Property, APIModelResponse>
 {
-	private final String propertyName;
 	private final PropertyQueryServiceFacade<Property, APIModelResponse> service;
 
 	@Override
-	public Collection<APIModelResponse> queryBy(final Property propertyValue, final ComparisonType comparisonType)
+	public Collection<APIModelResponse> queryBy(final String propertyName, final Property propertyValue,
+												final ComparisonType comparisonType)
 	{
 		return service.queryBy(propertyName, propertyValue, comparisonType);
 	}
 
-	protected AbstractPropertyQueryApplicationController(final String propertyName,
-														 final PropertyQueryServiceFacade<Property, APIModelResponse> service)
+	protected AbstractPropertyQueryApplicationController(
+			final PropertyQueryServiceFacade<Property, APIModelResponse> service)
 	{
-		this.propertyName = propertyName;
 		this.service = service;
 	}
 }
