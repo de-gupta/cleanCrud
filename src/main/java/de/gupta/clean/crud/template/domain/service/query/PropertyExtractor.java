@@ -1,4 +1,4 @@
-package de.gupta.clean.crud.template.useCases.query.property.application.service;
+package de.gupta.clean.crud.template.domain.service.query;
 
 @FunctionalInterface
 public interface PropertyExtractor<DomainModel, Property>

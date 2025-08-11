@@ -12,6 +12,6 @@ public interface SpringRestPropertyQueryController<Property, APIModelResponse>
 	@GetMapping("")
 	ResponseEntity<Collection<APIModelResponse>> queryBy(
 			@RequestParam(name = "propertyValue") final Property propertyValue,
-			@RequestParam(name = "comparisonType", required = false) final ComparisonType comparisonType
+			@RequestParam(name = "comparisonType") final ComparisonType comparisonType
 	);
 }

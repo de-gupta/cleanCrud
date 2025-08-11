@@ -2,6 +2,7 @@ package de.gupta.clean.crud.template.useCases.query.property.application.service
 
 import de.gupta.clean.crud.template.domain.mapping.fetch.DomainResponseBuilder;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
+import de.gupta.clean.crud.template.domain.service.query.PropertyExtractor;
 import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.DomainFilterPipeline;
 import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.FetchService;
 import de.gupta.commons.utility.comparison.ComparisonType;
