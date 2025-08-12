@@ -12,11 +12,6 @@ public interface DomainFilterPipeline<T>
 		return predicate::test;
 	}
 
-	static <T> DomainFilterPipeline<T> allowing()
-	{
-		return _ -> true;
-	}
-
 	default DomainFilterPipeline<T> and(DomainFilterPipeline<T> other)
 	{
 		return model -> this.allows(model) && other.allows(model);
