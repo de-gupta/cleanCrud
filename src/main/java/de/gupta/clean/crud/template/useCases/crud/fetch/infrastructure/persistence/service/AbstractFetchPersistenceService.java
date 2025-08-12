@@ -4,7 +4,9 @@ import de.gupta.clean.crud.template.domain.model.exceptions.ResourceNotFoundExce
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.id.adapter.DomainPersistenceIDAdapter;
 import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.model.DomainPersistenceModelAdapter;
+import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.specification.DomainPersistenceFetchSpecificationAdapter;
 import de.gupta.clean.crud.template.infrastructure.persistence.model.properties.WithID;
+import de.gupta.clean.crud.template.specification.ModelSpecification;
 import de.gupta.clean.crud.template.useCases.crud.common.utility.PageUtility;
 import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.FetchPersistenceService;
 import org.springframework.data.domain.Page;
@@ -20,6 +22,7 @@ public abstract class AbstractFetchPersistenceService<DomainID, DomainModel, Per
 	private final FetchPersistenceModelRepository<PersistenceModel, PersistenceID> repository;
 	private final DomainPersistenceModelAdapter<DomainModel, PersistenceModel> modelAdapter;
 	private final DomainPersistenceIDAdapter<DomainID, PersistenceID> idAdapter;
+	private final DomainPersistenceFetchSpecificationAdapter<DomainModel, PersistenceModel> fetchSpecificationAdapter;
 
 	@Override
 	public Collection<IdentifiedModel<DomainID, DomainModel>> findAll()
@@ -28,9 +31,29 @@ public abstract class AbstractFetchPersistenceService<DomainID, DomainModel, Per
 	}
 
 	@Override
+	public Collection<IdentifiedModel<DomainID, DomainModel>> findAll(
+			final ModelSpecification<DomainModel> specification)
+	{
+		return repository.findAll(fetchSpecificationAdapter.toPersistenceSpecification(specification)).stream()
+						 .map(this::identifiedModel).flatMap(Optional::stream).toList();
+	}
+
+	@Override
 	public Page<IdentifiedModel<DomainID, DomainModel>> findAll(final Pageable pageable)
 	{
 		Page<? extends PersistenceModel> persistenceModelPage = repository.findAll(pageable);
+		return PageUtility.mapPage(persistenceModelPage,
+				m -> this.identifiedModel(m)
+						 .orElseThrow(() -> ResourceNotFoundException.withMessage(
+								 "The resources with id " + m.id() + " was not found")));
+	}
+
+	@Override
+	public Page<IdentifiedModel<DomainID, DomainModel>> findAll(final ModelSpecification<DomainModel> specification,
+																final Pageable pageable)
+	{
+		Page<? extends PersistenceModel> persistenceModelPage =
+				repository.findAll(fetchSpecificationAdapter.toPersistenceSpecification(specification), pageable);
 		return PageUtility.mapPage(persistenceModelPage,
 				m -> this.identifiedModel(m)
 						 .orElseThrow(() -> ResourceNotFoundException.withMessage(
@@ -61,10 +84,12 @@ public abstract class AbstractFetchPersistenceService<DomainID, DomainModel, Per
 	protected AbstractFetchPersistenceService(
 			final FetchPersistenceModelRepository<PersistenceModel, PersistenceID> repository,
 			final DomainPersistenceModelAdapter<DomainModel, PersistenceModel> modelAdapter,
-			final DomainPersistenceIDAdapter<DomainID, PersistenceID> idAdapter)
+			final DomainPersistenceIDAdapter<DomainID, PersistenceID> idAdapter,
+			final DomainPersistenceFetchSpecificationAdapter<DomainModel, PersistenceModel> fetchSpecificationAdapter)
 	{
 		this.repository = repository;
 		this.modelAdapter = modelAdapter;
 		this.idAdapter = idAdapter;
+		this.fetchSpecificationAdapter = fetchSpecificationAdapter;
 	}
 }

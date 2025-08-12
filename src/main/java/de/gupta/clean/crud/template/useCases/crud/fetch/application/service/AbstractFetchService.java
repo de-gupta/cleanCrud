@@ -2,7 +2,7 @@ package de.gupta.clean.crud.template.useCases.crud.fetch.application.service;
 
 import de.gupta.clean.crud.template.domain.model.exceptions.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
-import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
+import de.gupta.clean.crud.template.specification.ModelSpecification;
 import de.gupta.clean.crud.template.useCases.crud.common.utility.PageUtility;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -14,7 +14,7 @@ public abstract class AbstractFetchService<DomainID, DomainModel>
 		implements FetchService<DomainModel, DomainID>
 {
 	private final FetchPersistenceService<DomainID, DomainModel> persistenceService;
-	private final DomainFilterPipeline<DomainModel> baseFilterPipeline;
+	private final ModelSpecification<DomainModel> fetchSpecification;
 
 	@Override
 	public Collection<IdentifiedModel<DomainID, DomainModel>> findAll()
@@ -49,14 +49,14 @@ public abstract class AbstractFetchService<DomainID, DomainModel>
 
 	private boolean isVisible(IdentifiedModel<DomainID, DomainModel> identifiedModel)
 	{
-		return baseFilterPipeline.allows(identifiedModel.model());
+		return fetchSpecification.satisfies(identifiedModel.model());
 	}
 
 	protected AbstractFetchService(
 			final FetchPersistenceService<DomainID, DomainModel> persistenceService,
-			final DomainSecurityPolicy<DomainModel> domainSecurityPolicy)
+			final ModelSpecification<DomainModel> fetchSpecification)
 	{
 		this.persistenceService = persistenceService;
-		this.baseFilterPipeline = DomainFilterPipeline.of(domainSecurityPolicy::isAccessAllowed);
+		this.fetchSpecification = fetchSpecification;
 	}
 }

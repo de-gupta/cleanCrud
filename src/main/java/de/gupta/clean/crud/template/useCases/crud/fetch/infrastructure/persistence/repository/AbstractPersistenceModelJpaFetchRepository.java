@@ -1,9 +1,12 @@
 package de.gupta.clean.crud.template.useCases.crud.fetch.infrastructure.persistence.repository;
 
+import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.repository.specification.PersistenceRepositorySpecificationJpaCriteriaAdapter;
+import de.gupta.clean.crud.template.specification.ModelSpecification;
 import de.gupta.clean.crud.template.useCases.crud.fetch.infrastructure.persistence.service.FetchPersistenceModelRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.util.Collection;
 import java.util.Optional;
@@ -12,6 +15,9 @@ public abstract class AbstractPersistenceModelJpaFetchRepository<PersistenceMode
 		implements FetchPersistenceModelRepository<PersistenceModel, PersistenceID>
 {
 	private final JpaRepository<ConcretePersistenceModel, PersistenceID> jpaRepository;
+	private final JpaSpecificationExecutor<ConcretePersistenceModel> jpaSpecificationExecutor;
+	private final PersistenceRepositorySpecificationJpaCriteriaAdapter<PersistenceModel, ConcretePersistenceModel>
+			specificationAdapter;
 
 	@Override
 	public Collection<PersistenceModel> findAll()
@@ -20,9 +26,24 @@ public abstract class AbstractPersistenceModelJpaFetchRepository<PersistenceMode
 	}
 
 	@Override
+	public Collection<PersistenceModel> findAll(final ModelSpecification<PersistenceModel> filter)
+	{
+		return jpaSpecificationExecutor.findAll(
+				specificationAdapter.toSpecification(filter)).stream().map(this::castUp).toList();
+	}
+
+	@Override
 	public Page<PersistenceModel> findAll(final Pageable pageable)
 	{
 		return jpaRepository.findAll(pageable).map(this::castUp);
+	}
+
+	@Override
+	public Page<PersistenceModel> findAll(final ModelSpecification<PersistenceModel> specification,
+										  final Pageable pageable)
+	{
+		return jpaSpecificationExecutor.findAll(specificationAdapter.toSpecification(specification), pageable)
+									   .map(this::castUp);
 	}
 
 	@Override
@@ -43,8 +64,12 @@ public abstract class AbstractPersistenceModelJpaFetchRepository<PersistenceMode
 	}
 
 	protected AbstractPersistenceModelJpaFetchRepository(
-			final JpaRepository<ConcretePersistenceModel, PersistenceID> jpaRepository)
+			final JpaRepository<ConcretePersistenceModel, PersistenceID> jpaRepository,
+			final JpaSpecificationExecutor<ConcretePersistenceModel> jpaSpecificationExecutor,
+			final PersistenceRepositorySpecificationJpaCriteriaAdapter<PersistenceModel, ConcretePersistenceModel> specificationAdapter)
 	{
 		this.jpaRepository = jpaRepository;
+		this.jpaSpecificationExecutor = jpaSpecificationExecutor;
+		this.specificationAdapter = specificationAdapter;
 	}
 }

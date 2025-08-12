@@ -3,6 +3,7 @@ package de.gupta.clean.crud.template.useCases.crud.fetch.application.service;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+@Deprecated
 @FunctionalInterface
 public interface DomainFilterPipeline<T>
 {
