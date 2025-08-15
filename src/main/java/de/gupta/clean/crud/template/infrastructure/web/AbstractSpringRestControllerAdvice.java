@@ -4,6 +4,8 @@ import de.gupta.clean.crud.template.domain.model.exceptions.operation.Comparison
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.*;
 import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDeniedException;
+import de.gupta.clean.crud.template.domain.model.exceptions.validation.FieldValidationFailedException;
+import de.gupta.clean.crud.template.domain.model.exceptions.validation.RequiredFieldNotSetException;
 import de.gupta.clean.crud.template.domain.model.exceptions.validation.ValidationFailedException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
@@ -74,6 +76,18 @@ public class AbstractSpringRestControllerAdvice
 
 	@ExceptionHandler(ValidationFailedException.class)
 	public ResponseEntity<String> handleValidationFailedException(final ValidationFailedException e)
+	{
+		return badRequest(e);
+	}
+
+	@ExceptionHandler(FieldValidationFailedException.class)
+	public ResponseEntity<String> handleFieldValidationFailedException(final FieldValidationFailedException e)
+	{
+		return badRequest(e);
+	}
+
+	@ExceptionHandler(RequiredFieldNotSetException.class)
+	public ResponseEntity<String> handleRequiredFieldNotSetException(final RequiredFieldNotSetException e)
 	{
 		return badRequest(e);
 	}
