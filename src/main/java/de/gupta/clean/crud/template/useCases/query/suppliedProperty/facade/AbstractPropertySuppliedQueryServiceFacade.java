@@ -1,7 +1,7 @@
 package de.gupta.clean.crud.template.useCases.query.suppliedProperty.facade;
 
 import de.gupta.aletheia.functional.Unfolding;
-import de.gupta.clean.crud.template.domain.model.exceptions.ComparisonNotAllowedException;
+import de.gupta.clean.crud.template.domain.model.exceptions.operation.ComparisonNotAllowedException;
 import de.gupta.clean.crud.template.useCases.crud.common.adapter.model.DomainToAPIResponseAdapter;
 import de.gupta.clean.crud.template.useCases.query.property.application.service.PropertyQueryService;
 import de.gupta.commons.utility.comparison.ComparisonType;

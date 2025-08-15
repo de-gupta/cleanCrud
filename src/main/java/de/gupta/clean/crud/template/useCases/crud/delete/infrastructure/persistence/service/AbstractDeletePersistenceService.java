@@ -1,6 +1,6 @@
 package de.gupta.clean.crud.template.useCases.crud.delete.infrastructure.persistence.service;
 
-import de.gupta.clean.crud.template.domain.model.exceptions.ResourceNotFoundException;
+import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.id.adapter.DomainPersistenceIDAdapter;
 import de.gupta.clean.crud.template.useCases.crud.delete.application.service.DeletePersistenceService;
 

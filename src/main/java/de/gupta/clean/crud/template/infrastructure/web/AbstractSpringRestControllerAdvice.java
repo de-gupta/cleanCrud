@@ -1,6 +1,10 @@
 package de.gupta.clean.crud.template.infrastructure.web;
 
-import de.gupta.clean.crud.template.domain.model.exceptions.*;
+import de.gupta.clean.crud.template.domain.model.exceptions.operation.ComparisonNotAllowedException;
+import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
+import de.gupta.clean.crud.template.domain.model.exceptions.resource.*;
+import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDeniedException;
+import de.gupta.clean.crud.template.domain.model.exceptions.validation.ValidationFailedException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

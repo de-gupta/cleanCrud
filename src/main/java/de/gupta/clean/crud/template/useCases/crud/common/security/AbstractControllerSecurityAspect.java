@@ -1,6 +1,6 @@
 package de.gupta.clean.crud.template.useCases.crud.common.security;
 
-import de.gupta.clean.crud.template.domain.model.exceptions.AccessDeniedException;
+import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDeniedException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.reflect.MethodSignature;

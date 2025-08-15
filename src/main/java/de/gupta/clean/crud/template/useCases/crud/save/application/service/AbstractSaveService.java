@@ -2,8 +2,8 @@ package de.gupta.clean.crud.template.useCases.crud.save.application.service;
 
 import de.gupta.clean.crud.template.domain.mapping.fetch.DomainResponseBuilder;
 import de.gupta.clean.crud.template.domain.mapping.save.DomainModelBuilder;
-import de.gupta.clean.crud.template.domain.model.exceptions.AccessDeniedException;
-import de.gupta.clean.crud.template.domain.model.exceptions.InvalidRequestException;
+import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
+import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDeniedException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.service.crud.policy.InsertionPolicy;
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;

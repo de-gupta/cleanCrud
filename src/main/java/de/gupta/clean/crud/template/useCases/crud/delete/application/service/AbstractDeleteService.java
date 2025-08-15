@@ -1,7 +1,7 @@
 package de.gupta.clean.crud.template.useCases.crud.delete.application.service;
 
-import de.gupta.clean.crud.template.domain.model.exceptions.AccessDeniedException;
-import de.gupta.clean.crud.template.domain.model.exceptions.ResourceNotFoundException;
+import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
+import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDeniedException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.service.crud.policy.DeletionPolicy;
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
