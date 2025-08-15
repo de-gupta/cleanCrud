@@ -22,9 +22,9 @@ public abstract class AbstractPropertySuppliedQueryServiceFacade<Property, Domai
 	public Collection<APIModelResponse> queryBySuppliedProperty(final String propertyName,
 																final ComparisonType comparisonType)
 	{
-		return Unfolding.of(comparisonType)
+		return Unfolding.beckon(comparisonType)
 						.discern(allowedComparisonTypes::contains)
-						.refold(comparison ->
+						.metamorphose(comparison ->
 								service.queryBy(propertyName, propertyValueSupplier.get(), comparison)
 									   .stream()
 									   .map(responseMapper::mapToAPIModelResponse)
