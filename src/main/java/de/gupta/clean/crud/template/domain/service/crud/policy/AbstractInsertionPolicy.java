@@ -1,6 +1,6 @@
 package de.gupta.clean.crud.template.domain.service.crud.policy;
 
-import de.gupta.clean.crud.template.domain.model.exceptions.ResourceAlreadyExistsException;
+import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceAlreadyExistsException;
 import de.gupta.clean.crud.template.domain.service.equality.DuplicateInsertionMessage;
 import de.gupta.clean.crud.template.domain.service.existence.ResourceExistenceDetectionService;
 

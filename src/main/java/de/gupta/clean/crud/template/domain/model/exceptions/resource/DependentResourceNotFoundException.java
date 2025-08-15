@@ -1,4 +1,4 @@
-package de.gupta.clean.crud.template.domain.model.exceptions;
+package de.gupta.clean.crud.template.domain.model.exceptions.resource;
 
 import java.util.function.Function;
 

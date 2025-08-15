@@ -1,6 +1,6 @@
 package de.gupta.clean.crud.template.useCases.crud.fetch.application.service;
 
-import de.gupta.clean.crud.template.domain.model.exceptions.ResourceNotFoundException;
+import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
 import de.gupta.clean.crud.template.useCases.crud.common.utility.PageUtility;

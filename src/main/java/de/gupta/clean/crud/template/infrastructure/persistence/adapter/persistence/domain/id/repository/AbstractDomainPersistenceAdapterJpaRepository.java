@@ -1,6 +1,6 @@
 package de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.id.repository;
 
-import de.gupta.clean.crud.template.domain.model.exceptions.UnexpectedResourceException;
+import de.gupta.clean.crud.template.domain.model.exceptions.resource.UnexpectedResourceException;
 import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.id.model.DomainPersistenceAdapterModel;
 import org.springframework.data.jpa.repository.JpaRepository;
 
