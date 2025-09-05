@@ -8,6 +8,8 @@ import de.gupta.clean.crud.template.domain.model.exceptions.validation.FieldVali
 import de.gupta.clean.crud.template.domain.model.exceptions.validation.RequiredFieldNotSetException;
 import de.gupta.clean.crud.template.domain.model.exceptions.validation.ValidationFailedException;
 import jakarta.validation.ConstraintViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -20,6 +22,8 @@ import java.util.stream.Collectors;
 
 public class AbstractSpringRestControllerAdvice
 {
+	private static final Logger log = LoggerFactory.getLogger(AbstractSpringRestControllerAdvice.class);
+
 	@ExceptionHandler(AccessDeniedException.class)
 	public ResponseEntity<String> handleAccessDeniedException(final AccessDeniedException e)
 	{
@@ -36,11 +40,6 @@ public class AbstractSpringRestControllerAdvice
 	public ResponseEntity<String> handleDependentResourceNotFoundException(final DependentResourceNotFoundException e)
 	{
 		return badRequest(e);
-	}
-
-	private static ResponseEntity<String> badRequest(final RuntimeException e)
-	{
-		return ResponseEntity.badRequest().body(e.getMessage());
 	}
 
 	@ExceptionHandler(ResourceAlreadyExistsException.class)
@@ -62,16 +61,6 @@ public class AbstractSpringRestControllerAdvice
 				e.getBindingResult().getFieldErrors().stream().map(this::getErrorMessageForFieldError)
 				 .collect(Collectors.joining(", "));
 		return badRequest(errorMessage);
-	}
-
-	private String getErrorMessageForFieldError(FieldError fieldError)
-	{
-		return fieldError.getField() + ": " + fieldError.getDefaultMessage();
-	}
-
-	private static ResponseEntity<String> badRequest(final String message)
-	{
-		return ResponseEntity.badRequest().body(message);
 	}
 
 	@ExceptionHandler(ValidationFailedException.class)
@@ -135,5 +124,21 @@ public class AbstractSpringRestControllerAdvice
 	public ResponseEntity<String> handleException(final Exception e)
 	{
 		return ResponseEntity.internalServerError().body(e.getMessage());
+	}
+
+	private static ResponseEntity<String> badRequest(final RuntimeException e)
+	{
+		log.debug("400: Bad request {}", e.getMessage());
+		return ResponseEntity.badRequest().body(e.getMessage());
+	}
+
+	private static ResponseEntity<String> badRequest(final String message)
+	{
+		return ResponseEntity.badRequest().body(message);
+	}
+
+	private String getErrorMessageForFieldError(FieldError fieldError)
+	{
+		return fieldError.getField() + ": " + fieldError.getDefaultMessage();
 	}
 }
