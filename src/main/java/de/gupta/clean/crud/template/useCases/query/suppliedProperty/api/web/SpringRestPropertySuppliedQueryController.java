@@ -11,6 +11,6 @@ public interface SpringRestPropertySuppliedQueryController<APIModelResponse>
 {
 	@GetMapping("")
 	ResponseEntity<Collection<APIModelResponse>> queryBySuppliedProperty(
-			@RequestParam(name = "comparisonType", required = false) final ComparisonType comparisonType
+			@RequestParam(name = "comparisonType") final ComparisonType comparisonType
 	);
 }
