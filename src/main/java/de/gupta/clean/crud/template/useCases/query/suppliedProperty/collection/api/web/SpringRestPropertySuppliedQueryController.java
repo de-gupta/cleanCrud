@@ -1,4 +1,4 @@
-package de.gupta.clean.crud.template.useCases.query.suppliedProperty.api.web;
+package de.gupta.clean.crud.template.useCases.query.suppliedProperty.collection.api.web;
 
 import de.gupta.commons.utility.comparison.ComparisonType;
 import org.springframework.http.ResponseEntity;

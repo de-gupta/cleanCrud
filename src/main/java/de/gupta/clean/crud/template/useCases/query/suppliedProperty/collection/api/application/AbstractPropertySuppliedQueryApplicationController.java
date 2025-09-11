@@ -1,6 +1,6 @@
-package de.gupta.clean.crud.template.useCases.query.suppliedProperty.api.application;
+package de.gupta.clean.crud.template.useCases.query.suppliedProperty.collection.api.application;
 
-import de.gupta.clean.crud.template.useCases.query.suppliedProperty.facade.PropertySuppliedQueryServiceFacade;
+import de.gupta.clean.crud.template.useCases.query.suppliedProperty.collection.facade.PropertySuppliedQueryServiceFacade;
 import de.gupta.commons.utility.comparison.ComparisonType;
 
 import java.util.Collection;

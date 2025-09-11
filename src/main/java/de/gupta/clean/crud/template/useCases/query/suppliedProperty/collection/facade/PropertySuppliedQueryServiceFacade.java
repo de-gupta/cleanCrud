@@ -1,4 +1,4 @@
-package de.gupta.clean.crud.template.useCases.query.suppliedProperty.facade;
+package de.gupta.clean.crud.template.useCases.query.suppliedProperty.collection.facade;
 
 import de.gupta.commons.utility.comparison.ComparisonType;
 

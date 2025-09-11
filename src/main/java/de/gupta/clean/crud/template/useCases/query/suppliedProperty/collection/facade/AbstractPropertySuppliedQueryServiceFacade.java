@@ -1,4 +1,4 @@
-package de.gupta.clean.crud.template.useCases.query.suppliedProperty.facade;
+package de.gupta.clean.crud.template.useCases.query.suppliedProperty.collection.facade;
 
 import de.gupta.aletheia.functional.Unfolding;
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.ComparisonNotAllowedException;
