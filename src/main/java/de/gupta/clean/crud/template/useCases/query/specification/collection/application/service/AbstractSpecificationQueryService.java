@@ -1,9 +1,9 @@
-package de.gupta.clean.crud.template.useCases.query.specification.application.service;
+package de.gupta.clean.crud.template.useCases.query.specification.collection.application.service;
 
 import de.gupta.clean.crud.template.domain.mapping.fetch.DomainResponseBuilder;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.FetchService;
-import de.gupta.clean.crud.template.useCases.query.specification.application.service.adapter.FilterSpecificationToDomainFilterAdapter;
+import de.gupta.clean.crud.template.useCases.query.specification.collection.application.service.adapter.FilterSpecificationToDomainFilterAdapter;
 import de.gupta.clean.crud.template.useCases.query.specification.domain.model.FilterSpecification;
 
 import java.util.Collection;

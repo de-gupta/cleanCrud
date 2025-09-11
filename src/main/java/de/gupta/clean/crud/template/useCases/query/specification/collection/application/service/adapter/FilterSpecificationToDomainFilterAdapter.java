@@ -1,4 +1,4 @@
-package de.gupta.clean.crud.template.useCases.query.specification.application.service.adapter;
+package de.gupta.clean.crud.template.useCases.query.specification.collection.application.service.adapter;
 
 import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.DomainFilterPipeline;
 import de.gupta.clean.crud.template.useCases.query.specification.domain.model.CompositeFilterSpecification;

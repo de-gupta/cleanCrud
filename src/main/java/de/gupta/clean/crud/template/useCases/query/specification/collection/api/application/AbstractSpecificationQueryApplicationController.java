@@ -1,7 +1,7 @@
-package de.gupta.clean.crud.template.useCases.query.specification.api.application;
+package de.gupta.clean.crud.template.useCases.query.specification.collection.api.application;
 
+import de.gupta.clean.crud.template.useCases.query.specification.collection.facade.SpecificationQueryServiceFacade;
 import de.gupta.clean.crud.template.useCases.query.specification.domain.model.FilterSpecification;
-import de.gupta.clean.crud.template.useCases.query.specification.facade.SpecificationQueryServiceFacade;
 
 import java.util.Collection;
 

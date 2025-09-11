@@ -1,4 +1,4 @@
-package de.gupta.clean.crud.template.useCases.query.specification.api.web;
+package de.gupta.clean.crud.template.useCases.query.specification.collection.api.web;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;

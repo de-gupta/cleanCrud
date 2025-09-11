@@ -1,4 +1,4 @@
-package de.gupta.clean.crud.template.useCases.query.specification.facade;
+package de.gupta.clean.crud.template.useCases.query.specification.collection.facade;
 
 import de.gupta.clean.crud.template.useCases.query.specification.domain.model.FilterSpecification;
 

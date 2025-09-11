@@ -1,7 +1,7 @@
-package de.gupta.clean.crud.template.useCases.query.specification.api.web;
+package de.gupta.clean.crud.template.useCases.query.specification.collection.api.web;
 
+import de.gupta.clean.crud.template.useCases.query.specification.collection.facade.SpecificationQueryServiceFacade;
 import de.gupta.clean.crud.template.useCases.query.specification.domain.model.FilterSpecification;
-import de.gupta.clean.crud.template.useCases.query.specification.facade.SpecificationQueryServiceFacade;
 import org.springframework.http.ResponseEntity;
 
 import java.util.Collection;
