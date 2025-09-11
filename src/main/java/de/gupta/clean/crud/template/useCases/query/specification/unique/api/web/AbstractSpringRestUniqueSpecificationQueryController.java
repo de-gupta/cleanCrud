@@ -1,6 +1,7 @@
 package de.gupta.clean.crud.template.useCases.query.specification.unique.api.web;
 
 import de.gupta.clean.crud.template.useCases.query.specification.domain.model.FilterSpecification;
+import de.gupta.clean.crud.template.useCases.query.specification.unique.api.behaviour.NotFoundStrategy;
 import de.gupta.clean.crud.template.useCases.query.specification.unique.facade.UniqueSpecificationQueryServiceFacade;
 import org.springframework.http.ResponseEntity;
 
@@ -13,9 +14,10 @@ public abstract class AbstractSpringRestUniqueSpecificationQueryController<APIMo
 	private final FilterSpecification filterSpecification;
 
 	@Override
-	public ResponseEntity<Optional<APIModelResponse>> queryUniqueBy()
+	public ResponseEntity<Optional<APIModelResponse>> queryUniqueBy(final NotFoundStrategy notFoundStrategy)
 	{
-		return ResponseEntity.ok(uniqueSpecificationQueryServiceFacade.queryUniqueBy(filterSpecification));
+		return ResponseEntity.ok(
+				uniqueSpecificationQueryServiceFacade.queryUniqueBy(filterSpecification, notFoundStrategy));
 	}
 
 	protected AbstractSpringRestUniqueSpecificationQueryController(
