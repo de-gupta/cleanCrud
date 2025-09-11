@@ -128,6 +128,12 @@ public class AbstractSpringRestControllerAdvice
 		return badRequest(e);
 	}
 
+	@ExceptionHandler(NonUniqueResourceException.class)
+	public ResponseEntity<String> handleNonUniqueResourceException(final NonUniqueResourceException e)
+	{
+		return badRequest(e);
+	}
+
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<String> handleException(final Exception e)
 	{

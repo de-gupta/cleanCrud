@@ -6,6 +6,12 @@ public record CompositeFilterSpecification(Collection<LeafFilterSpecification> s
 										   CompositeFilterOperation operation)
 		implements FilterSpecification
 {
+	public static CompositeFilterSpecification of(final Collection<LeafFilterSpecification> specifications,
+												  final CompositeFilterOperation operation)
+	{
+		return new CompositeFilterSpecification(specifications, operation);
+	}
+
 	public enum CompositeFilterOperation
 	{
 		AND, OR
