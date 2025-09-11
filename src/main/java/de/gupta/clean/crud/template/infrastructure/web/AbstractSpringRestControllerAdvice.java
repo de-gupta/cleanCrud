@@ -6,6 +6,7 @@ import de.gupta.clean.crud.template.domain.model.exceptions.resource.*;
 import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDeniedException;
 import de.gupta.clean.crud.template.domain.model.exceptions.validation.FieldValidationFailedException;
 import de.gupta.clean.crud.template.domain.model.exceptions.validation.RequiredFieldNotSetException;
+import de.gupta.clean.crud.template.domain.model.exceptions.validation.ResourceConstraintViolationException;
 import de.gupta.clean.crud.template.domain.model.exceptions.validation.ValidationFailedException;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
@@ -116,6 +117,13 @@ public class AbstractSpringRestControllerAdvice
 
 	@ExceptionHandler(ComparisonNotAllowedException.class)
 	public ResponseEntity<String> handleComparisonNotAllowedException(final ComparisonNotAllowedException e)
+	{
+		return badRequest(e);
+	}
+
+	@ExceptionHandler(ResourceConstraintViolationException.class)
+	public ResponseEntity<String> handleResourceConstraintViolationException(
+			final ResourceConstraintViolationException e)
 	{
 		return badRequest(e);
 	}

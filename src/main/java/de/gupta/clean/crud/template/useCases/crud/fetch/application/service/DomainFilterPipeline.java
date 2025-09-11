@@ -21,10 +21,20 @@ public interface DomainFilterPipeline<T>
 		return model -> this.allows(model) && other.allows(model);
 	}
 
+	default DomainFilterPipeline<T> or(DomainFilterPipeline<T> other)
+	{
+		return model -> this.allows(model) || other.allows(model);
+	}
+
 	boolean allows(T model);
 
 	default DomainFilterPipeline<T> and(Supplier<DomainFilterPipeline<T>> other)
 	{
 		return model -> this.allows(model) && other.get().allows(model);
+	}
+
+	default DomainFilterPipeline<T> or(Supplier<DomainFilterPipeline<T>> other)
+	{
+		return model -> this.allows(model) || other.get().allows(model);
 	}
 }

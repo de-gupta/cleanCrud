@@ -14,9 +14,9 @@ import java.util.Comparator;
 public abstract class AbstractPropertyQueryService<Property, DomainID, DomainModel, DomainModelResponse>
 		implements PropertyQueryService<Property, DomainID, DomainModelResponse>
 {
+	private final FetchService<DomainModel, DomainID> fetchService;
 	private final PropertyExtractor<DomainModel, Property> propertyExtractor;
 	private final Comparator<Property> propertyComparator;
-	private final FetchService<DomainModel, DomainID> fetchService;
 	private final DomainResponseBuilder<DomainModel, DomainModelResponse> domainResponseBuilder;
 
 	@Override

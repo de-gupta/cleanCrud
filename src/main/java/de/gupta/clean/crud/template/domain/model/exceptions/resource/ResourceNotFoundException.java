@@ -1,6 +1,7 @@
 package de.gupta.clean.crud.template.domain.model.exceptions.resource;
 
 import java.io.Serializable;
+import java.util.function.Supplier;
 
 public final class ResourceNotFoundException extends RuntimeException
 {
@@ -8,6 +9,11 @@ public final class ResourceNotFoundException extends RuntimeException
 	{
 		final String message = "Resource with id " + id + " not found";
 		return withMessage(message);
+	}
+
+	public static Supplier<ResourceNotFoundException> forMessage(final String message)
+	{
+		return () -> withMessage(message);
 	}
 
 	public static ResourceNotFoundException withMessage(final String message)
