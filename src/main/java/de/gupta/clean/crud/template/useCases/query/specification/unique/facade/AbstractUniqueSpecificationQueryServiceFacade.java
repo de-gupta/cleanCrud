@@ -24,7 +24,7 @@ public abstract class AbstractUniqueSpecificationQueryServiceFacade<DomainID, AP
 						.discern(c -> c.size() <= 1,
 								NonUniqueResourceException.forMessage(
 										"Expected unique result, but found multiple results"))
-						.discern(c -> !c.isEmpty() && notFoundStrategy == NotFoundStrategy.THROW_EXCEPTION,
+						.discern(c -> !c.isEmpty() || notFoundStrategy == NotFoundStrategy.RETURN_NULL,
 								ResourceNotFoundException.forMessage("Expected unique result, but found none"))
 						.metamorphose(c -> c.stream().map(responseMapper::mapToAPIModelResponse).findFirst())
 						.rescue(Optional.empty());
@@ -37,5 +37,4 @@ public abstract class AbstractUniqueSpecificationQueryServiceFacade<DomainID, AP
 		this.service = service;
 		this.responseMapper = responseMapper;
 	}
-
 }

@@ -1,6 +1,8 @@
 package de.gupta.clean.crud.template.useCases.query.specification.domain.model;
 
 import java.util.Collection;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public record CompositeFilterSpecification(Collection<LeafFilterSpecification> specifications,
 										   CompositeFilterOperation operation)
@@ -10,6 +12,13 @@ public record CompositeFilterSpecification(Collection<LeafFilterSpecification> s
 												  final CompositeFilterOperation operation)
 	{
 		return new CompositeFilterSpecification(specifications, operation);
+	}
+
+	public static CompositeFilterSpecification with(
+			final Collection<Supplier<LeafFilterSpecification>> specifications,
+			final CompositeFilterOperation operation)
+	{
+		return of(specifications.stream().map(Supplier::get).collect(Collectors.toList()), operation);
 	}
 
 	public enum CompositeFilterOperation
