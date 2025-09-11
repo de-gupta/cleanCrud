@@ -9,7 +9,7 @@ public final class NonUniqueResourceException extends RuntimeException
 		return new NonUniqueResourceException(message);
 	}
 
-	public Supplier<NonUniqueResourceException> forMessage(final String message)
+	public static Supplier<NonUniqueResourceException> forMessage(final String message)
 	{
 		return () -> withMessage(message);
 	}

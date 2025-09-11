@@ -1,5 +1,7 @@
 package de.gupta.clean.crud.template.useCases.query.specification.unique.facade;
 
+import de.gupta.aletheia.functional.Unfolding;
+import de.gupta.clean.crud.template.domain.model.exceptions.resource.NonUniqueResourceException;
 import de.gupta.clean.crud.template.useCases.crud.common.adapter.model.DomainToAPIResponseAdapter;
 import de.gupta.clean.crud.template.useCases.query.specification.collection.application.service.SpecificationQueryService;
 import de.gupta.clean.crud.template.useCases.query.specification.domain.model.FilterSpecification;
@@ -15,10 +17,13 @@ public abstract class AbstractUniqueSpecificationQueryServiceFacade<DomainID, AP
 	@Override
 	public Optional<APIModelResponse> queryUniqueBy(final FilterSpecification filterSpecification)
 	{
-		return service.queryBy(filterSpecification)
-					  .stream()
-					  .map(responseMapper::mapToAPIModelResponse)
-					  .findFirst();
+		return
+				Unfolding.beckon(service.queryBy(filterSpecification))
+						 .discern(c -> c.size() <= 1,
+								 NonUniqueResourceException.forMessage(
+										 "Expected unique result, but found multiple results"))
+						 .metamorphose(c -> c.stream().map(responseMapper::mapToAPIModelResponse).findFirst())
+						 .rescue(Optional.empty());
 	}
 
 	protected AbstractUniqueSpecificationQueryServiceFacade(
