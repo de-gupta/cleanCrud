@@ -14,7 +14,7 @@ public abstract class AbstractFetchService<DomainID, DomainModel>
 		implements FetchService<DomainModel, DomainID>
 {
 	private final FetchPersistenceService<DomainID, DomainModel> persistenceService;
-	private final DomainFilterPipeline<DomainModel> baseFilterPipeline;
+	private final DomainSecurityPolicy<DomainModel> domainSecurityPolicy;
 
 	@Override
 	public Collection<IdentifiedModel<DomainID, DomainModel>> findAll()
@@ -49,7 +49,7 @@ public abstract class AbstractFetchService<DomainID, DomainModel>
 
 	private boolean isVisible(IdentifiedModel<DomainID, DomainModel> identifiedModel)
 	{
-		return baseFilterPipeline.allows(identifiedModel.model());
+		return domainSecurityPolicy.isAccessAllowed(identifiedModel.model());
 	}
 
 	protected AbstractFetchService(
@@ -57,6 +57,6 @@ public abstract class AbstractFetchService<DomainID, DomainModel>
 			final DomainSecurityPolicy<DomainModel> domainSecurityPolicy)
 	{
 		this.persistenceService = persistenceService;
-		this.baseFilterPipeline = DomainFilterPipeline.of(domainSecurityPolicy::isAccessAllowed);
+		this.domainSecurityPolicy = domainSecurityPolicy;
 	}
 }

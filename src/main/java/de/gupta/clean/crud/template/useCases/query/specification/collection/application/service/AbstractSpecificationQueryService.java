@@ -1,37 +1,30 @@
 package de.gupta.clean.crud.template.useCases.query.specification.collection.application.service;
 
-import de.gupta.clean.crud.template.domain.mapping.fetch.DomainResponseBuilder;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
-import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.FetchService;
 import de.gupta.clean.crud.template.useCases.query.specification.collection.application.service.adapter.FilterSpecificationToDomainFilterAdapter;
 import de.gupta.clean.crud.template.useCases.query.specification.domain.model.FilterSpecification;
+import de.gupta.clean.crud.template.useCases.query.specification.domain.service.filter.DomainFilterService;
 
 import java.util.Collection;
 
 public abstract class AbstractSpecificationQueryService<DomainID, DomainModel, DomainModelResponse>
 		implements SpecificationQueryService<DomainID, DomainModelResponse>
 {
-	private final FetchService<DomainModel, DomainID> fetchService;
+	private final DomainFilterService<DomainID, DomainModel, DomainModelResponse> filterService;
 	private final FilterSpecificationToDomainFilterAdapter<DomainModel> filterAdapter;
-	private final DomainResponseBuilder<DomainModel, DomainModelResponse> domainResponseBuilder;
 
 	@Override
 	public Collection<IdentifiedModel<DomainID, DomainModelResponse>> queryBy(
 			final FilterSpecification filterSpecification)
 	{
-		return fetchService.findAll()
-						   .stream()
-						   .filter(m -> filterAdapter.domainFilterPipeline(filterSpecification).allows(m.model()))
-						   .map(domainResponseBuilder::toResponse)
-						   .toList();
+		return filterService.queryBy(filterAdapter.domainFilterPipeline(filterSpecification));
 	}
 
-	protected AbstractSpecificationQueryService(final FetchService<DomainModel, DomainID> fetchService,
-												final FilterSpecificationToDomainFilterAdapter<DomainModel> filterAdapter,
-												final DomainResponseBuilder<DomainModel, DomainModelResponse> domainResponseBuilder)
+	protected AbstractSpecificationQueryService(
+			final DomainFilterService<DomainID, DomainModel, DomainModelResponse> filterService,
+			final FilterSpecificationToDomainFilterAdapter<DomainModel> filterAdapter)
 	{
-		this.fetchService = fetchService;
+		this.filterService = filterService;
 		this.filterAdapter = filterAdapter;
-		this.domainResponseBuilder = domainResponseBuilder;
 	}
 }
