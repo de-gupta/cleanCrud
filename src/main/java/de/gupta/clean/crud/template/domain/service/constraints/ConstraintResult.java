@@ -1,16 +1,39 @@
 package de.gupta.clean.crud.template.domain.service.constraints;
 
-import java.util.Optional;
-
-public record ConstraintResult(boolean constraintSatisfied, Optional<String> message)
+public sealed interface ConstraintResult permits ConstraintResult.Satisfied, ConstraintResult.Violated
 {
-	public static ConstraintResult satisfied()
+	static ConstraintResult satisfied()
 	{
-		return new ConstraintResult(true, Optional.empty());
+		return new Satisfied();
 	}
 
-	public static ConstraintResult violated(final String message)
+	static ConstraintResult violated(final String message)
 	{
-		return new ConstraintResult(false, Optional.of(message));
+		return new Violated(message);
+	}
+
+	boolean isSatisfied();
+
+	default boolean isViolated()
+	{
+		return !isSatisfied();
+	}
+
+	record Satisfied() implements ConstraintResult
+	{
+		@Override
+		public boolean isSatisfied()
+		{
+			return true;
+		}
+	}
+
+	record Violated(String message) implements ConstraintResult
+	{
+		@Override
+		public boolean isSatisfied()
+		{
+			return false;
+		}
 	}
 }

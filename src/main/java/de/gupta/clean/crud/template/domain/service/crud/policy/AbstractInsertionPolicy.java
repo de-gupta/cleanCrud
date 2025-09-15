@@ -1,12 +1,12 @@
 package de.gupta.clean.crud.template.domain.service.crud.policy;
 
+import de.gupta.aletheia.functional.Unfolding;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceAlreadyExistsException;
 import de.gupta.clean.crud.template.domain.model.exceptions.validation.ResourceConstraintViolationException;
+import de.gupta.clean.crud.template.domain.service.constraints.ConstraintResult;
 import de.gupta.clean.crud.template.domain.service.constraints.DomainConstraintService;
 import de.gupta.clean.crud.template.domain.service.equality.DuplicateInsertionMessage;
 import de.gupta.clean.crud.template.domain.service.existence.ResourceExistenceDetectionService;
-
-import java.util.Optional;
 
 public abstract class AbstractInsertionPolicy<DomainModel> implements InsertionPolicy<DomainModel>
 {
@@ -17,16 +17,15 @@ public abstract class AbstractInsertionPolicy<DomainModel> implements InsertionP
 	@Override
 	public void validateInsertion(final DomainModel domainModel)
 	{
-		Optional.of(domainModel).filter(resourceExistenceDetectionService::existsByModel).ifPresent(model ->
-		{
-			throw ResourceAlreadyExistsException.withMessage(
-					duplicateInsertionMessage.messageIfModelAlreadyExists(model));
-		});
+		Unfolding.beckon(domainModel)
+				 .discern(resourceExistenceDetectionService::existsByModel)
+				 .interdict(ResourceAlreadyExistsException.forMessage(
+						 duplicateInsertionMessage.messageIfModelAlreadyExists(domainModel)));
 
-		domainConstraintService.mayThisResourceBeAdded(domainModel).message().ifPresent(message ->
-		{
-			throw ResourceConstraintViolationException.withMessage(message);
-		});
+		Unfolding.beckon(domainConstraintService.mayThisResourceBeAdded(domainModel))
+				 .discern(ConstraintResult::isViolated)
+				 .metamorphose(ConstraintResult.Violated.class::cast)
+				 .interdict(c -> ResourceConstraintViolationException.forMessage(c.message()));
 	}
 
 	protected AbstractInsertionPolicy(

@@ -1,6 +1,7 @@
 package de.gupta.clean.crud.template.domain.model.exceptions.resource;
 
 import java.io.Serializable;
+import java.util.function.Supplier;
 
 public final class ResourceAlreadyExistsException extends RuntimeException
 {
@@ -8,6 +9,11 @@ public final class ResourceAlreadyExistsException extends RuntimeException
 	{
 		final String message = "Resource with id " + id + " already exists";
 		return withMessage(message);
+	}
+
+	public static Supplier<ResourceAlreadyExistsException> forMessage(final String message)
+	{
+		return () -> withMessage(message);
 	}
 
 	public static ResourceAlreadyExistsException withMessage(final String message)

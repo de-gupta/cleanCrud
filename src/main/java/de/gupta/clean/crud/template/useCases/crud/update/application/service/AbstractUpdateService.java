@@ -4,6 +4,7 @@ import de.gupta.clean.crud.template.domain.mapping.fetch.DomainResponseBuilder;
 import de.gupta.clean.crud.template.domain.mapping.save.DomainModelBuilder;
 import de.gupta.clean.crud.template.domain.mapping.update.DomainModelPatcher;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
+import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDeniedException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.service.crud.policy.InsertionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.PatchPolicy;
@@ -38,18 +39,6 @@ public abstract class AbstractUpdateService<DomainModel, DomainModelCreate, Doma
 		persistenceService.putAtId(id, newDomainModel);
 	}
 
-	private void validateAccess(DomainModel model)
-	{
-		if (!domainSecurityPolicy.isAccessAllowed(model))
-			throw new IllegalArgumentException("Access not allowed");
-	}
-
-	private void validateAndPatch(DomainModel original, DomainModel newModel)
-	{
-		validateAccess(original);
-		patchPolicy.validatePatchAttempt(original, newModel);
-	}
-
 	@Override
 	public IdentifiedModel<DomainID, DomainModelResponse> updateById(final DomainID id,
 																	 final DomainModelUpdatePatch updatePatch)
@@ -65,6 +54,18 @@ public abstract class AbstractUpdateService<DomainModel, DomainModelCreate, Doma
 		patchPolicy.validatePatchAttempt(originalModel, updatedModel);
 
 		return identifiedModel(persistenceService.updateById(id, updatedModel));
+	}
+
+	private void validateAccess(DomainModel model)
+	{
+		if (!domainSecurityPolicy.isAccessAllowed(model))
+			throw AccessDeniedException.withMessage("Access not allowed");
+	}
+
+	private void validateAndPatch(DomainModel original, DomainModel newModel)
+	{
+		validateAccess(original);
+		patchPolicy.validatePatchAttempt(original, newModel);
 	}
 
 	private IdentifiedModel<DomainID, DomainModelResponse> identifiedModel(
