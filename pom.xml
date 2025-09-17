@@ -17,7 +17,7 @@
 
         <spring.boot.version>3.5.5</spring.boot.version>
 
-        <aletheia.version>0.0.14-SNAPSHOT</aletheia.version>
+        <aletheia.version>0.0.15-SNAPSHOT</aletheia.version>
         <athena.version>0.0.7</athena.version>
 
         <maven.compiler.plugin.version>3.14.0</maven.compiler.plugin.version>

@@ -1,40 +1,27 @@
 package de.gupta.clean.crud.template.domain.service.crud.policy;
 
+import de.gupta.aletheia.collection.crucible.Crucible;
 import de.gupta.aletheia.functional.Unfolding;
-import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceAlreadyExistsException;
-import de.gupta.clean.crud.template.domain.model.exceptions.validation.ResourceConstraintViolationException;
-import de.gupta.clean.crud.template.domain.service.constraints.ConstraintResult;
-import de.gupta.clean.crud.template.domain.service.constraints.DomainConstraintService;
-import de.gupta.clean.crud.template.domain.service.equality.DuplicateInsertionMessage;
-import de.gupta.clean.crud.template.domain.service.existence.ResourceExistenceDetectionService;
+import de.gupta.clean.crud.template.domain.service.constraints.CollectionConsistenceService;
 
 public abstract class AbstractInsertionPolicy<DomainModel> implements InsertionPolicy<DomainModel>
 {
-	private final ResourceExistenceDetectionService<DomainModel> resourceExistenceDetectionService;
-	private final DuplicateInsertionMessage<DomainModel> duplicateInsertionMessage;
-	private final DomainConstraintService<DomainModel> domainConstraintService;
+	private final ExistingModelsSupplier<DomainModel> existingModelsSupplier;
+	private final CollectionConsistenceService<DomainModel> collectionConsistenceService;
 
 	@Override
 	public void validateInsertion(final DomainModel domainModel)
 	{
-		Unfolding.beckon(domainModel)
-				 .discern(resourceExistenceDetectionService::existsByModel)
-				 .interdict(ResourceAlreadyExistsException.forMessage(
-						 duplicateInsertionMessage.messageIfModelAlreadyExists(domainModel)));
-
-		Unfolding.beckon(domainConstraintService.mayThisResourceBeAdded(domainModel))
-				 .discern(ConstraintResult::isViolated)
-				 .metamorphose(ConstraintResult.Violated.class::cast)
-				 .interdict(c -> ResourceConstraintViolationException.forMessage(c.message()));
+		Unfolding.beckon(Crucible.kindle(existingModelsSupplier.existingModels()).embrace(domainModel))
+				 .metamorphose(Crucible::manifest)
+				 .unlace(collectionConsistenceService::isThisCollectionConsistent);
 	}
 
 	protected AbstractInsertionPolicy(
-			final ResourceExistenceDetectionService<DomainModel> resourceExistenceDetectionService,
-			final DuplicateInsertionMessage<DomainModel> duplicateInsertionMessage,
-			final DomainConstraintService<DomainModel> domainConstraintService)
+			final ExistingModelsSupplier<DomainModel> existingModelsSupplier,
+			final CollectionConsistenceService<DomainModel> collectionConsistenceService)
 	{
-		this.resourceExistenceDetectionService = resourceExistenceDetectionService;
-		this.duplicateInsertionMessage = duplicateInsertionMessage;
-		this.domainConstraintService = domainConstraintService;
+		this.existingModelsSupplier = existingModelsSupplier;
+		this.collectionConsistenceService = collectionConsistenceService;
 	}
 }

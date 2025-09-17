@@ -4,12 +4,12 @@ public sealed interface ConstraintResult permits ConstraintResult.Satisfied, Con
 {
 	static ConstraintResult satisfied()
 	{
-		return new Satisfied();
+		return Satisfied.instance();
 	}
 
 	static ConstraintResult violated(final String message)
 	{
-		return new Violated(message);
+		return Violated.from(message);
 	}
 
 	boolean isSatisfied();
@@ -19,21 +19,37 @@ public sealed interface ConstraintResult permits ConstraintResult.Satisfied, Con
 		return !isSatisfied();
 	}
 
-	record Satisfied() implements ConstraintResult
+	record Violated(String message) implements ConstraintResult
 	{
+		static Violated from(final String message)
+		{
+			return new Violated(message);
+		}
+
+		@Override
+		public boolean isSatisfied()
+		{
+			return false;
+		}
+	}
+
+	final class Satisfied implements ConstraintResult
+	{
+		private final static Satisfied INSTANCE = new Satisfied();
+
+		static Satisfied instance()
+		{
+			return INSTANCE;
+		}
+
 		@Override
 		public boolean isSatisfied()
 		{
 			return true;
 		}
-	}
 
-	record Violated(String message) implements ConstraintResult
-	{
-		@Override
-		public boolean isSatisfied()
+		private Satisfied()
 		{
-			return false;
 		}
 	}
 }
