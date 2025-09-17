@@ -49,9 +49,7 @@ public abstract class AbstractUpdateService<DomainModel, DomainModelCreate, Doma
 		validateAccess(originalModel);
 
 		var updatedModel = modelPatcher.patchModel(originalModel, updatePatch);
-		validateAccess(updatedModel);
-
-		patchPolicy.validatePatchAttempt(originalModel, updatedModel);
+		validateAndPatch(originalModel, updatedModel);
 
 		return identifiedModel(persistenceService.updateById(id, updatedModel));
 	}
@@ -65,6 +63,7 @@ public abstract class AbstractUpdateService<DomainModel, DomainModelCreate, Doma
 	private void validateAndPatch(DomainModel original, DomainModel newModel)
 	{
 		validateAccess(original);
+		validateAccess(newModel);
 		patchPolicy.validatePatchAttempt(original, newModel);
 	}
 
