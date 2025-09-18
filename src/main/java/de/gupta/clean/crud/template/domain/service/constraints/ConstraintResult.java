@@ -14,6 +14,8 @@ public sealed interface ConstraintResult permits ConstraintResult.Satisfied, Con
 
 	boolean isSatisfied();
 
+	ConstraintResult and(ConstraintResult other);
+
 	default boolean isViolated()
 	{
 		return !isSatisfied();
@@ -31,6 +33,16 @@ public sealed interface ConstraintResult permits ConstraintResult.Satisfied, Con
 		{
 			return false;
 		}
+
+		@Override
+		public ConstraintResult and(final ConstraintResult other)
+		{
+			return switch (other)
+			{
+				case Satisfied _ -> this;
+				case Violated violated -> Violated.from(this.message + " and " + violated.message);
+			};
+		}
 	}
 
 	final class Satisfied implements ConstraintResult
@@ -46,6 +58,16 @@ public sealed interface ConstraintResult permits ConstraintResult.Satisfied, Con
 		public boolean isSatisfied()
 		{
 			return true;
+		}
+
+		@Override
+		public ConstraintResult and(final ConstraintResult other)
+		{
+			return switch (other)
+			{
+				case Satisfied _ -> instance();
+				case Violated violated -> violated;
+			};
 		}
 
 		private Satisfied()
