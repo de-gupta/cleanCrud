@@ -134,13 +134,6 @@ public class AbstractSpringRestControllerAdvice
 		return badRequest(e);
 	}
 
-	@ExceptionHandler(Exception.class)
-	public ResponseEntity<String> handleException(final Exception e)
-	{
-		log.error("500: Internal server error {}", e.getMessage());
-		return ResponseEntity.internalServerError().body(e.getMessage());
-	}
-
 	private static ResponseEntity<String> badRequest(final RuntimeException e)
 	{
 		log.debug("400: Bad request {}", e.getMessage());
