@@ -28,12 +28,18 @@ public abstract class AbstractDomainConstraintService<DomainModel> implements Do
 						.and(existingModelsConstraintService.mayThisResourceBeChangedTo(originalModel, updatedModel));
 	}
 
+	protected boolean enforceDuplicateConstraint()
+	{
+		return true;
+	}
+
 	private ConstraintResult duplicateConstraint(final DomainModel domainModel)
 	{
-		return Unfolding.beckon(domainModel)
-						.cleave(existenceDetectionService::existsByModel, ConstraintResult.violated(
-										duplicateInsertionMessage.messageIfModelAlreadyExists(domainModel)),
-								ConstraintResult.satisfied());
+		return Unfolding.adjudicate(domainModel, enforceDuplicateConstraint())
+						.evolve(existenceDetectionService::existsByModel,
+								m -> ConstraintResult.violated(
+										duplicateInsertionMessage.messageIfModelAlreadyExists(m)))
+						.rescue(ConstraintResult.satisfied());
 	}
 
 	protected AbstractDomainConstraintService(
