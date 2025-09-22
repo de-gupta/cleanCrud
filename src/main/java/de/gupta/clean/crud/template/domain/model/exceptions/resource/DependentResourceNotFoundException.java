@@ -1,9 +1,15 @@
 package de.gupta.clean.crud.template.domain.model.exceptions.resource;
 
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public final class DependentResourceNotFoundException extends RuntimeException
 {
+	public static Supplier<DependentResourceNotFoundException> forMessage(String message)
+	{
+		return () -> withMessage(message);
+	}
+
 	public static DependentResourceNotFoundException withMessage(String message)
 	{
 		return new DependentResourceNotFoundException(message);

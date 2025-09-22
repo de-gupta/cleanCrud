@@ -137,6 +137,7 @@ public class AbstractSpringRestControllerAdvice
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<String> handleException(final Exception e)
 	{
+		log.error("500: Internal server error {}", e.getMessage());
 		return ResponseEntity.internalServerError().body(e.getMessage());
 	}
 
