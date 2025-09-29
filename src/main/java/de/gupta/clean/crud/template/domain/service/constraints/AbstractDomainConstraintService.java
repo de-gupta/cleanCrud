@@ -22,9 +22,11 @@ public abstract class AbstractDomainConstraintService<DomainModel> implements Do
 	@Override
 	public ConstraintResult validateForUpdate(final DomainModel originalModel, final DomainModel updatedModel)
 	{
-		return Unfolding.beckon(updatedModel)
+		// TODO: this is an ugly dependency - existence service may not just check for equality - hidden dependency,
+		//  some major refactoring needed
+		return Unfolding.adjudicate(updatedModel, !originalModel.equals(updatedModel))
 						.metamorphose(this::duplicateConstraint)
-						.summon()
+						.rescue(ConstraintResult.satisfied())
 						.and(existingModelsConstraintService.mayThisResourceBeChangedTo(originalModel, updatedModel));
 	}
 
