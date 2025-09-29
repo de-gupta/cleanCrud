@@ -1,14 +1,17 @@
 package de.gupta.clean.crud.template.domain.service.constraints;
 
+import de.gupta.aletheia.collection.crucible.Crucible;
 import de.gupta.aletheia.functional.Unfolding;
 import de.gupta.clean.crud.template.domain.service.equality.DuplicateInsertionMessage;
-import de.gupta.clean.crud.template.domain.service.existence.ResourceExistenceDetectionService;
+
+import java.util.Collection;
+import java.util.function.Supplier;
 
 public abstract class AbstractDomainConstraintService<DomainModel> implements DomainConstraintService<DomainModel>
 {
-	private final ResourceExistenceDetectionService<DomainModel> existenceDetectionService;
 	private final DuplicateInsertionMessage<DomainModel> duplicateInsertionMessage;
 	private final ExistingModelsConstraintService<DomainModel> existingModelsConstraintService;
+	private final Supplier<Collection<DomainModel>> existingModelsSupplier;
 
 	@Override
 	public ConstraintResult validateForInsertion(final DomainModel domainModel)
@@ -22,10 +25,8 @@ public abstract class AbstractDomainConstraintService<DomainModel> implements Do
 	@Override
 	public ConstraintResult validateForUpdate(final DomainModel originalModel, final DomainModel updatedModel)
 	{
-		// TODO: this is an ugly dependency - existence service may not just check for equality - hidden dependency,
-		//  some major refactoring needed
-		return Unfolding.adjudicate(updatedModel, !originalModel.equals(updatedModel))
-						.metamorphose(this::duplicateConstraint)
+		return Unfolding.beckon(true)
+						.metamorphose(_ -> duplicateConstraint(updatedModel, originalModel))
 						.rescue(ConstraintResult.satisfied())
 						.and(existingModelsConstraintService.mayThisResourceBeChangedTo(originalModel, updatedModel));
 	}
@@ -37,20 +38,41 @@ public abstract class AbstractDomainConstraintService<DomainModel> implements Do
 
 	private ConstraintResult duplicateConstraint(final DomainModel domainModel)
 	{
-		return Unfolding.adjudicate(domainModel, enforceDuplicateConstraint())
-						.evolve(existenceDetectionService::existsByModel,
-								m -> ConstraintResult.violated(
-										duplicateInsertionMessage.messageIfModelAlreadyExists(m)))
-						.rescue(ConstraintResult.satisfied());
+		return Unfolding.beckon(isDuplicationConstraintRelevant(domainModel))
+						.cleave(v -> v,
+								ConstraintResult.violated(
+										duplicateInsertionMessage.messageIfModelAlreadyExists(domainModel)),
+								ConstraintResult.satisfied());
+	}
+
+	private ConstraintResult duplicateConstraint(final DomainModel updatedModel, final DomainModel originalModel)
+	{
+		return Unfolding.beckon(isDuplicationConstraintRelevant(updatedModel, originalModel))
+						.cleave(v -> v,
+								ConstraintResult.violated(
+										duplicateInsertionMessage.messageIfModelAlreadyExists(updatedModel)),
+								ConstraintResult.satisfied());
+	}
+
+	private boolean isDuplicationConstraintRelevant(final DomainModel updatedModel, final DomainModel originalModel)
+	{
+		return enforceDuplicateConstraint() && Crucible.kindle(existingModelsSupplier.get())
+													   .banish(originalModel)
+													   .harbors(updatedModel);
+	}
+
+	private boolean isDuplicationConstraintRelevant(final DomainModel domainModel)
+	{
+		return enforceDuplicateConstraint() && Crucible.kindle(existingModelsSupplier.get()).harbors(domainModel);
 	}
 
 	protected AbstractDomainConstraintService(
-			final ResourceExistenceDetectionService<DomainModel> existenceDetectionService,
 			final DuplicateInsertionMessage<DomainModel> duplicateInsertionMessage,
-			final ExistingModelsConstraintService<DomainModel> existingModelsConstraintService)
+			final ExistingModelsConstraintService<DomainModel> existingModelsConstraintService,
+			final Supplier<Collection<DomainModel>> existingModelsSupplier)
 	{
-		this.existenceDetectionService = existenceDetectionService;
 		this.duplicateInsertionMessage = duplicateInsertionMessage;
 		this.existingModelsConstraintService = existingModelsConstraintService;
+		this.existingModelsSupplier = existingModelsSupplier;
 	}
 }
