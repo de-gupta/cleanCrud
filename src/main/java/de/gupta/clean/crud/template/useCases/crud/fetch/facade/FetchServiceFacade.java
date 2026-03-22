@@ -1,7 +1,7 @@
 package de.gupta.clean.crud.template.useCases.crud.fetch.facade;
 
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 
 import java.util.Collection;
 import java.util.Map;
@@ -11,7 +11,7 @@ public interface FetchServiceFacade<APIModelResponse, APIModelID>
 {
 	Collection<APIModelResponse> findAll();
 
-	Page<APIModelResponse> findAll(final Pageable pageable);
+	Slice<APIModelResponse> findAll(final Pageable pageable);
 
 	APIModelResponse findById(final APIModelID id);
 

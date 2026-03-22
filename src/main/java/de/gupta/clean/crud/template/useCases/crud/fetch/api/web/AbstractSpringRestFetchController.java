@@ -2,8 +2,8 @@ package de.gupta.clean.crud.template.useCases.crud.fetch.api.web;
 
 import de.gupta.clean.crud.template.useCases.crud.fetch.facade.FetchServiceFacade;
 import jakarta.validation.Valid;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -17,13 +17,13 @@ public abstract class AbstractSpringRestFetchController<WebModelResponse, WebMod
 	private final FetchServiceFacade<WebModelResponse, WebModelID> service;
 
 	@Override
-	public ResponseEntity<Page<WebModelResponse>> findAll(Pageable pageable)
+	public ResponseEntity<Slice<WebModelResponse>> findAll(Pageable pageable)
 	{
 		return ResponseEntity.ok(service.findAll(pageable));
 	}
 
 	@Override
-	public ResponseEntity<WebModelResponse> findById(@PathVariable("id") @Valid final WebModelID id)
+	public ResponseEntity<WebModelResponse> findById(@PathVariable @Valid final WebModelID id)
 	{
 		return ResponseEntity.ok(service.findById(id));
 	}

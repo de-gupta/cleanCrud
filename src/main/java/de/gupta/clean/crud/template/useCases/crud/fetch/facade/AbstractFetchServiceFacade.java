@@ -5,8 +5,8 @@ import de.gupta.clean.crud.template.useCases.crud.common.adapter.id.APIDomainIDA
 import de.gupta.clean.crud.template.useCases.crud.common.adapter.model.DomainToAPIResponseAdapter;
 import de.gupta.clean.crud.template.useCases.crud.common.utility.PageUtility;
 import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.FetchService;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 
 import java.util.Collection;
 import java.util.Map;
@@ -32,9 +32,9 @@ public abstract class AbstractFetchServiceFacade<APIModelResponse, APIModelID,
 	}
 
 	@Override
-	public Page<APIModelResponse> findAll(final Pageable pageable)
+	public Slice<APIModelResponse> findAll(final Pageable pageable)
 	{
-		return PageUtility.mapPage(PageUtility.mapPage(service.findAll(pageable), domainResponseBuilder::toResponse),
+		return PageUtility.mapSlice(PageUtility.mapSlice(service.findAll(pageable), domainResponseBuilder::toResponse),
 				responseMapper::mapToAPIModelResponse);
 	}
 

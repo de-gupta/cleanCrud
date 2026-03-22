@@ -4,8 +4,8 @@ import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNot
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
 import de.gupta.clean.crud.template.useCases.crud.common.utility.PageUtility;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 
 import java.util.Collection;
 import java.util.Set;
@@ -26,9 +26,9 @@ public abstract class AbstractFetchService<DomainID, DomainModel>
 	}
 
 	@Override
-	public Page<IdentifiedModel<DomainID, DomainModel>> findAll(final Pageable pageable)
+	public Slice<IdentifiedModel<DomainID, DomainModel>> findAll(final Pageable pageable)
 	{
-		return PageUtility.filterPage(persistenceService.findAll(pageable), this::isVisible);
+		return PageUtility.filterSlice(persistenceService.findAll(pageable), this::isVisible);
 	}
 
 	@Override
