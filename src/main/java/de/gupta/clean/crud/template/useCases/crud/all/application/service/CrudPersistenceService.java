@@ -23,5 +23,10 @@ public interface CrudPersistenceService<DomainID, DomainModel>
 
 	IdentifiedModel<DomainID, DomainModel> updateById(final DomainID id, final DomainModel patchedModel);
 
+	Collection<IdentifiedModel<DomainID, DomainModel>> updateAllById(
+			final Collection<IdentifiedModel<DomainID, DomainModel>> models);
+
 	void deleteById(final DomainID id);
+
+	void deleteAllById(final Collection<DomainID> ids);
 }

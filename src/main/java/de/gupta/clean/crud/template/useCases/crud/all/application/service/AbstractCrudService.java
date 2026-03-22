@@ -93,6 +93,15 @@ public abstract class AbstractCrudService<DomainModelCreate, DomainModelUpdatePa
 	}
 
 	@Override
+	public Collection<IdentifiedModel<DomainID, DomainModelResponse>> updateAllById(
+			final Collection<IdentifiedModel<DomainID, DomainModelUpdatePatch>> models)
+	{
+		return models.stream()
+					 .map(model -> updateById(model.id(), model.model()))
+					 .toList();
+	}
+
+	@Override
 	public void deleteById(final DomainID domainID)
 	{
 		deletionPolicy.validateDeletion(persistenceService.findById(domainID)
@@ -100,6 +109,12 @@ public abstract class AbstractCrudService<DomainModelCreate, DomainModelUpdatePa
 														  .orElseThrow(
 																  () -> ResourceNotFoundException.withId(domainID)));
 		persistenceService.deleteById(domainID);
+	}
+
+	@Override
+	public void deleteAllById(final Collection<DomainID> ids)
+	{
+		ids.forEach(this::deleteById);
 	}
 
 	private void throwIfDuplicatesInCollection(final Collection<DomainModel> models)

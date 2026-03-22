@@ -2,6 +2,8 @@ package de.gupta.clean.crud.template.useCases.crud.delete.api.application;
 
 import de.gupta.clean.crud.template.useCases.crud.delete.facade.DeleteServiceFacade;
 
+import java.util.Collection;
+
 public abstract class AbstractDeleteApplicationController<WebModelID> implements DeleteApplicationController<WebModelID>
 {
 	private final DeleteServiceFacade<WebModelID> service;
@@ -10,6 +12,12 @@ public abstract class AbstractDeleteApplicationController<WebModelID> implements
 	public void deleteById(final WebModelID id)
 	{
 		service.deleteById(id);
+	}
+
+	@Override
+	public void deleteAllById(final Collection<WebModelID> ids)
+	{
+		service.deleteAllById(ids);
 	}
 
 	protected AbstractDeleteApplicationController(final DeleteServiceFacade<WebModelID> service)

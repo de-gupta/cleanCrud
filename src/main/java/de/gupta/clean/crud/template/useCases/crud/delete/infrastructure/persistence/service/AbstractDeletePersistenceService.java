@@ -4,6 +4,8 @@ import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNot
 import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.id.adapter.DomainPersistenceIDAdapter;
 import de.gupta.clean.crud.template.useCases.crud.delete.application.service.DeletePersistenceService;
 
+import java.util.Collection;
+
 public abstract class AbstractDeletePersistenceService<DomainID, PersistenceID>
 		implements DeletePersistenceService<DomainID>
 {
@@ -16,6 +18,12 @@ public abstract class AbstractDeletePersistenceService<DomainID, PersistenceID>
 		final var persistenceID = idAdapter.toPersistenceID(id)
 										   .orElseThrow(() -> ResourceNotFoundException.withId(id));
 		deleteRepository.deleteById(persistenceID);
+	}
+
+	@Override
+	public void deleteAllById(final Collection<DomainID> ids)
+	{
+		ids.forEach(this::deleteById);
 	}
 
 	protected AbstractDeletePersistenceService(

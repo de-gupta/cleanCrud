@@ -7,6 +7,8 @@ import de.gupta.clean.crud.template.domain.service.crud.policy.DeletionPolicy;
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
 import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.FetchPersistenceService;
 
+import java.util.Collection;
+
 public abstract class AbstractDeleteService<DomainID, DomainModel>
 		implements DeleteService<DomainID>
 {
@@ -27,6 +29,12 @@ public abstract class AbstractDeleteService<DomainID, DomainModel>
 
 		deletionPolicy.validateDeletion(domainModel);
 		persistenceService.deleteById(id);
+	}
+
+	@Override
+	public void deleteAllById(final Collection<DomainID> ids)
+	{
+		ids.forEach(this::deleteById);
 	}
 
 	protected AbstractDeleteService(

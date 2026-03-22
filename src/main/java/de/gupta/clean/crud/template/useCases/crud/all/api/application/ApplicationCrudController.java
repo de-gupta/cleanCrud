@@ -1,5 +1,6 @@
 package de.gupta.clean.crud.template.useCases.crud.all.api.application;
 
+import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -20,5 +21,10 @@ public interface ApplicationCrudController<WebModelCreate, WebModelUpdatePatch, 
 
 	WebModelResponse updateById(final WebModelID id, final WebModelUpdatePatch model);
 
+	Collection<WebModelResponse> updateAllById(
+			final Collection<IdentifiedModel<WebModelID, WebModelUpdatePatch>> models);
+
 	void deleteById(final WebModelID id);
+
+	void deleteAllById(final Collection<WebModelID> ids);
 }

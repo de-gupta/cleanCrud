@@ -1,5 +1,6 @@
 package de.gupta.clean.crud.template.useCases.crud.all.api.web;
 
+import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.useCases.crud.all.facade.CrudServiceFacade;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -59,9 +60,23 @@ public abstract class AbstractSpringRestCrudController<WebModelCreate, WebModelU
 	}
 
 	@Override
+	public ResponseEntity<Collection<WebModelResponse>> updateAllById(
+			@RequestBody @Valid final Collection<IdentifiedModel<WebModelID, WebModelUpdatePatch>> models)
+	{
+		return ResponseEntity.ok(service.updateAllById(models));
+	}
+
+	@Override
 	public ResponseEntity<Void> deleteById(@PathVariable("id") @Valid final WebModelID id)
 	{
 		service.deleteById(id);
+		return ResponseEntity.noContent().build();
+	}
+
+	@Override
+	public ResponseEntity<Void> deleteAllById(@RequestBody @Valid final Collection<WebModelID> ids)
+	{
+		service.deleteAllById(ids);
 		return ResponseEntity.noContent().build();
 	}
 

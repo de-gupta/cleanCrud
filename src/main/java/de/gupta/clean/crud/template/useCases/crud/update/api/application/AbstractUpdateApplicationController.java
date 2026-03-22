@@ -1,6 +1,9 @@
 package de.gupta.clean.crud.template.useCases.crud.update.api.application;
 
+import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.useCases.crud.update.facade.UpdateServiceFacade;
+
+import java.util.Collection;
 
 public abstract class AbstractUpdateApplicationController<WebModelCreate, WebModelUpdatePatch, WebModelResponse, WebModelID>
 		implements UpdateApplicationController<WebModelCreate, WebModelUpdatePatch, WebModelResponse, WebModelID>
@@ -17,6 +20,13 @@ public abstract class AbstractUpdateApplicationController<WebModelCreate, WebMod
 	public WebModelResponse updateById(final WebModelID id, final WebModelUpdatePatch model)
 	{
 		return service.updateById(id, model);
+	}
+
+	@Override
+	public Collection<WebModelResponse> updateAllById(
+			final Collection<IdentifiedModel<WebModelID, WebModelUpdatePatch>> models)
+	{
+		return service.updateAllById(models);
 	}
 
 	protected AbstractUpdateApplicationController(

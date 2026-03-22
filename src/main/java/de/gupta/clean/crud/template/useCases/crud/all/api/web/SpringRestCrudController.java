@@ -1,5 +1,6 @@
 package de.gupta.clean.crud.template.useCases.crud.all.api.web;
 
+import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -31,6 +32,13 @@ public interface SpringRestCrudController<WebModelCreate, WebModelUpdatePatch, W
 	ResponseEntity<WebModelResponse> updateById(@PathVariable("id") @Valid final WebModelID id,
 												@RequestBody @Valid final WebModelUpdatePatch model);
 
+	@PatchMapping("/batch")
+	ResponseEntity<Collection<WebModelResponse>> updateAllById(
+			@RequestBody @Valid final Collection<IdentifiedModel<WebModelID, WebModelUpdatePatch>> models);
+
 	@DeleteMapping("/{id}")
 	ResponseEntity<Void> deleteById(@PathVariable("id") @Valid final WebModelID id);
+
+	@DeleteMapping("/batch")
+	ResponseEntity<Void> deleteAllById(@RequestBody @Valid final Collection<WebModelID> ids);
 }

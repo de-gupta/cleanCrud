@@ -23,5 +23,10 @@ public interface CrudService<DomainModelCreate, DomainModelUpdatePatch, DomainMo
 	IdentifiedModel<DomainID, DomainModelResponse> updateById(final DomainID id,
 															  final DomainModelUpdatePatch updatePatch);
 
+	Collection<IdentifiedModel<DomainID, DomainModelResponse>> updateAllById(
+			final Collection<IdentifiedModel<DomainID, DomainModelUpdatePatch>> models);
+
 	void deleteById(final DomainID id);
+
+	void deleteAllById(final Collection<DomainID> ids);
 }

@@ -10,6 +10,7 @@ import de.gupta.clean.crud.template.useCases.crud.fetch.infrastructure.persisten
 import de.gupta.clean.crud.template.useCases.crud.save.infrastructure.persistence.service.SavePersistenceModelRepository;
 import de.gupta.clean.crud.template.useCases.crud.update.application.service.UpdatePersistenceService;
 
+import java.util.Collection;
 import java.util.Optional;
 
 public abstract class AbstractUpdatePersistenceService<DomainID, DomainModel,
@@ -38,13 +39,6 @@ public abstract class AbstractUpdatePersistenceService<DomainID, DomainModel,
 		}, () -> save(id, model));
 	}
 
-	private void save(final DomainID domainID, final DomainModel entity)
-	{
-		PersistenceModel savedModel = saveRepository.save(modelAdapter.toPersistenceModel(entity));
-		PersistenceID savedID = savedModel.id();
-		idAdapterService.update(domainID, savedID);
-	}
-
 	@Override
 	public IdentifiedModel<DomainID, DomainModel> updateById(final DomainID id, final DomainModel model)
 	{
@@ -67,9 +61,13 @@ public abstract class AbstractUpdatePersistenceService<DomainID, DomainModel,
 		return identifiedModel(savedModel);
 	}
 
-	private PersistenceModel patchModel(final PersistenceModel originalModel, final DomainModel updatedDomainModel)
+	@Override
+	public Collection<IdentifiedModel<DomainID, DomainModel>> updateAllById(
+			final Collection<IdentifiedModel<DomainID, DomainModel>> models)
 	{
-		return modelAdapter.updatePersistenceModel(originalModel, updatedDomainModel);
+		return models.stream()
+					 .map(model -> updateById(model.id(), model.model()))
+					 .toList();
 	}
 
 	@Override
@@ -78,6 +76,18 @@ public abstract class AbstractUpdatePersistenceService<DomainID, DomainModel,
 		return idAdapter.toPersistenceID(id)
 						.flatMap(fetchRepository::findById)
 						.map(this::identifiedModel);
+	}
+
+	private void save(final DomainID domainID, final DomainModel entity)
+	{
+		PersistenceModel savedModel = saveRepository.save(modelAdapter.toPersistenceModel(entity));
+		PersistenceID savedID = savedModel.id();
+		idAdapterService.update(domainID, savedID);
+	}
+
+	private PersistenceModel patchModel(final PersistenceModel originalModel, final DomainModel updatedDomainModel)
+	{
+		return modelAdapter.updatePersistenceModel(originalModel, updatedDomainModel);
 	}
 
 	private IdentifiedModel<DomainID, DomainModel> identifiedModel(final PersistenceModel persistenceModel)

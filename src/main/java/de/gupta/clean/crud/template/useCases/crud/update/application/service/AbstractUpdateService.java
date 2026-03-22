@@ -11,6 +11,8 @@ import de.gupta.clean.crud.template.domain.service.crud.policy.PatchPolicy;
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
 import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.FetchPersistenceService;
 
+import java.util.Collection;
+
 public abstract class AbstractUpdateService<DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse, DomainID>
 		implements UpdateService<DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse, DomainID>
 {
@@ -52,6 +54,15 @@ public abstract class AbstractUpdateService<DomainModel, DomainModelCreate, Doma
 		validateAndPatch(originalModel, updatedModel);
 
 		return identifiedModel(persistenceService.updateById(id, updatedModel));
+	}
+
+	@Override
+	public Collection<IdentifiedModel<DomainID, DomainModelResponse>> updateAllById(
+			final Collection<IdentifiedModel<DomainID, DomainModelUpdatePatch>> models)
+	{
+		return models.stream()
+					 .map(model -> updateById(model.id(), model.model()))
+					 .toList();
 	}
 
 	private void validateAccess(DomainModel model)

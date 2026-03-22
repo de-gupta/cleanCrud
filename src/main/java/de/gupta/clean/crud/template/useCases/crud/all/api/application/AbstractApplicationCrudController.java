@@ -1,5 +1,6 @@
 package de.gupta.clean.crud.template.useCases.crud.all.api.application;
 
+import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.useCases.crud.all.facade.CrudServiceFacade;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -50,9 +51,22 @@ public abstract class AbstractApplicationCrudController<WebModelCreate, WebModel
 	}
 
 	@Override
+	public Collection<WebModelResponse> updateAllById(
+			final Collection<IdentifiedModel<WebModelID, WebModelUpdatePatch>> models)
+	{
+		return service.updateAllById(models);
+	}
+
+	@Override
 	public void deleteById(final WebModelID id)
 	{
 		service.deleteById(id);
+	}
+
+	@Override
+	public void deleteAllById(final Collection<WebModelID> ids)
+	{
+		service.deleteAllById(ids);
 	}
 
 	protected AbstractApplicationCrudController(

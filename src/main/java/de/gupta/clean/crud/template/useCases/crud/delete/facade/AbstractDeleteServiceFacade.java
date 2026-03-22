@@ -3,6 +3,8 @@ package de.gupta.clean.crud.template.useCases.crud.delete.facade;
 import de.gupta.clean.crud.template.useCases.crud.common.adapter.id.APIDomainIDAdapter;
 import de.gupta.clean.crud.template.useCases.crud.delete.application.service.DeleteService;
 
+import java.util.Collection;
+
 public abstract class AbstractDeleteServiceFacade<APIModelID, DomainID>
 		implements DeleteServiceFacade<APIModelID>
 {
@@ -13,6 +15,12 @@ public abstract class AbstractDeleteServiceFacade<APIModelID, DomainID>
 	public void deleteById(final APIModelID id)
 	{
 		service.deleteById(idAdapter.mapToDomainID(id));
+	}
+
+	@Override
+	public void deleteAllById(final Collection<APIModelID> ids)
+	{
+		service.deleteAllById(ids.stream().map(idAdapter::mapToDomainID).toList());
 	}
 
 	protected AbstractDeleteServiceFacade(

@@ -1,7 +1,10 @@
 package de.gupta.clean.crud.template.useCases.crud.update.api.web;
 
+import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.useCases.crud.update.facade.UpdateServiceFacade;
 import org.springframework.http.ResponseEntity;
+
+import java.util.Collection;
 
 public abstract class AbstractSpringRestUpdateController<WebModelCreate, WebModelUpdatePatch, WebModelResponse, WebModelID>
 		implements SpringRestUpdateController<WebModelCreate, WebModelUpdatePatch, WebModelResponse, WebModelID>
@@ -19,6 +22,13 @@ public abstract class AbstractSpringRestUpdateController<WebModelCreate, WebMode
 	public ResponseEntity<WebModelResponse> updateById(final WebModelID id, final WebModelUpdatePatch model)
 	{
 		return ResponseEntity.ok(service.updateById(id, model));
+	}
+
+	@Override
+	public ResponseEntity<Collection<WebModelResponse>> updateAllById(
+			final Collection<IdentifiedModel<WebModelID, WebModelUpdatePatch>> models)
+	{
+		return ResponseEntity.ok(service.updateAllById(models));
 	}
 
 	protected AbstractSpringRestUpdateController(

@@ -1,5 +1,6 @@
 package de.gupta.clean.crud.template.useCases.crud.all.facade;
 
+import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.useCases.crud.all.application.service.CrudService;
 import de.gupta.clean.crud.template.useCases.crud.all.facade.adapter.model.CrudAPIDomainModelAdapter;
 import de.gupta.clean.crud.template.useCases.crud.common.adapter.id.APIDomainIDAdapter;
@@ -69,9 +70,29 @@ public abstract class AbstractCrudServiceFacade<APIModelCreate, APIModelUpdate, 
 	}
 
 	@Override
+	public Collection<APIModelResponse> updateAllById(
+			final Collection<IdentifiedModel<APIModelID, APIModelUpdate>> models)
+	{
+		return service.updateAllById(models.stream()
+										   .map(model -> IdentifiedModel.of(
+												   idAdapter.mapToDomainID(model.id()),
+												   modelAdapter.mapToDomainModelUpdatePatch(model.model())))
+										   .toList())
+					  .stream()
+					  .map(modelAdapter::mapToWebModelResponse)
+					  .toList();
+	}
+
+	@Override
 	public void deleteById(final APIModelID id)
 	{
 		service.deleteById(idAdapter.mapToDomainID(id));
+	}
+
+	@Override
+	public void deleteAllById(final Collection<APIModelID> ids)
+	{
+		service.deleteAllById(ids.stream().map(idAdapter::mapToDomainID).toList());
 	}
 
 	protected AbstractCrudServiceFacade(

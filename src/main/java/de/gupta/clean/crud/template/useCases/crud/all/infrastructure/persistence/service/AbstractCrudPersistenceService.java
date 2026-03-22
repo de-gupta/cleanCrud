@@ -100,13 +100,6 @@ public abstract class AbstractCrudPersistenceService<DomainID, DomainModel,
 		}, () -> save(domainID, model));
 	}
 
-	private void save(final DomainID domainID, final DomainModel entity)
-	{
-		PersistenceModel savedModel = repository.save(modelAdapter.toPersistenceModel(entity));
-		PersistenceID savedID = savedModel.id();
-		idAdapterService.update(domainID, savedID);
-	}
-
 	@Override
 	public IdentifiedModel<DomainID, DomainModel> updateById(final DomainID domainID, final DomainModel patchedModel)
 	{
@@ -129,12 +122,34 @@ public abstract class AbstractCrudPersistenceService<DomainID, DomainModel,
 	}
 
 	@Override
+	public Collection<IdentifiedModel<DomainID, DomainModel>> updateAllById(
+			final Collection<IdentifiedModel<DomainID, DomainModel>> models)
+	{
+		return models.stream()
+					 .map(model -> updateById(model.id(), model.model()))
+					 .toList();
+	}
+
+	@Override
 	public void deleteById(final DomainID domainID)
 	{
 		idAdapter.toPersistenceID(domainID).ifPresentOrElse(this::deleteByPersistenceId, () ->
 		{
 			throw ResourceNotFoundException.withId(domainID);
 		});
+	}
+
+	@Override
+	public void deleteAllById(final Collection<DomainID> domainIDs)
+	{
+		domainIDs.forEach(this::deleteById);
+	}
+
+	private void save(final DomainID domainID, final DomainModel entity)
+	{
+		PersistenceModel savedModel = repository.save(modelAdapter.toPersistenceModel(entity));
+		PersistenceID savedID = savedModel.id();
+		idAdapterService.update(domainID, savedID);
 	}
 
 	private void deleteByPersistenceId(final PersistenceID persistenceID)

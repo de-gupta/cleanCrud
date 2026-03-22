@@ -1,5 +1,6 @@
 package de.gupta.clean.crud.template.useCases.crud.all.facade;
 
+import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -21,5 +22,10 @@ public interface CrudServiceFacade<APIModelCreate, APIModelUpdatePatch, APIModel
 
 	APIModelResponse updateById(final APIModelID id, final APIModelUpdatePatch updatePatch);
 
+	Collection<APIModelResponse> updateAllById(
+			final Collection<IdentifiedModel<APIModelID, APIModelUpdatePatch>> models);
+
 	void deleteById(final APIModelID id);
+
+	void deleteAllById(final Collection<APIModelID> ids);
 }
