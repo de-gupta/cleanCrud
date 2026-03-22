@@ -24,7 +24,7 @@ public abstract class AbstractSavePersistenceService<DomainID, DomainModel,
 		PersistenceModel persistenceModel = repository.save(modelAdapter.toPersistenceModel(model));
 		PersistenceID persistenceID = persistenceModel.id();
 		DomainID domainID = idManagement.add(persistenceID);
-		return IdentifiedModel.of(domainID, model);
+		return identifiedModel(persistenceModel, domainID);
 	}
 
 	@Override
@@ -46,7 +46,13 @@ public abstract class AbstractSavePersistenceService<DomainID, DomainModel,
 	private IdentifiedModel<DomainID, DomainModel> identifiedModel(final PersistenceModel persistenceModel,
 																   final Map<PersistenceID, DomainID> idMap)
 	{
-		return IdentifiedModel.of(idMap.get(persistenceModel.id()), modelAdapter.toDomainModel(persistenceModel));
+		return identifiedModel(persistenceModel, idMap.get(persistenceModel.id()));
+	}
+
+	private IdentifiedModel<DomainID, DomainModel> identifiedModel(final PersistenceModel persistenceModel,
+																   final DomainID domainID)
+	{
+		return IdentifiedModel.of(domainID, modelAdapter.toDomainModel(persistenceModel));
 	}
 
 	protected AbstractSavePersistenceService(

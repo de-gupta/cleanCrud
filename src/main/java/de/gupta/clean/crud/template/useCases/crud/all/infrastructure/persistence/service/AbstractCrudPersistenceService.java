@@ -118,8 +118,14 @@ public abstract class AbstractCrudPersistenceService<DomainID, DomainModel,
 		PersistenceModel originalPersistenceModel = repository.findById(originalID.get())
 															  .orElseThrow(
 																	  () -> ResourceNotFoundException.withId(domainID));
-		repository.save(patchModel(originalPersistenceModel, patchedModel));
-		return IdentifiedModel.of(domainID, patchedModel);
+		PersistenceModel savedModel = repository.save(patchModel(originalPersistenceModel, patchedModel));
+		PersistenceID savedID = savedModel.id();
+		if (!originalID.get().equals(savedID))
+		{
+			idAdapterService.update(domainID, savedID);
+		}
+
+		return identifiedModel(savedModel);
 	}
 
 	@Override

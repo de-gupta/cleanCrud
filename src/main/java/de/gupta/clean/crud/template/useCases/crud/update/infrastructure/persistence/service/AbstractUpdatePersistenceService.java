@@ -57,8 +57,14 @@ public abstract class AbstractUpdatePersistenceService<DomainID, DomainModel,
 																   .orElseThrow(
 																		   () -> ResourceNotFoundException.withId(id));
 
-		saveRepository.save(patchModel(originalPersistenceModel, model));
-		return IdentifiedModel.of(id, model);
+		PersistenceModel savedModel = saveRepository.save(patchModel(originalPersistenceModel, model));
+		PersistenceID savedID = savedModel.id();
+		if (!originalID.get().equals(savedID))
+		{
+			idAdapterService.update(id, savedID);
+		}
+
+		return identifiedModel(savedModel);
 	}
 
 	private PersistenceModel patchModel(final PersistenceModel originalModel, final DomainModel updatedDomainModel)
