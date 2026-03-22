@@ -3,6 +3,7 @@ package de.gupta.clean.crud.template.useCases.query.specification.collection.app
 import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.DomainFilterPipeline;
 import de.gupta.clean.crud.template.useCases.query.specification.domain.model.CompositeFilterSpecification;
 import de.gupta.clean.crud.template.useCases.query.specification.domain.model.FilterSpecification;
+import de.gupta.clean.crud.template.useCases.query.specification.domain.model.GroupedFilterSpecification;
 import de.gupta.clean.crud.template.useCases.query.specification.domain.model.LeafFilterSpecification;
 
 @FunctionalInterface
@@ -19,6 +20,12 @@ public interface FilterSpecificationToDomainFilterAdapter<DomainModel>
 								  .orElseGet(DomainFilterPipeline::allowing);
 	}
 
+	default DomainFilterPipeline<DomainModel> domainFilterPipeline(
+			final GroupedFilterSpecification filterSpecification)
+	{
+		return domainFilterPipeline(filterSpecification.specification());
+	}
+
 	default DomainFilterPipeline<DomainModel> domainFilterPipeline(final FilterSpecification filterSpecification)
 	{
 		return switch (filterSpecification)
@@ -26,6 +33,8 @@ public interface FilterSpecificationToDomainFilterAdapter<DomainModel>
 			case LeafFilterSpecification leafFilterSpecification -> domainFilterPipeline(leafFilterSpecification);
 			case CompositeFilterSpecification compositeFilterSpecification ->
 					domainFilterPipeline(compositeFilterSpecification);
+			case GroupedFilterSpecification groupedFilterSpecification ->
+					domainFilterPipeline(groupedFilterSpecification);
 		};
 	}
 
