@@ -15,13 +15,14 @@
         <maven.compiler.target>24</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <spring.boot.version>3.5.5</spring.boot.version>
+        <spring.boot.version>4.0.4</spring.boot.version>
 
-        <aletheia.version>0.0.18-SNAPSHOT</aletheia.version>
-        <athena.version>0.0.7</athena.version>
+        <aletheia.version>0.2.1</aletheia.version>
+        <athena.version>0.3.0</athena.version>
 
-        <maven.compiler.plugin.version>3.14.0</maven.compiler.plugin.version>
-        <maven.release.plugin.version>3.1.1</maven.release.plugin.version>
+        <maven.compiler.plugin.version>3.15.0</maven.compiler.plugin.version>
+        <maven.release.plugin.version>3.3.1</maven.release.plugin.version>
+
         <maven.gpg.plugin.version>3.2.8</maven.gpg.plugin.version>
         <maven.central.publishing.version>0.8.0</maven.central.publishing.version>
         <maven.source.plugin.version>3.3.1</maven.source.plugin.version>
