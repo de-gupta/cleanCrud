@@ -15,7 +15,7 @@
         <maven.compiler.target>24</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <spring.boot.version>4.0.4</spring.boot.version>
+        <spring.boot.version>3.5.12</spring.boot.version>
 
         <aletheia.version>0.2.1</aletheia.version>
         <athena.version>0.3.0</athena.version>
