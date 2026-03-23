@@ -23,7 +23,7 @@ public abstract class AbstractSpringRestFetchController<WebModelResponse, WebMod
 	}
 
 	@Override
-	public ResponseEntity<WebModelResponse> findById(@PathVariable @Valid final WebModelID id)
+	public ResponseEntity<WebModelResponse> findById(@PathVariable("id") @Valid final WebModelID id)
 	{
 		return ResponseEntity.ok(service.findById(id));
 	}

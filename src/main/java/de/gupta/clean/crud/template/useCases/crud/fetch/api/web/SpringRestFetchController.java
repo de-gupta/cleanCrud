@@ -17,7 +17,7 @@ public interface SpringRestFetchController<WebModelResponse, WebModelID>
 	ResponseEntity<Slice<WebModelResponse>> findAll(Pageable pageable);
 
 	@GetMapping("/{id}")
-	ResponseEntity<WebModelResponse> findById(@PathVariable @Valid final WebModelID id);
+	ResponseEntity<WebModelResponse> findById(@PathVariable("id") @Valid final WebModelID id);
 
 	@GetMapping("/ids")
 	ResponseEntity<Map<WebModelID, WebModelResponse>> findAllByIds(

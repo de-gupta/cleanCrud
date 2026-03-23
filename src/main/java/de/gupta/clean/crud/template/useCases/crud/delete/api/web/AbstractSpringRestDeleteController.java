@@ -2,7 +2,9 @@ package de.gupta.clean.crud.template.useCases.crud.delete.api.web;
 
 import de.gupta.clean.crud.template.useCases.crud.common.BulkOperationMode;
 import de.gupta.clean.crud.template.useCases.crud.delete.facade.DeleteServiceFacade;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.Collection;
 
@@ -12,7 +14,7 @@ public abstract class AbstractSpringRestDeleteController<WebModelID>
 	private final DeleteServiceFacade<WebModelID> service;
 
 	@Override
-	public ResponseEntity<Void> deleteById(final WebModelID id)
+	public ResponseEntity<Void> deleteById(@PathVariable("id") @Valid final WebModelID id)
 	{
 		service.deleteById(id);
 		return ResponseEntity.noContent().build();
