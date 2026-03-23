@@ -29,6 +29,18 @@ public abstract class AbstractDomainPersistenceAdapterJpaRepository<DomainID, Pe
 	}
 
 	@Override
+	public void delete(final ConcreteDomainPersistenceModel model)
+	{
+		jpaRepository.delete(castDownOrThrow(model));
+	}
+
+	@Override
+	public void deleteAll(final Collection<ConcreteDomainPersistenceModel> models)
+	{
+		jpaRepository.deleteAll(models.stream().map(this::castDownOrThrow).toList());
+	}
+
+	@Override
 	public Optional<ConcreteDomainPersistenceModel> findByDomainID(
 			final DomainID domainID)
 	{
@@ -42,9 +54,17 @@ public abstract class AbstractDomainPersistenceAdapterJpaRepository<DomainID, Pe
 		return findOneByPersistenceID(persistenceID);
 	}
 
+	@Override
+	public Collection<ConcreteDomainPersistenceModel> findByDomainIDs(final Collection<DomainID> domainIDs)
+	{
+		return findAllByDomainIDIn(domainIDs);
+	}
+
 	protected abstract Optional<ConcreteDomainPersistenceModel> findOneByPersistenceID(PersistenceID persistenceID);
 
 	protected abstract Optional<ConcreteDomainPersistenceModel> findOneByDomainID(DomainID domainID);
+
+	protected abstract Collection<ConcreteDomainPersistenceModel> findAllByDomainIDIn(Collection<DomainID> domainIDs);
 
 	@SuppressWarnings("unchecked")
 	private ConcreteDomainPersistenceModel castDownOrThrow(

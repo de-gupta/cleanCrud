@@ -134,6 +134,18 @@ class AbstractDomainPersistenceIDManagementTest
 		}
 
 		@Override
+		public void delete(final TestDomainPersistenceAdapterModel model)
+		{
+
+		}
+
+		@Override
+		public void deleteAll(final Collection<TestDomainPersistenceAdapterModel> testDomainPersistenceAdapterModels)
+		{
+
+		}
+
+		@Override
 		public Optional<TestDomainPersistenceAdapterModel> findByDomainID(final Long domainID)
 		{
 			return Optional.ofNullable(byDomainID.get(domainID));
@@ -144,6 +156,12 @@ class AbstractDomainPersistenceIDManagementTest
 		{
 			return byDomainID.values().stream().filter(model -> persistenceID.equals(model.persistenceID()))
 							 .findFirst();
+		}
+
+		@Override
+		public Collection<TestDomainPersistenceAdapterModel> findByDomainIDs(final Collection<Long> domainIDs)
+		{
+			return List.of();
 		}
 	}
 

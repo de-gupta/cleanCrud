@@ -109,6 +109,12 @@ public class AbstractSpringRestControllerAdvice
 		return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
 	}
 
+	@ExceptionHandler(ResourceStateConflictException.class)
+	public ResponseEntity<String> handleResourceStateConflictException(final ResourceStateConflictException e)
+	{
+		return conflict(e);
+	}
+
 	@ExceptionHandler(ResourceCannotBePatchedException.class)
 	public ResponseEntity<String> handleResourceCannotBePatchedException(final ResourceCannotBePatchedException e)
 	{

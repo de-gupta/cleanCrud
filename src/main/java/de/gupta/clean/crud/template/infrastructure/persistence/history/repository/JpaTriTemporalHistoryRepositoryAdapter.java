@@ -1,10 +1,10 @@
 package de.gupta.clean.crud.template.infrastructure.persistence.history.repository;
 
+import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceStateConflictException;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.model.TriTemporalHistoryModel;
 
 import java.time.Instant;
-import java.util.Collection;
-import java.util.Optional;
+import java.util.*;
 
 public class JpaTriTemporalHistoryRepositoryAdapter<EntityID, HistoryModel extends TriTemporalHistoryModel<EntityID>>
 		implements TriTemporalHistoryRepository<EntityID, HistoryModel>
@@ -38,7 +38,29 @@ public class JpaTriTemporalHistoryRepositoryAdapter<EntityID, HistoryModel exten
 	@Override
 	public Collection<HistoryModel> findCurrentByEntityIDs(final Collection<EntityID> entityIDs)
 	{
+		if (entityIDs.isEmpty())
+		{
+			return List.of();
+		}
+
 		Instant now = Instant.now();
-		return repository.findAllByEntityIDInAndValidFromIsBeforeAndValidToIsAfter(entityIDs, now, now);
+		Collection<HistoryModel> currentHistories =
+				repository.findAllByEntityIDInAndValidFromIsBeforeAndValidToIsAfter(entityIDs, now, now);
+		Map<EntityID, HistoryModel> currentHistoryByEntityID = new LinkedHashMap<>();
+		Collection<EntityID> conflictingEntityIDs = new ArrayList<>();
+		for (HistoryModel historyModel : currentHistories)
+		{
+			HistoryModel existingHistory = currentHistoryByEntityID.putIfAbsent(historyModel.entityID(), historyModel);
+			if (existingHistory != null)
+			{
+				conflictingEntityIDs.add(historyModel.entityID());
+			}
+		}
+		if (!conflictingEntityIDs.isEmpty())
+		{
+			throw ResourceStateConflictException.withMessage(
+					"Multiple current history records found for entity IDs: " + conflictingEntityIDs);
+		}
+		return currentHistoryByEntityID.values();
 	}
 }

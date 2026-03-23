@@ -4,6 +4,7 @@ import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.id.adapter.DomainPersistenceIDManagement;
 import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.model.DomainPersistenceModelAdapter;
 import de.gupta.clean.crud.template.infrastructure.persistence.model.properties.WithID;
+import de.gupta.clean.crud.template.infrastructure.persistence.transaction.PersistenceTransactionRunner;
 import de.gupta.clean.crud.template.useCases.crud.save.application.service.SavePersistenceService;
 
 import java.util.Collection;
@@ -17,30 +18,37 @@ public abstract class AbstractSavePersistenceService<DomainID, DomainModel,
 	private final SavePersistenceModelRepository<PersistenceModel> repository;
 	private final DomainPersistenceModelAdapter<DomainModel, PersistenceModel> modelAdapter;
 	private final DomainPersistenceIDManagement<DomainID, PersistenceID> idManagement;
+	private final PersistenceTransactionRunner transactionRunner;
 
 	@Override
 	public IdentifiedModel<DomainID, DomainModel> save(final DomainModel model)
 	{
-		PersistenceModel persistenceModel = repository.save(modelAdapter.toPersistenceModel(model));
-		PersistenceID persistenceID = persistenceModel.id();
-		DomainID domainID = idManagement.add(persistenceID);
-		return identifiedModel(persistenceModel, domainID);
+		return transactionRunner.inTransaction(() ->
+		{
+			PersistenceModel persistenceModel = repository.save(modelAdapter.toPersistenceModel(model));
+			PersistenceID persistenceID = persistenceModel.id();
+			DomainID domainID = idManagement.add(persistenceID);
+			return identifiedModel(persistenceModel, domainID);
+		});
 	}
 
 	@Override
 	public Collection<IdentifiedModel<DomainID, DomainModel>> saveAll(final Collection<DomainModel> models)
 	{
-		Collection<PersistenceModel> persistenceModels = models.stream()
-															   .map(modelAdapter::toPersistenceModel)
-															   .collect(Collectors.toList());
+		return transactionRunner.inTransaction(() ->
+		{
+			Collection<PersistenceModel> persistenceModels = models.stream()
+																   .map(modelAdapter::toPersistenceModel)
+																   .collect(Collectors.toList());
 
-		var savedModels = repository.saveAll(persistenceModels);
+			var savedModels = repository.saveAll(persistenceModels);
 
-		Map<PersistenceID, DomainID> idMap = idManagement.addBatch(savedModels.stream().map(WithID::id).toList());
+			Map<PersistenceID, DomainID> idMap = idManagement.addBatch(savedModels.stream().map(WithID::id).toList());
 
-		return savedModels.stream()
-						  .map(savedModel -> identifiedModel(savedModel, idMap))
-						  .toList();
+			return savedModels.stream()
+							  .map(savedModel -> identifiedModel(savedModel, idMap))
+							  .toList();
+		});
 	}
 
 	private IdentifiedModel<DomainID, DomainModel> identifiedModel(final PersistenceModel persistenceModel,
@@ -58,10 +66,12 @@ public abstract class AbstractSavePersistenceService<DomainID, DomainModel,
 	protected AbstractSavePersistenceService(
 			final SavePersistenceModelRepository<PersistenceModel> repository,
 			final DomainPersistenceModelAdapter<DomainModel, PersistenceModel> modelAdapter,
-			final DomainPersistenceIDManagement<DomainID, PersistenceID> idManagement)
+			final DomainPersistenceIDManagement<DomainID, PersistenceID> idManagement,
+			final PersistenceTransactionRunner transactionRunner)
 	{
 		this.repository = repository;
 		this.modelAdapter = modelAdapter;
 		this.idManagement = idManagement;
+		this.transactionRunner = transactionRunner;
 	}
 }

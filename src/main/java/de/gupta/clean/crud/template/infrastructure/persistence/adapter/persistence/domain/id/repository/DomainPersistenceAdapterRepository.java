@@ -15,7 +15,13 @@ public interface DomainPersistenceAdapterRepository<DomainID, PersistenceID, Mod
 
 	void saveAll(Collection<Model> models);
 
+	void delete(Model model);
+
+	void deleteAll(Collection<Model> models);
+
 	Optional<Model> findByDomainID(DomainID domainID);
 
 	Optional<Model> findByPersistenceID(PersistenceID persistenceID);
+
+	Collection<Model> findByDomainIDs(Collection<DomainID> domainIDs);
 }

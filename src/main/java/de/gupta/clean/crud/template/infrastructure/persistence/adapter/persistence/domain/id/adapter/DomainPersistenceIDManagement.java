@@ -10,4 +10,8 @@ public interface DomainPersistenceIDManagement<DomainID, PersistenceID>
 	Map<PersistenceID, DomainID> addBatch(Collection<PersistenceID> persistenceIDs);
 
 	void update(DomainID domainID, PersistenceID persistenceID);
+
+	void delete(DomainID domainID);
+
+	void deleteAll(Collection<DomainID> domainIDs);
 }

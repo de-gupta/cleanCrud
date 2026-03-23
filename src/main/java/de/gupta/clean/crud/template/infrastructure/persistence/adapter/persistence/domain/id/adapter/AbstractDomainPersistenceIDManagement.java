@@ -1,6 +1,7 @@
 package de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.id.adapter;
 
 import de.gupta.clean.crud.template.domain.model.builder.ModelBuilderFactory;
+import de.gupta.clean.crud.template.domain.model.exceptions.resource.UnexpectedResourceException;
 import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.id.model.DomainPersistenceAdapterHistoryModel;
 import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.id.model.DomainPersistenceAdapterModel;
 import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.id.repository.DomainPersistenceAdapterRepository;
@@ -68,6 +69,62 @@ public abstract class AbstractDomainPersistenceIDManagement<DomainID, Persistenc
 			recordHistory(domainID, persistenceID, TemporalChangeType.UPDATED, decisionTime,
 					TemporalValidity.defaultEndValidity());
 		}, () -> handleMissingCurrentMappingOnUpdate(domainID, persistenceID, decisionTime));
+	}
+
+	@Override
+	public void delete(final DomainID domainID)
+	{
+		Instant decisionTime = Instant.now();
+		T currentMapping = repository.findByDomainID(domainID)
+									 .orElseThrow(() -> UnexpectedResourceException.withMessage(
+											 "Missing current mapping for domain ID: " + domainID));
+		closeCurrentHistory(domainID, decisionTime);
+		recordHistory(domainID, currentMapping.persistenceID(), TemporalChangeType.DELETED, decisionTime,
+				decisionTime);
+		repository.delete(currentMapping);
+	}
+
+	@Override
+	public void deleteAll(final Collection<DomainID> domainIDs)
+	{
+		if (domainIDs.isEmpty())
+		{
+			return;
+		}
+
+		Instant decisionTime = Instant.now();
+		Map<DomainID, T> mappingsByDomainID = repository.findByDomainIDs(domainIDs)
+														.stream()
+														.collect(java.util.stream.Collectors.toMap(
+																DomainPersistenceAdapterModel::domainID,
+																java.util.function.Function.identity()));
+		for (DomainID domainID : domainIDs)
+		{
+			if (!mappingsByDomainID.containsKey(domainID))
+			{
+				throw UnexpectedResourceException.withMessage("Missing current mapping for domain ID: " + domainID);
+			}
+		}
+
+		for (DomainID domainID : domainIDs)
+		{
+			closeCurrentHistory(domainID, decisionTime);
+		}
+
+		historyRepository.saveAll(domainIDs.stream()
+										   .map(mappingsByDomainID::get)
+										   .map(mapping -> historyModelBuilderFactory.builder()
+																					 .withDomainID(mapping.domainID())
+																					 .withPersistenceID(
+																							 mapping.persistenceID())
+																					 .withChangeType(
+																							 TemporalChangeType.DELETED)
+																					 .withDecisionTime(decisionTime)
+																					 .withValidFrom(decisionTime)
+																					 .withValidTo(decisionTime)
+																					 .build())
+										   .toList());
+		repository.deleteAll(new ArrayList<>(mappingsByDomainID.values()));
 	}
 
 	protected void handleMissingCurrentMappingOnUpdate(
