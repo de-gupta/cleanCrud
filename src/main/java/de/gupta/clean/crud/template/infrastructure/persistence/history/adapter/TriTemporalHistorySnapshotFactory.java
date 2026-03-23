@@ -6,13 +6,8 @@ import de.gupta.clean.crud.template.infrastructure.persistence.model.properties.
 
 import java.time.Instant;
 
-public interface TriTemporalHistorySnapshotFactory<PersistenceID, PersistenceModel extends WithID<PersistenceID>,
-		HistoryModel extends TriTemporalHistoryModel<PersistenceID>>
+public interface TriTemporalHistorySnapshotFactory<PersistenceID, PersistenceModel extends WithID<PersistenceID>, HistoryModel extends TriTemporalHistoryModel<PersistenceID>>
 {
-	HistoryModel createSnapshot(
-			PersistenceModel model,
-			TemporalChangeType changeType,
-			Instant decisionTime,
-			Instant validFrom,
-			Instant validTo);
+	HistoryModel createSnapshot(PersistenceModel model, TemporalChangeType changeType, Instant decisionTime,
+								Instant validFrom, Instant validTo);
 }
