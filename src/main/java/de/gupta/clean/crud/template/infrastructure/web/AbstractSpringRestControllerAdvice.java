@@ -125,13 +125,19 @@ public class AbstractSpringRestControllerAdvice
 	public ResponseEntity<String> handleResourceConstraintViolationException(
 			final ResourceConstraintViolationException e)
 	{
-		return badRequest(e);
+		return conflict(e);
 	}
 
 	@ExceptionHandler(NonUniqueResourceException.class)
 	public ResponseEntity<String> handleNonUniqueResourceException(final NonUniqueResourceException e)
 	{
 		return badRequest(e);
+	}
+
+	private static ResponseEntity<String> conflict(final RuntimeException e)
+	{
+		log.debug("409: Conflict {}", e.getMessage());
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
 	}
 
 	private static ResponseEntity<String> badRequest(final RuntimeException e)

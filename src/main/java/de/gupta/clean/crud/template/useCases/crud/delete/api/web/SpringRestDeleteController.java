@@ -13,7 +13,7 @@ import java.util.Collection;
 public interface SpringRestDeleteController<WebModelID>
 {
 	@DeleteMapping("/{id}")
-	ResponseEntity<Void> deleteById(@PathVariable @Valid final WebModelID id);
+	ResponseEntity<Void> deleteById(@PathVariable("id") @Valid final WebModelID id);
 
 	@DeleteMapping("/batch")
 	ResponseEntity<Void> deleteAllById(
