@@ -4,7 +4,6 @@ import de.gupta.clean.crud.template.domain.model.exceptions.resource.UnexpectedR
 import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.id.model.DomainPersistenceAdapterModel;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.time.Instant;
 import java.util.Collection;
 import java.util.Optional;
 
@@ -30,30 +29,22 @@ public abstract class AbstractDomainPersistenceAdapterJpaRepository<DomainID, Pe
 	}
 
 	@Override
-	public Optional<ConcreteDomainPersistenceModel> findValidByDomainID(
+	public Optional<ConcreteDomainPersistenceModel> findByDomainID(
 			final DomainID domainID)
 	{
-		return findAllByDomainIDAndValidFromIsBeforeAndValidToIsAfter(domainID, Instant.now(),
-				Instant.now())
-				.stream()
-				.findFirst();
+		return findOneByDomainID(domainID);
 	}
 
 	@Override
-	public Optional<ConcreteDomainPersistenceModel> findValidByPersistenceID(
+	public Optional<ConcreteDomainPersistenceModel> findByPersistenceID(
 			final PersistenceID persistenceID)
 	{
-		return findAllByPersistenceIDAndValidFromIsBeforeAndValidToIsAfter(persistenceID, Instant.now(),
-				Instant.now())
-				.stream()
-				.findFirst();
+		return findOneByPersistenceID(persistenceID);
 	}
 
-	protected abstract Collection<ConcreteDomainPersistenceModel> findAllByPersistenceIDAndValidFromIsBeforeAndValidToIsAfter(
-			final PersistenceID persistenceID, final Instant validFrom, final Instant validTo);
+	protected abstract Optional<ConcreteDomainPersistenceModel> findOneByPersistenceID(PersistenceID persistenceID);
 
-	protected abstract Collection<ConcreteDomainPersistenceModel> findAllByDomainIDAndValidFromIsBeforeAndValidToIsAfter(
-			DomainID domainID, Instant validFrom, Instant validTo);
+	protected abstract Optional<ConcreteDomainPersistenceModel> findOneByDomainID(DomainID domainID);
 
 	@SuppressWarnings("unchecked")
 	private ConcreteDomainPersistenceModel castDownOrThrow(

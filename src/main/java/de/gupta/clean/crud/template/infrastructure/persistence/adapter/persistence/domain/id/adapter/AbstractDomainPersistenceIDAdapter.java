@@ -13,13 +13,13 @@ public abstract class AbstractDomainPersistenceIDAdapter<DomainID, PersistenceID
 	@Override
 	public Optional<PersistenceID> toPersistenceID(final DomainID domainID)
 	{
-		return repository.findValidByDomainID(domainID).map(DomainPersistenceAdapterModel::persistenceID);
+		return repository.findByDomainID(domainID).map(DomainPersistenceAdapterModel::persistenceID);
 	}
 
 	@Override
 	public Optional<DomainID> toDomainID(final PersistenceID persistenceID)
 	{
-		return repository.findValidByPersistenceID(persistenceID).map(DomainPersistenceAdapterModel::domainID);
+		return repository.findByPersistenceID(persistenceID).map(DomainPersistenceAdapterModel::domainID);
 	}
 
 	protected AbstractDomainPersistenceIDAdapter(

@@ -15,7 +15,7 @@ public interface DomainPersistenceAdapterRepository<DomainID, PersistenceID, Mod
 
 	void saveAll(Collection<Model> models);
 
-	Optional<Model> findValidByDomainID(DomainID domainID);
+	Optional<Model> findByDomainID(DomainID domainID);
 
-	Optional<Model> findValidByPersistenceID(PersistenceID persistenceID);
+	Optional<Model> findByPersistenceID(PersistenceID persistenceID);
 }
