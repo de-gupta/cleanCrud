@@ -2,10 +2,11 @@ package de.gupta.clean.crud.template.useCases.crud.all.infrastructure.persistenc
 
 import de.gupta.clean.crud.template.infrastructure.persistence.history.adapter.TriTemporalHistorySnapshotFactory;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.model.TriTemporalHistoryModel;
+import de.gupta.clean.crud.template.infrastructure.persistence.history.repository.TriTemporalHistoryJpaRepository;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.repository.TriTemporalHistoryRepository;
-import de.gupta.clean.crud.template.infrastructure.persistence.history.service.TriTemporalHistoryRecorder;
 import de.gupta.clean.crud.template.infrastructure.persistence.model.properties.WithID;
 import de.gupta.clean.crud.template.useCases.crud.all.infrastructure.persistence.service.PersistenceModelCrudRepository;
+import de.gupta.clean.crud.template.useCases.crud.common.infrastructure.persistence.repository.AbstractHistorizedPersistenceModelJpaRepositorySupport;
 import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,62 +17,57 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Optional;
 
+@Deprecated
 public abstract class AbstractPersistenceModelJpaCrudRepository<PersistenceModel extends WithID<PersistenceID>,
 		PersistenceID, ConcretePersistenceModel extends PersistenceModel,
 		HistoryModel extends TriTemporalHistoryModel<PersistenceID>>
+		extends AbstractHistorizedPersistenceModelJpaRepositorySupport<PersistenceModel, PersistenceID,
+		ConcretePersistenceModel, HistoryModel>
 		implements PersistenceModelCrudRepository<PersistenceModel, PersistenceID>
 {
-	private final JpaRepository<ConcretePersistenceModel, PersistenceID> jpaRepository;
-	private final TriTemporalHistoryRecorder<PersistenceID, PersistenceModel, HistoryModel> historyRecorder;
-
 	@Override
 	public Collection<PersistenceModel> findAll()
 	{
-		return jpaRepository.findAll().stream().map(this::castUp).toList();
+		return jpaRepository().findAll().stream().map(this::castUp).toList();
 	}
 
 	@Override
 	public Page<PersistenceModel> findAll(final Pageable pageable)
 	{
-		return jpaRepository.findAll(pageable).map(this::castUp);
+		return jpaRepository().findAll(pageable).map(this::castUp);
 	}
 
 	@Override
 	public boolean existsById(final PersistenceID persistenceID)
 	{
-		return jpaRepository.existsById(persistenceID);
+		return jpaRepository().existsById(persistenceID);
 	}
 
 	@Override
 	public Optional<PersistenceModel> findById(final PersistenceID persistenceID)
 	{
-		return jpaRepository.findById(persistenceID).map(this::castUp);
+		return jpaRepository().findById(persistenceID).map(this::castUp);
 	}
 
 	@Override
 	public Collection<PersistenceModel> findByIds(final Iterable<PersistenceID> ids)
 	{
-		return jpaRepository.findAllById(ids).stream().map(this::castUp).toList();
+		return jpaRepository().findAllById(ids).stream().map(this::castUp).toList();
 	}
 
 	@Transactional
 	@Override
 	public PersistenceModel save(final PersistenceModel persistenceModel)
 	{
-		boolean existingModel = persistenceModel.id() != null && jpaRepository.existsById(persistenceModel.id());
-		PersistenceModel savedModel = Optional.of(persistenceModel)
-											  .flatMap(this::castDown)
-											  .map(jpaRepository::save)
-											  .map(this::castUp)
-											  .orElseThrow(() -> new IllegalArgumentException(
-													  "Could not save model: " + persistenceModel));
+		boolean existingModel = persistenceModel.id() != null && jpaRepository().existsById(persistenceModel.id());
+		PersistenceModel savedModel = castUp(jpaRepository().save(castDown(persistenceModel)));
 		if (existingModel)
 		{
-			historyRecorder.recordUpdate(savedModel);
+			historyRecorder().recordUpdate(savedModel);
 		}
 		else
 		{
-			historyRecorder.recordCreate(savedModel);
+			historyRecorder().recordCreate(savedModel);
 		}
 		return savedModel;
 	}
@@ -84,18 +80,17 @@ public abstract class AbstractPersistenceModelJpaCrudRepository<PersistenceModel
 		var knownIDs = persistenceModels.stream().map(WithID::id).filter(java.util.Objects::nonNull).toList();
 		if (!knownIDs.isEmpty())
 		{
-			existingIDs.addAll(jpaRepository.findAllById(knownIDs).stream().map(WithID::id).toList());
+			existingIDs.addAll(jpaRepository().findAllById(knownIDs).stream().map(WithID::id).toList());
 		}
 
 		Collection<ConcretePersistenceModel> models =
 				persistenceModels.stream()
 								 .map(this::castDown)
-								 .flatMap(Optional::stream)
 								 .toList();
-		var savedModels = jpaRepository.saveAll(models).stream().map(this::castUp).toList();
-		historyRecorder.recordCreateAll(
+		var savedModels = jpaRepository().saveAll(models).stream().map(this::castUp).toList();
+		historyRecorder().recordCreateAll(
 				savedModels.stream().filter(model -> !existingIDs.contains(model.id())).toList());
-		historyRecorder.recordUpdateAll(
+		historyRecorder().recordUpdateAll(
 				savedModels.stream().filter(model -> existingIDs.contains(model.id())).toList());
 		return savedModels;
 	}
@@ -104,8 +99,8 @@ public abstract class AbstractPersistenceModelJpaCrudRepository<PersistenceModel
 	@Override
 	public void deleteById(final PersistenceID persistenceID)
 	{
-		jpaRepository.findById(persistenceID).map(this::castUp).ifPresent(historyRecorder::recordDelete);
-		jpaRepository.deleteById(persistenceID);
+		jpaRepository().findById(persistenceID).map(this::castUp).ifPresent(historyRecorder()::recordDelete);
+		jpaRepository().deleteById(persistenceID);
 	}
 
 	@Transactional
@@ -113,27 +108,9 @@ public abstract class AbstractPersistenceModelJpaCrudRepository<PersistenceModel
 	public void deleteAllById(final Collection<PersistenceID> ids)
 	{
 		var deletedModels =
-				new ArrayList<PersistenceModel>(jpaRepository.findAllById(ids).stream().map(this::castUp).toList());
-		jpaRepository.deleteAllById(ids);
-		historyRecorder.recordDeleteAll(deletedModels);
-	}
-
-	@SuppressWarnings("unchecked")
-	private Optional<ConcretePersistenceModel> castDown(final PersistenceModel model)
-	{
-		try
-		{
-			return Optional.of((ConcretePersistenceModel) model);
-		}
-		catch (ClassCastException e)
-		{
-			return Optional.empty();
-		}
-	}
-
-	private PersistenceModel castUp(final ConcretePersistenceModel persistenceModel)
-	{
-		return persistenceModel;
+				new ArrayList<PersistenceModel>(jpaRepository().findAllById(ids).stream().map(this::castUp).toList());
+		jpaRepository().deleteAllById(ids);
+		historyRecorder().recordDeleteAll(deletedModels);
 	}
 
 	protected AbstractPersistenceModelJpaCrudRepository(
@@ -141,7 +118,14 @@ public abstract class AbstractPersistenceModelJpaCrudRepository<PersistenceModel
 			final TriTemporalHistoryRepository<PersistenceID, HistoryModel> historyRepository,
 			final TriTemporalHistorySnapshotFactory<PersistenceID, PersistenceModel, HistoryModel> snapshotFactory)
 	{
-		this.jpaRepository = jpaRepository;
-		this.historyRecorder = new TriTemporalHistoryRecorder<>(historyRepository, snapshotFactory);
+		super(jpaRepository, historyRepository, snapshotFactory);
+	}
+
+	protected AbstractPersistenceModelJpaCrudRepository(
+			final JpaRepository<ConcretePersistenceModel, PersistenceID> jpaRepository,
+			final TriTemporalHistoryJpaRepository<PersistenceID, HistoryModel> historyRepository,
+			final TriTemporalHistorySnapshotFactory<PersistenceID, PersistenceModel, HistoryModel> snapshotFactory)
+	{
+		super(jpaRepository, historyRepository, snapshotFactory);
 	}
 }

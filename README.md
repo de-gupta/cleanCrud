@@ -77,7 +77,7 @@ Add the following dependency to your Maven `pom.xml`:
 <dependency>
     <groupId>io.github.de-gupta</groupId>
     <artifactId>cleanCrud</artifactId>
-    <version>0.0.4-SNAPSHOT</version>
+    <version>0.2.2-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -102,6 +102,47 @@ Add the following dependency to your Maven `pom.xml`:
 
 5. **Configure Controllers**:
    - Extend the appropriate controller templates for your CRUD operations
+
+### Historized Persistence
+
+For historized persistence, `cleanCrud` now provides a single high-level repository base so consumers do not need
+separate save/delete/crud repository beans for the same aggregate.
+
+Typical consumer shape:
+
+1. Define one live JPA entity
+2. Define one history JPA entity
+3. Define one live Spring Data repository
+4. Define one history Spring Data repository by extending `TriTemporalHistoryJpaRepository`
+5. Extend `AbstractHistorizedPersistenceModelJpaRepository`
+6. Implement a small history snapshot factory, typically by extending
+   `AbstractPersistenceHistorySnapshotFactory`
+
+Example shape:
+
+```java
+@Repository
+interface TaskHistoryJpaRepository extends TriTemporalHistoryJpaRepository<UUID, TaskPersistenceModelHistory>
+{
+}
+
+@Component
+final class TaskHistorizedJpaRepository extends AbstractHistorizedPersistenceModelJpaRepository<
+        TaskPersistenceModel, UUID, TaskPersistenceModelImpl, TaskPersistenceModelHistory>
+{
+    TaskHistorizedJpaRepository(
+            final TaskJpaRepository liveRepository,
+            final TaskHistoryJpaRepository historyRepository,
+            final TaskPersistenceHistorySnapshotFactory snapshotFactory)
+    {
+        super(liveRepository, historyRepository, snapshotFactory);
+    }
+}
+```
+
+For domain-persistence ID mapping history, `AbstractDomainPersistenceIDManagement` now defaults missing current
+mappings on update to an upsert-create flow and records `CREATED` history automatically. Consumers can still override
+that behavior through the protected `handleMissingCurrentMappingOnUpdate(...)` hook when needed.
 
 ### Example Implementation
 

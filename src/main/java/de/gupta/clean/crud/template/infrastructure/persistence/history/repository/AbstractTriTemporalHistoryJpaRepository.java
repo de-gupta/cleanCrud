@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.Optional;
 
+@Deprecated
 public abstract class AbstractTriTemporalHistoryJpaRepository<EntityID,
 		HistoryModel extends TriTemporalHistoryModel<EntityID>,
 		ConcreteHistoryModel extends HistoryModel>
