@@ -38,6 +38,12 @@ public abstract class AbstractPersistenceModelJpaCrudRepository<PersistenceModel
 		return jpaRepository.findById(persistenceID).map(this::castUp);
 	}
 
+	@Override
+	public Collection<PersistenceModel> findByIds(final Iterable<PersistenceID> ids)
+	{
+		return jpaRepository.findAllById(ids).stream().map(this::castUp).toList();
+	}
+
 	@Transactional
 	@Override
 	public PersistenceModel save(final PersistenceModel persistenceModel)
@@ -65,6 +71,13 @@ public abstract class AbstractPersistenceModelJpaCrudRepository<PersistenceModel
 	public void deleteById(final PersistenceID persistenceID)
 	{
 		jpaRepository.deleteById(persistenceID);
+	}
+
+	@Transactional
+	@Override
+	public void deleteAllById(final Collection<PersistenceID> ids)
+	{
+		jpaRepository.deleteAllById(ids);
 	}
 
 	@SuppressWarnings("unchecked")

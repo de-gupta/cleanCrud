@@ -1,6 +1,7 @@
 package de.gupta.clean.crud.template.useCases.crud.all.api.application;
 
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
+import de.gupta.clean.crud.template.useCases.crud.common.BulkOperationMode;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -21,10 +22,22 @@ public interface ApplicationCrudController<WebModelCreate, WebModelUpdatePatch, 
 
 	WebModelResponse updateById(final WebModelID id, final WebModelUpdatePatch model);
 
+	default Collection<WebModelResponse> updateAllById(
+			final Collection<IdentifiedModel<WebModelID, WebModelUpdatePatch>> models)
+	{
+		return updateAllById(models, BulkOperationMode.ALL_OR_NOTHING);
+	}
+
 	Collection<WebModelResponse> updateAllById(
-			final Collection<IdentifiedModel<WebModelID, WebModelUpdatePatch>> models);
+			final Collection<IdentifiedModel<WebModelID, WebModelUpdatePatch>> models,
+			final BulkOperationMode mode);
 
 	void deleteById(final WebModelID id);
 
-	void deleteAllById(final Collection<WebModelID> ids);
+	default void deleteAllById(final Collection<WebModelID> ids)
+	{
+		deleteAllById(ids, BulkOperationMode.ALL_OR_NOTHING);
+	}
+
+	void deleteAllById(final Collection<WebModelID> ids, final BulkOperationMode mode);
 }

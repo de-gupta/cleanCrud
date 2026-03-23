@@ -1,6 +1,8 @@
 package de.gupta.clean.crud.template.domain.model.exceptions.resource;
 
-public final class ResourceCannotBeDeletedException extends RuntimeException
+import de.gupta.clean.crud.template.domain.model.exceptions.DomainException;
+
+public final class ResourceCannotBeDeletedException extends DomainException
 {
 	public static <ID> ResourceCannotBeDeletedException withId(final ID id)
 	{

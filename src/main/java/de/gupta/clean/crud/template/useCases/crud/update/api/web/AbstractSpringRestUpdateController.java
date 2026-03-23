@@ -1,6 +1,7 @@
 package de.gupta.clean.crud.template.useCases.crud.update.api.web;
 
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
+import de.gupta.clean.crud.template.useCases.crud.common.BulkOperationMode;
 import de.gupta.clean.crud.template.useCases.crud.update.facade.UpdateServiceFacade;
 import org.springframework.http.ResponseEntity;
 
@@ -26,9 +27,10 @@ public abstract class AbstractSpringRestUpdateController<WebModelCreate, WebMode
 
 	@Override
 	public ResponseEntity<Collection<WebModelResponse>> updateAllById(
-			final Collection<IdentifiedModel<WebModelID, WebModelUpdatePatch>> models)
+			final Collection<IdentifiedModel<WebModelID, WebModelUpdatePatch>> models,
+			final BulkOperationMode mode)
 	{
-		return ResponseEntity.ok(service.updateAllById(models));
+		return ResponseEntity.ok(service.updateAllById(models, mode));
 	}
 
 	protected AbstractSpringRestUpdateController(

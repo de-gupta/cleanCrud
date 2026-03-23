@@ -1,6 +1,7 @@
 package de.gupta.clean.crud.template.useCases.crud.update.api.application;
 
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
+import de.gupta.clean.crud.template.useCases.crud.common.BulkOperationMode;
 import de.gupta.clean.crud.template.useCases.crud.update.facade.UpdateServiceFacade;
 
 import java.util.Collection;
@@ -24,9 +25,10 @@ public abstract class AbstractUpdateApplicationController<WebModelCreate, WebMod
 
 	@Override
 	public Collection<WebModelResponse> updateAllById(
-			final Collection<IdentifiedModel<WebModelID, WebModelUpdatePatch>> models)
+			final Collection<IdentifiedModel<WebModelID, WebModelUpdatePatch>> models,
+			final BulkOperationMode mode)
 	{
-		return service.updateAllById(models);
+		return service.updateAllById(models, mode);
 	}
 
 	protected AbstractUpdateApplicationController(

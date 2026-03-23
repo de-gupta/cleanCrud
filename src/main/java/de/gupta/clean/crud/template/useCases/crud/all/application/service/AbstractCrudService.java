@@ -2,17 +2,20 @@ package de.gupta.clean.crud.template.useCases.crud.all.application.service;
 
 
 import de.gupta.clean.crud.template.domain.mapping.CrudDomainModelMapper;
+import de.gupta.clean.crud.template.domain.model.exceptions.DomainException;
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.service.crud.policy.DeletionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.InsertionPolicy;
+import de.gupta.clean.crud.template.useCases.crud.common.BulkOperationMode;
 import de.gupta.clean.crud.template.useCases.crud.common.utility.PageUtility;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Optional;
 
 public abstract class AbstractCrudService<DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse,
 		DomainID, DomainModel>
@@ -94,27 +97,101 @@ public abstract class AbstractCrudService<DomainModelCreate, DomainModelUpdatePa
 
 	@Override
 	public Collection<IdentifiedModel<DomainID, DomainModelResponse>> updateAllById(
-			final Collection<IdentifiedModel<DomainID, DomainModelUpdatePatch>> models)
+			final Collection<IdentifiedModel<DomainID, DomainModelUpdatePatch>> models,
+			final BulkOperationMode mode)
 	{
-		return models.stream()
-					 .map(model -> updateById(model.id(), model.model()))
-					 .toList();
+		Collection<IdentifiedModel<DomainID, DomainModel>> preparedModels = switch (mode)
+		{
+			case ALL_OR_NOTHING -> models.stream()
+										 .map(model -> prepareUpdatedModel(model.id(), model.model()))
+										 .toList();
+			case BEST_EFFORT -> models.stream()
+									  .map(model -> tryPrepareUpdatedModel(model.id(), model.model()))
+									  .flatMap(Optional::stream)
+									  .toList();
+		};
+
+		return persistenceService.updateAllById(preparedModels)
+								 .stream()
+								 .map(this::identifiedModel)
+								 .toList();
 	}
 
 	@Override
 	public void deleteById(final DomainID domainID)
 	{
-		deletionPolicy.validateDeletion(persistenceService.findById(domainID)
-														  .map(IdentifiedModel::model)
-														  .orElseThrow(
-																  () -> ResourceNotFoundException.withId(domainID)));
+		validateDeletion(domainID);
 		persistenceService.deleteById(domainID);
 	}
 
 	@Override
-	public void deleteAllById(final Collection<DomainID> ids)
+	public void deleteAllById(final Collection<DomainID> ids, final BulkOperationMode mode)
 	{
-		ids.forEach(this::deleteById);
+		Collection<DomainID> validIds = switch (mode)
+		{
+			case ALL_OR_NOTHING ->
+			{
+				ids.forEach(this::validateDeletion);
+				yield ids;
+			}
+			case BEST_EFFORT -> ids.stream()
+								   .filter(this::isDeletionAllowed)
+								   .toList();
+		};
+
+		persistenceService.deleteAllById(validIds);
+	}
+
+	private IdentifiedModel<DomainID, DomainModel> prepareUpdatedModel(
+			final DomainID domainID,
+			final DomainModelUpdatePatch updatePatch)
+	{
+		var originalModel = persistenceService.findById(domainID)
+											  .map(IdentifiedModel::model)
+											  .orElseThrow(() -> ResourceNotFoundException.withId(domainID));
+		var updatedModel = modelMapper.patchModel(originalModel, updatePatch);
+
+		if (!originalModel.equals(updatedModel))
+		{
+			insertionPolicy.validateInsertion(updatedModel);
+		}
+
+		return IdentifiedModel.of(domainID, updatedModel);
+	}
+
+	private Optional<IdentifiedModel<DomainID, DomainModel>> tryPrepareUpdatedModel(
+			final DomainID domainID,
+			final DomainModelUpdatePatch updatePatch)
+	{
+		try
+		{
+			return Optional.of(prepareUpdatedModel(domainID, updatePatch));
+		}
+		catch (DomainException e)
+		{
+			return Optional.empty();
+		}
+	}
+
+	private void validateDeletion(final DomainID domainID)
+	{
+		deletionPolicy.validateDeletion(persistenceService.findById(domainID)
+														  .map(IdentifiedModel::model)
+														  .orElseThrow(
+																  () -> ResourceNotFoundException.withId(domainID)));
+	}
+
+	private boolean isDeletionAllowed(final DomainID domainID)
+	{
+		try
+		{
+			validateDeletion(domainID);
+			return true;
+		}
+		catch (DomainException e)
+		{
+			return false;
+		}
 	}
 
 	private void throwIfDuplicatesInCollection(final Collection<DomainModel> models)

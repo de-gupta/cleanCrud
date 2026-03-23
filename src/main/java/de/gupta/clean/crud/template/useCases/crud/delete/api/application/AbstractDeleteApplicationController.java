@@ -1,5 +1,6 @@
 package de.gupta.clean.crud.template.useCases.crud.delete.api.application;
 
+import de.gupta.clean.crud.template.useCases.crud.common.BulkOperationMode;
 import de.gupta.clean.crud.template.useCases.crud.delete.facade.DeleteServiceFacade;
 
 import java.util.Collection;
@@ -15,9 +16,9 @@ public abstract class AbstractDeleteApplicationController<WebModelID> implements
 	}
 
 	@Override
-	public void deleteAllById(final Collection<WebModelID> ids)
+	public void deleteAllById(final Collection<WebModelID> ids, final BulkOperationMode mode)
 	{
-		service.deleteAllById(ids);
+		service.deleteAllById(ids, mode);
 	}
 
 	protected AbstractDeleteApplicationController(final DeleteServiceFacade<WebModelID> service)

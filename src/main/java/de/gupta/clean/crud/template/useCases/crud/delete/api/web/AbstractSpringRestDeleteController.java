@@ -1,5 +1,6 @@
 package de.gupta.clean.crud.template.useCases.crud.delete.api.web;
 
+import de.gupta.clean.crud.template.useCases.crud.common.BulkOperationMode;
 import de.gupta.clean.crud.template.useCases.crud.delete.facade.DeleteServiceFacade;
 import org.springframework.http.ResponseEntity;
 
@@ -18,9 +19,9 @@ public abstract class AbstractSpringRestDeleteController<WebModelID>
 	}
 
 	@Override
-	public ResponseEntity<Void> deleteAllById(final Collection<WebModelID> ids)
+	public ResponseEntity<Void> deleteAllById(final Collection<WebModelID> ids, final BulkOperationMode mode)
 	{
-		service.deleteAllById(ids);
+		service.deleteAllById(ids, mode);
 		return ResponseEntity.noContent().build();
 	}
 

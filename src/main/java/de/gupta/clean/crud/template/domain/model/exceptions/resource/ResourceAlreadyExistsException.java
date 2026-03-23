@@ -1,9 +1,11 @@
 package de.gupta.clean.crud.template.domain.model.exceptions.resource;
 
+import de.gupta.clean.crud.template.domain.model.exceptions.DomainException;
+
 import java.io.Serializable;
 import java.util.function.Supplier;
 
-public final class ResourceAlreadyExistsException extends RuntimeException
+public final class ResourceAlreadyExistsException extends DomainException
 {
 	public static <ID> ResourceAlreadyExistsException withId(final ID id)
 	{

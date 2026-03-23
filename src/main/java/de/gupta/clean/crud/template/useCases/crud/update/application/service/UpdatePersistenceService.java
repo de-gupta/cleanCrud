@@ -3,7 +3,6 @@ package de.gupta.clean.crud.template.useCases.crud.update.application.service;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 
 import java.util.Collection;
-import java.util.Optional;
 
 public interface UpdatePersistenceService<DomainID, DomainModel>
 {
@@ -13,6 +12,4 @@ public interface UpdatePersistenceService<DomainID, DomainModel>
 
 	Collection<IdentifiedModel<DomainID, DomainModel>> updateAllById(
 			final Collection<IdentifiedModel<DomainID, DomainModel>> models);
-
-	Optional<IdentifiedModel<DomainID, DomainModel>> findById(final DomainID id);
 }

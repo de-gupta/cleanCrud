@@ -2,6 +2,7 @@ package de.gupta.clean.crud.template.useCases.crud.all.api.web;
 
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.useCases.crud.all.facade.CrudServiceFacade;
+import de.gupta.clean.crud.template.useCases.crud.common.BulkOperationMode;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -61,9 +62,10 @@ public abstract class AbstractSpringRestCrudController<WebModelCreate, WebModelU
 
 	@Override
 	public ResponseEntity<Collection<WebModelResponse>> updateAllById(
-			@RequestBody @Valid final Collection<IdentifiedModel<WebModelID, WebModelUpdatePatch>> models)
+			@RequestBody @Valid final Collection<IdentifiedModel<WebModelID, WebModelUpdatePatch>> models,
+			final BulkOperationMode mode)
 	{
-		return ResponseEntity.ok(service.updateAllById(models));
+		return ResponseEntity.ok(service.updateAllById(models, mode));
 	}
 
 	@Override
@@ -74,9 +76,11 @@ public abstract class AbstractSpringRestCrudController<WebModelCreate, WebModelU
 	}
 
 	@Override
-	public ResponseEntity<Void> deleteAllById(@RequestBody @Valid final Collection<WebModelID> ids)
+	public ResponseEntity<Void> deleteAllById(
+			@RequestBody @Valid final Collection<WebModelID> ids,
+			final BulkOperationMode mode)
 	{
-		service.deleteAllById(ids);
+		service.deleteAllById(ids, mode);
 		return ResponseEntity.noContent().build();
 	}
 

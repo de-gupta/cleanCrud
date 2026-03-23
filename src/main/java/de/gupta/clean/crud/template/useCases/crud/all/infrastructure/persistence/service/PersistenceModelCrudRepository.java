@@ -16,9 +16,13 @@ public interface PersistenceModelCrudRepository<PersistenceModel, PersistenceID>
 
 	Optional<PersistenceModel> findById(final PersistenceID id);
 
+	Collection<PersistenceModel> findByIds(final Iterable<PersistenceID> ids);
+
 	PersistenceModel save(final PersistenceModel model);
 
 	Collection<PersistenceModel> saveAll(final Collection<PersistenceModel> models);
 
 	void deleteById(final PersistenceID id);
+
+	void deleteAllById(final Collection<PersistenceID> ids);
 }

@@ -1,6 +1,8 @@
 package de.gupta.clean.crud.template.domain.model.exceptions.security;
 
-public final class AccessDeniedException extends RuntimeException
+import de.gupta.clean.crud.template.domain.model.exceptions.DomainException;
+
+public final class AccessDeniedException extends DomainException
 {
 	public static AccessDeniedException withMessage(final String message)
 	{

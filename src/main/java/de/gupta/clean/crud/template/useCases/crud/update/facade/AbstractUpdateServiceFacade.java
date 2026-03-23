@@ -1,6 +1,7 @@
 package de.gupta.clean.crud.template.useCases.crud.update.facade;
 
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
+import de.gupta.clean.crud.template.useCases.crud.common.BulkOperationMode;
 import de.gupta.clean.crud.template.useCases.crud.common.adapter.id.APIDomainIDAdapter;
 import de.gupta.clean.crud.template.useCases.crud.common.adapter.model.APIToDomainCreateAdapter;
 import de.gupta.clean.crud.template.useCases.crud.common.adapter.model.APIToDomainUpdateAdapter;
@@ -35,13 +36,14 @@ public abstract class AbstractUpdateServiceFacade<APIModelCreate, APIModelUpdate
 
 	@Override
 	public Collection<APIModelResponse> updateAllById(
-			final Collection<IdentifiedModel<APIModelID, APIModelUpdatePatch>> models)
+			final Collection<IdentifiedModel<APIModelID, APIModelUpdatePatch>> models,
+			final BulkOperationMode mode)
 	{
 		return service.updateAllById(models.stream()
 										   .map(model -> IdentifiedModel.of(
 												   idAdapter.mapToDomainID(model.id()),
 												   updateAdapter.mapToDomainModelUpdatePatch(model.model())))
-										   .toList())
+										   .toList(), mode)
 					  .stream()
 					  .map(responseAdapter::mapToAPIModelResponse)
 					  .toList();

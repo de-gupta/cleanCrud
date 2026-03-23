@@ -1,6 +1,8 @@
 package de.gupta.clean.crud.template.domain.model.exceptions.resource;
 
-public final class UnexpectedResourceException extends RuntimeException
+import de.gupta.clean.crud.template.domain.model.exceptions.DomainException;
+
+public final class UnexpectedResourceException extends DomainException
 {
 	public static UnexpectedResourceException withMessage(final String message)
 	{

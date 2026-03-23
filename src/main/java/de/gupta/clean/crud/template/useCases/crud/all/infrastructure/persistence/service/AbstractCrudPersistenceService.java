@@ -11,9 +11,7 @@ import de.gupta.clean.crud.template.useCases.crud.common.utility.PageUtility;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-import java.util.Collection;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 public abstract class AbstractCrudPersistenceService<DomainID, DomainModel,
 		PersistenceID, PersistenceModel extends WithID<PersistenceID>>
@@ -103,31 +101,24 @@ public abstract class AbstractCrudPersistenceService<DomainID, DomainModel,
 	@Override
 	public IdentifiedModel<DomainID, DomainModel> updateById(final DomainID domainID, final DomainModel patchedModel)
 	{
-		final Optional<PersistenceID> originalID = idAdapter.toPersistenceID(domainID);
-		if (originalID.isEmpty())
-		{
-			throw ResourceNotFoundException.withId(domainID);
-		}
-		PersistenceModel originalPersistenceModel = repository.findById(originalID.get())
-															  .orElseThrow(
-																	  () -> ResourceNotFoundException.withId(domainID));
-		PersistenceModel savedModel = repository.save(patchModel(originalPersistenceModel, patchedModel));
-		PersistenceID savedID = savedModel.id();
-		if (!originalID.get().equals(savedID))
-		{
-			idAdapterService.update(domainID, savedID);
-		}
-
-		return identifiedModel(savedModel);
+		return identifiedModel(repository.save(prepareUpdatedPersistenceModel(domainID, patchedModel)));
 	}
 
 	@Override
 	public Collection<IdentifiedModel<DomainID, DomainModel>> updateAllById(
 			final Collection<IdentifiedModel<DomainID, DomainModel>> models)
 	{
-		return models.stream()
-					 .map(model -> updateById(model.id(), model.model()))
-					 .toList();
+		if (models.isEmpty())
+		{
+			return List.of();
+		}
+
+		return repository.saveAll(models.stream()
+										.map(model -> prepareUpdatedPersistenceModel(model.id(), model.model()))
+										.toList())
+						 .stream()
+						 .map(this::identifiedModel)
+						 .toList();
 	}
 
 	@Override
@@ -142,7 +133,29 @@ public abstract class AbstractCrudPersistenceService<DomainID, DomainModel,
 	@Override
 	public void deleteAllById(final Collection<DomainID> domainIDs)
 	{
-		domainIDs.forEach(this::deleteById);
+		var domainIDList = new ArrayList<>(domainIDs);
+		var persistenceIDs = new ArrayList<PersistenceID>(domainIDList.size());
+		for (DomainID domainID : domainIDList)
+		{
+			persistenceIDs.add(idAdapter.toPersistenceID(domainID)
+										.orElseThrow(() -> ResourceNotFoundException.withId(domainID)));
+		}
+
+		var existingPersistenceIDs = repository.findByIds(persistenceIDs)
+											   .stream()
+											   .map(PersistenceModel::id)
+											   .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+		int index = 0;
+		for (DomainID domainID : domainIDList)
+		{
+			if (!existingPersistenceIDs.contains(persistenceIDs.get(index)))
+			{
+				throw ResourceNotFoundException.withId(domainID);
+			}
+			index++;
+		}
+
+		repository.deleteAllById(persistenceIDs);
 	}
 
 	private void save(final DomainID domainID, final DomainModel entity)
@@ -164,6 +177,16 @@ public abstract class AbstractCrudPersistenceService<DomainID, DomainModel,
 	private PersistenceModel patchModel(final PersistenceModel originalModel, final DomainModel updatedDomainModel)
 	{
 		return modelAdapter.updatePersistenceModel(originalModel, updatedDomainModel);
+	}
+
+	private PersistenceModel prepareUpdatedPersistenceModel(final DomainID domainID, final DomainModel patchedModel)
+	{
+		PersistenceID persistenceID = idAdapter.toPersistenceID(domainID)
+											   .orElseThrow(() -> ResourceNotFoundException.withId(domainID));
+		PersistenceModel originalPersistenceModel = repository.findById(persistenceID)
+															  .orElseThrow(
+																	  () -> ResourceNotFoundException.withId(domainID));
+		return patchModel(originalPersistenceModel, patchedModel);
 	}
 
 	private IdentifiedModel<DomainID, DomainModel> identifiedModel(final PersistenceModel persistenceModel)

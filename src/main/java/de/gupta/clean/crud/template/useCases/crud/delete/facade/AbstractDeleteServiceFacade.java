@@ -1,5 +1,6 @@
 package de.gupta.clean.crud.template.useCases.crud.delete.facade;
 
+import de.gupta.clean.crud.template.useCases.crud.common.BulkOperationMode;
 import de.gupta.clean.crud.template.useCases.crud.common.adapter.id.APIDomainIDAdapter;
 import de.gupta.clean.crud.template.useCases.crud.delete.application.service.DeleteService;
 
@@ -18,9 +19,9 @@ public abstract class AbstractDeleteServiceFacade<APIModelID, DomainID>
 	}
 
 	@Override
-	public void deleteAllById(final Collection<APIModelID> ids)
+	public void deleteAllById(final Collection<APIModelID> ids, final BulkOperationMode mode)
 	{
-		service.deleteAllById(ids.stream().map(idAdapter::mapToDomainID).toList());
+		service.deleteAllById(ids.stream().map(idAdapter::mapToDomainID).toList(), mode);
 	}
 
 	protected AbstractDeleteServiceFacade(

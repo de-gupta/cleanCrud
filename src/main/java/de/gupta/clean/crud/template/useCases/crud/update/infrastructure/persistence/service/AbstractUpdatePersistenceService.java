@@ -11,6 +11,7 @@ import de.gupta.clean.crud.template.useCases.crud.save.infrastructure.persistenc
 import de.gupta.clean.crud.template.useCases.crud.update.application.service.UpdatePersistenceService;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public abstract class AbstractUpdatePersistenceService<DomainID, DomainModel,
@@ -42,40 +43,24 @@ public abstract class AbstractUpdatePersistenceService<DomainID, DomainModel,
 	@Override
 	public IdentifiedModel<DomainID, DomainModel> updateById(final DomainID id, final DomainModel model)
 	{
-		final Optional<PersistenceID> originalID = idAdapter.toPersistenceID(id);
-		if (originalID.isEmpty())
-		{
-			throw ResourceNotFoundException.withId(id);
-		}
-		PersistenceModel originalPersistenceModel = fetchRepository.findById(originalID.get())
-																   .orElseThrow(
-																		   () -> ResourceNotFoundException.withId(id));
-
-		PersistenceModel savedModel = saveRepository.save(patchModel(originalPersistenceModel, model));
-		PersistenceID savedID = savedModel.id();
-		if (!originalID.get().equals(savedID))
-		{
-			idAdapterService.update(id, savedID);
-		}
-
-		return identifiedModel(savedModel);
+		return identifiedModel(saveRepository.save(prepareUpdatedPersistenceModel(id, model)));
 	}
 
 	@Override
 	public Collection<IdentifiedModel<DomainID, DomainModel>> updateAllById(
 			final Collection<IdentifiedModel<DomainID, DomainModel>> models)
 	{
-		return models.stream()
-					 .map(model -> updateById(model.id(), model.model()))
-					 .toList();
-	}
+		if (models.isEmpty())
+		{
+			return List.of();
+		}
 
-	@Override
-	public Optional<IdentifiedModel<DomainID, DomainModel>> findById(final DomainID id)
-	{
-		return idAdapter.toPersistenceID(id)
-						.flatMap(fetchRepository::findById)
-						.map(this::identifiedModel);
+		return saveRepository.saveAll(models.stream()
+											.map(model -> prepareUpdatedPersistenceModel(model.id(), model.model()))
+											.toList())
+							 .stream()
+							 .map(this::identifiedModel)
+							 .toList();
 	}
 
 	private void save(final DomainID domainID, final DomainModel entity)
@@ -88,6 +73,23 @@ public abstract class AbstractUpdatePersistenceService<DomainID, DomainModel,
 	private PersistenceModel patchModel(final PersistenceModel originalModel, final DomainModel updatedDomainModel)
 	{
 		return modelAdapter.updatePersistenceModel(originalModel, updatedDomainModel);
+	}
+
+	private PersistenceModel prepareUpdatedPersistenceModel(final DomainID id, final DomainModel model)
+	{
+		PersistenceID persistenceID = idAdapter.toPersistenceID(id)
+											   .orElseThrow(() -> ResourceNotFoundException.withId(id));
+		PersistenceModel originalPersistenceModel = fetchRepository.findById(persistenceID)
+																   .orElseThrow(
+																		   () -> ResourceNotFoundException.withId(id));
+		return patchModel(originalPersistenceModel, model);
+	}
+
+	private IdentifiedModel<DomainID, DomainModel> identifiedModel(
+			final DomainID domainID,
+			final PersistenceModel persistenceModel)
+	{
+		return IdentifiedModel.of(domainID, modelAdapter.toDomainModel(persistenceModel));
 	}
 
 	private IdentifiedModel<DomainID, DomainModel> identifiedModel(final PersistenceModel persistenceModel)

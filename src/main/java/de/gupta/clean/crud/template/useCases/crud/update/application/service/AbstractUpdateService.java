@@ -3,15 +3,18 @@ package de.gupta.clean.crud.template.useCases.crud.update.application.service;
 import de.gupta.clean.crud.template.domain.mapping.fetch.DomainResponseBuilder;
 import de.gupta.clean.crud.template.domain.mapping.save.DomainModelBuilder;
 import de.gupta.clean.crud.template.domain.mapping.update.DomainModelPatcher;
+import de.gupta.clean.crud.template.domain.model.exceptions.DomainException;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDeniedException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.service.crud.policy.InsertionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.PatchPolicy;
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
+import de.gupta.clean.crud.template.useCases.crud.common.BulkOperationMode;
 import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.FetchPersistenceService;
 
 import java.util.Collection;
+import java.util.Optional;
 
 public abstract class AbstractUpdateService<DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse, DomainID>
 		implements UpdateService<DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse, DomainID>
@@ -45,24 +48,57 @@ public abstract class AbstractUpdateService<DomainModel, DomainModelCreate, Doma
 	public IdentifiedModel<DomainID, DomainModelResponse> updateById(final DomainID id,
 																	 final DomainModelUpdatePatch updatePatch)
 	{
-		var originalModel = persistenceService.findById(id)
-											  .map(IdentifiedModel::model)
-											  .orElseThrow(() -> ResourceNotFoundException.withId(id));
-		validateAccess(originalModel);
-
-		var updatedModel = modelPatcher.patchModel(originalModel, updatePatch);
-		validateAndPatch(originalModel, updatedModel);
-
-		return identifiedModel(persistenceService.updateById(id, updatedModel));
+		return identifiedModel(persistenceService.updateById(id, prepareUpdatedModel(id, updatePatch).model()));
 	}
 
 	@Override
 	public Collection<IdentifiedModel<DomainID, DomainModelResponse>> updateAllById(
-			final Collection<IdentifiedModel<DomainID, DomainModelUpdatePatch>> models)
+			final Collection<IdentifiedModel<DomainID, DomainModelUpdatePatch>> models,
+			final BulkOperationMode mode)
 	{
-		return models.stream()
-					 .map(model -> updateById(model.id(), model.model()))
-					 .toList();
+		Collection<IdentifiedModel<DomainID, DomainModel>> preparedModels = switch (mode)
+		{
+			case ALL_OR_NOTHING -> models.stream()
+										 .map(model -> prepareUpdatedModel(model.id(), model.model()))
+										 .toList();
+			case BEST_EFFORT -> models.stream()
+									  .map(model -> tryPrepareUpdatedModel(model.id(), model.model()))
+									  .flatMap(Optional::stream)
+									  .toList();
+		};
+
+		return persistenceService.updateAllById(preparedModels)
+								 .stream()
+								 .map(this::identifiedModel)
+								 .toList();
+	}
+
+	private IdentifiedModel<DomainID, DomainModel> prepareUpdatedModel(
+			final DomainID id,
+			final DomainModelUpdatePatch updatePatch)
+	{
+		var originalModel = fetchService.findById(id)
+										.map(IdentifiedModel::model)
+										.orElseThrow(() -> ResourceNotFoundException.withId(id));
+		validateAccess(originalModel);
+
+		var updatedModel = modelPatcher.patchModel(originalModel, updatePatch);
+		validateAndPatch(originalModel, updatedModel);
+		return IdentifiedModel.of(id, updatedModel);
+	}
+
+	private Optional<IdentifiedModel<DomainID, DomainModel>> tryPrepareUpdatedModel(
+			final DomainID id,
+			final DomainModelUpdatePatch updatePatch)
+	{
+		try
+		{
+			return Optional.of(prepareUpdatedModel(id, updatePatch));
+		}
+		catch (DomainException e)
+		{
+			return Optional.empty();
+		}
 	}
 
 	private void validateAccess(DomainModel model)

@@ -3,6 +3,7 @@ package de.gupta.clean.crud.template.useCases.crud.all.facade;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.useCases.crud.all.application.service.CrudService;
 import de.gupta.clean.crud.template.useCases.crud.all.facade.adapter.model.CrudAPIDomainModelAdapter;
+import de.gupta.clean.crud.template.useCases.crud.common.BulkOperationMode;
 import de.gupta.clean.crud.template.useCases.crud.common.adapter.id.APIDomainIDAdapter;
 import de.gupta.clean.crud.template.useCases.crud.common.utility.PageUtility;
 import org.springframework.data.domain.Page;
@@ -71,13 +72,14 @@ public abstract class AbstractCrudServiceFacade<APIModelCreate, APIModelUpdate, 
 
 	@Override
 	public Collection<APIModelResponse> updateAllById(
-			final Collection<IdentifiedModel<APIModelID, APIModelUpdate>> models)
+			final Collection<IdentifiedModel<APIModelID, APIModelUpdate>> models,
+			final BulkOperationMode mode)
 	{
 		return service.updateAllById(models.stream()
 										   .map(model -> IdentifiedModel.of(
 												   idAdapter.mapToDomainID(model.id()),
 												   modelAdapter.mapToDomainModelUpdatePatch(model.model())))
-										   .toList())
+										   .toList(), mode)
 					  .stream()
 					  .map(modelAdapter::mapToWebModelResponse)
 					  .toList();
@@ -90,9 +92,9 @@ public abstract class AbstractCrudServiceFacade<APIModelCreate, APIModelUpdate, 
 	}
 
 	@Override
-	public void deleteAllById(final Collection<APIModelID> ids)
+	public void deleteAllById(final Collection<APIModelID> ids, final BulkOperationMode mode)
 	{
-		service.deleteAllById(ids.stream().map(idAdapter::mapToDomainID).toList());
+		service.deleteAllById(ids.stream().map(idAdapter::mapToDomainID).toList(), mode);
 	}
 
 	protected AbstractCrudServiceFacade(

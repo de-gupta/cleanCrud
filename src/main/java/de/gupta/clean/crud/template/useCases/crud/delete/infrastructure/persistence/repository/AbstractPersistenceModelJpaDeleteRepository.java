@@ -3,7 +3,10 @@ package de.gupta.clean.crud.template.useCases.crud.delete.infrastructure.persist
 import de.gupta.clean.crud.template.useCases.crud.delete.infrastructure.persistence.service.DeletePersistenceModelRepository;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public abstract class AbstractPersistenceModelJpaDeleteRepository<PersistenceModel, PersistenceID, ConcretePersistenceModel extends PersistenceModel>
+import java.util.Collection;
+
+public abstract class AbstractPersistenceModelJpaDeleteRepository<PersistenceModel, PersistenceID,
+		ConcretePersistenceModel extends PersistenceModel>
 		implements DeletePersistenceModelRepository<PersistenceID>
 {
 	private final JpaRepository<ConcretePersistenceModel, PersistenceID> jpaRepository;
@@ -12,6 +15,12 @@ public abstract class AbstractPersistenceModelJpaDeleteRepository<PersistenceMod
 	public void deleteById(final PersistenceID persistenceID)
 	{
 		jpaRepository.deleteById(persistenceID);
+	}
+
+	@Override
+	public void deleteAllById(final Collection<PersistenceID> ids)
+	{
+		jpaRepository.deleteAllById(ids);
 	}
 
 	protected AbstractPersistenceModelJpaDeleteRepository(

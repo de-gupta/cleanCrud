@@ -1,6 +1,7 @@
 package de.gupta.clean.crud.template.useCases.crud.all.api.web;
 
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
+import de.gupta.clean.crud.template.useCases.crud.common.BulkOperationMode;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,11 +35,14 @@ public interface SpringRestCrudController<WebModelCreate, WebModelUpdatePatch, W
 
 	@PatchMapping("/batch")
 	ResponseEntity<Collection<WebModelResponse>> updateAllById(
-			@RequestBody @Valid final Collection<IdentifiedModel<WebModelID, WebModelUpdatePatch>> models);
+			@RequestBody @Valid final Collection<IdentifiedModel<WebModelID, WebModelUpdatePatch>> models,
+			@RequestParam(name = "mode", defaultValue = "ALL_OR_NOTHING") final BulkOperationMode mode);
 
 	@DeleteMapping("/{id}")
 	ResponseEntity<Void> deleteById(@PathVariable("id") @Valid final WebModelID id);
 
 	@DeleteMapping("/batch")
-	ResponseEntity<Void> deleteAllById(@RequestBody @Valid final Collection<WebModelID> ids);
+	ResponseEntity<Void> deleteAllById(
+			@RequestBody @Valid final Collection<WebModelID> ids,
+			@RequestParam(name = "mode", defaultValue = "ALL_OR_NOTHING") final BulkOperationMode mode);
 }

@@ -1,12 +1,10 @@
 package de.gupta.clean.crud.template.useCases.crud.update.api.web;
 
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
+import de.gupta.clean.crud.template.useCases.crud.common.BulkOperationMode;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Collection;
 
@@ -22,5 +20,6 @@ public interface SpringRestUpdateController<WebModelCreate, WebModelUpdatePatch,
 
 	@PatchMapping("/batch")
 	ResponseEntity<Collection<WebModelResponse>> updateAllById(
-			@RequestBody @Valid final Collection<IdentifiedModel<WebModelID, WebModelUpdatePatch>> models);
+			@RequestBody @Valid final Collection<IdentifiedModel<WebModelID, WebModelUpdatePatch>> models,
+			@RequestParam(name = "mode", defaultValue = "ALL_OR_NOTHING") final BulkOperationMode mode);
 }
