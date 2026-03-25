@@ -1,5 +1,6 @@
 package de.gupta.clean.crud.template.useCases.crud.save.application.service;
 
+import de.gupta.aletheia.functional.Unfolding;
 import de.gupta.clean.crud.template.domain.mapping.fetch.DomainResponseBuilder;
 import de.gupta.clean.crud.template.domain.mapping.save.DomainModelBuilder;
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
@@ -10,7 +11,7 @@ import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy
 
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.Optional;
+import java.util.List;
 
 public abstract class AbstractSaveService<DomainModel, DomainModelCreate, DomainModelResponse, DomainID>
 		implements SaveService<DomainModelCreate, DomainModelResponse, DomainID>
@@ -24,12 +25,7 @@ public abstract class AbstractSaveService<DomainModel, DomainModelCreate, Domain
 	@Override
 	public IdentifiedModel<DomainID, DomainModelResponse> save(final DomainModelCreate model)
 	{
-		final var domainModel = modelBuilder.toModel(model);
-		if (!domainSecurityPolicy.isAccessAllowed(domainModel))
-			throw AccessDeniedException.withMessage("Access not allowed");
-
-		insertionPolicy.validateInsertion(domainModel);
-		return identifiedModel(persistenceService.save(domainModel));
+		return saveAll(List.of(model)).stream().findFirst().orElseThrow();
 	}
 
 	@Override
@@ -37,14 +33,17 @@ public abstract class AbstractSaveService<DomainModel, DomainModelCreate, Domain
 			final Collection<DomainModelCreate> models)
 	{
 		var domainModels = models.stream().map(modelBuilder::toModel).toList();
-
-		Optional.of(domainModels)
-				.filter(modelList -> modelList.stream().allMatch(domainSecurityPolicy::isAccessAllowed))
-				.orElseThrow(() -> AccessDeniedException.withMessage("Access not allowed for one or more models"));
-
-		throwIfDuplicatesInCollection(domainModels);
-		domainModels.forEach(insertionPolicy::validateInsertion);
+		validateDomainModels(domainModels);
 		return persistenceService.saveAll(domainModels).stream().map(this::identifiedModel).toList();
+	}
+
+	private void validateDomainModels(final Collection<DomainModel> domainModels)
+	{
+		Unfolding.beckon(domainModels)
+				 .discern(m -> m.stream().allMatch(domainSecurityPolicy::isAccessAllowed),
+						 () -> AccessDeniedException.withMessage("Access not allowed for one or more models"))
+				 .unlace(this::throwIfDuplicatesInCollection)
+				 .unlace(models -> models.forEach(insertionPolicy::validateInsertion));
 	}
 
 	private void throwIfDuplicatesInCollection(final Collection<DomainModel> models)

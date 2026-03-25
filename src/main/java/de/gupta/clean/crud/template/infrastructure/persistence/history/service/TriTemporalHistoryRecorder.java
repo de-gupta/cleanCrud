@@ -1,5 +1,6 @@
 package de.gupta.clean.crud.template.infrastructure.persistence.history.service;
 
+import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceStateConflictException;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.adapter.TriTemporalHistorySnapshotFactory;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.model.TemporalChangeType;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.model.TemporalValidity;
@@ -89,6 +90,11 @@ public final class TriTemporalHistoryRecorder<PersistenceID, PersistenceModel ex
 		for (PersistenceModel model : models)
 		{
 			HistoryModel currentHistory = currentHistoriesByEntityID.get(model.id());
+			if (changeType == TemporalChangeType.UPDATED && currentHistory == null)
+			{
+				throw ResourceStateConflictException.withMessage(
+						"Missing current history record for entity ID: " + model.id());
+			}
 			if (currentHistory != null)
 			{
 				currentHistory.setValidTo(now);
