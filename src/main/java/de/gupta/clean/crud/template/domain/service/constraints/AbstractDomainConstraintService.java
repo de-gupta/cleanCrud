@@ -1,14 +1,14 @@
 package de.gupta.clean.crud.template.domain.service.constraints;
 
-import de.gupta.aletheia.collection.crucible.Crucible;
+import de.gupta.clean.crud.template.domain.service.equality.DuplicateDefinition;
 import de.gupta.clean.crud.template.domain.service.equality.DuplicateInsertionMessage;
 
 import java.util.Collection;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public abstract class AbstractDomainConstraintService<DomainModel> implements DomainConstraintService<DomainModel>
 {
+	private final DuplicateDefinition<DomainModel> duplicateDefinition;
 	private final DuplicateInsertionMessage<DomainModel> duplicateInsertionMessage;
 	private final ExistingModelsConstraintService<DomainModel> existingModelsConstraintService;
 	private final Supplier<Collection<DomainModel>> existingModelsSupplier;
@@ -16,14 +16,15 @@ public abstract class AbstractDomainConstraintService<DomainModel> implements Do
 	@Override
 	public ConstraintResult validateForInsertion(final DomainModel domainModel)
 	{
-		return validateDuplicateConstraint(domainModel)
+		return validateDuplicateConstraint(domainModel, _ -> false)
 				.and(existingModelsConstraintService.mayThisResourceBeAdded(domainModel));
 	}
 
 	@Override
 	public ConstraintResult validateForUpdate(final DomainModel originalModel, final DomainModel updatedModel)
 	{
-		return validateDuplicateConstraintForUpdate(updatedModel, originalModel)
+		return validateDuplicateConstraint(updatedModel,
+				existingModel -> duplicateDefinition.areDuplicates(existingModel, originalModel))
 				.and(existingModelsConstraintService.mayThisResourceBeChangedTo(originalModel, updatedModel));
 	}
 
@@ -32,34 +33,36 @@ public abstract class AbstractDomainConstraintService<DomainModel> implements Do
 		return true;
 	}
 
-	private ConstraintResult validateDuplicateConstraint(final DomainModel domainModel)
+	private ConstraintResult validateDuplicateConstraint(final DomainModel candidate,
+														 final DuplicateExemption<DomainModel> exemption)
 	{
-		return validateConstraintIfApplicable(domainModel,
-				crucible -> crucible.harbors(domainModel));
-	}
-
-	private ConstraintResult validateDuplicateConstraintForUpdate(final DomainModel updatedModel,
-																  final DomainModel originalModel)
-	{
-		return validateConstraintIfApplicable(updatedModel,
-				crucible -> crucible.banish(originalModel).harbors(updatedModel));
-	}
-
-	private ConstraintResult validateConstraintIfApplicable(final DomainModel domainModel,
-															final Predicate<Crucible<DomainModel>> constraintCheck)
-	{
-		return enforceDuplicateConstraint() && constraintCheck.test(Crucible.kindle(existingModelsSupplier.get()))
-				? ConstraintResult.violated(duplicateInsertionMessage.messageIfModelAlreadyExists(domainModel))
+		if (!enforceDuplicateConstraint())
+		{
+			return ConstraintResult.satisfied();
+		}
+		var existingModels = existingModelsSupplier.get();
+		return existingModels.stream()
+							 .filter(existingModel -> !exemption.exempt(existingModel))
+							 .anyMatch(existingModel -> duplicateDefinition.areDuplicates(existingModel, candidate))
+				? ConstraintResult.violated(duplicateInsertionMessage.messageIfModelAlreadyExists(candidate))
 				: ConstraintResult.satisfied();
 	}
 
 	protected AbstractDomainConstraintService(
+			final DuplicateDefinition<DomainModel> duplicateDefinition,
 			final DuplicateInsertionMessage<DomainModel> duplicateInsertionMessage,
 			final ExistingModelsConstraintService<DomainModel> existingModelsConstraintService,
 			final Supplier<Collection<DomainModel>> existingModelsSupplier)
 	{
+		this.duplicateDefinition = duplicateDefinition;
 		this.duplicateInsertionMessage = duplicateInsertionMessage;
 		this.existingModelsConstraintService = existingModelsConstraintService;
 		this.existingModelsSupplier = existingModelsSupplier;
+	}
+
+	@FunctionalInterface
+	private interface DuplicateExemption<DomainModel>
+	{
+		boolean exempt(DomainModel existingModel);
 	}
 }
