@@ -36,8 +36,8 @@ public abstract class AbstractUpdateService<DomainModel, DomainModelCreate, Doma
 		validateAccess(newDomainModel);
 
 		fetchService.findById(id)
-					.ifPresentOrElse(
-							original -> validateAndPatch(original.model(), newDomainModel),
+		            .ifPresentOrElse(
+							original -> validateAccessAndValidatePatch(original.model(), newDomainModel),
 							() -> insertionPolicy.validateInsertion(newDomainModel)
 					);
 
@@ -46,7 +46,7 @@ public abstract class AbstractUpdateService<DomainModel, DomainModelCreate, Doma
 
 	@Override
 	public IdentifiedModel<DomainID, DomainModelResponse> updateById(final DomainID id,
-																	 final DomainModelUpdatePatch updatePatch)
+	                                                                 final DomainModelUpdatePatch updatePatch)
 	{
 		return identifiedModel(persistenceService.updateById(id, prepareUpdatedModel(id, updatePatch).model()));
 	}
@@ -59,18 +59,18 @@ public abstract class AbstractUpdateService<DomainModel, DomainModelCreate, Doma
 		Collection<IdentifiedModel<DomainID, DomainModel>> preparedModels = switch (mode)
 		{
 			case ALL_OR_NOTHING -> models.stream()
-										 .map(model -> prepareUpdatedModel(model.id(), model.model()))
-										 .toList();
+			                             .map(model -> prepareUpdatedModel(model.id(), model.model()))
+			                             .toList();
 			case BEST_EFFORT -> models.stream()
-									  .map(model -> tryPrepareUpdatedModel(model.id(), model.model()))
-									  .flatMap(Optional::stream)
-									  .toList();
+			                          .map(model -> tryPrepareUpdatedModel(model.id(), model.model()))
+			                          .flatMap(Optional::stream)
+			                          .toList();
 		};
 
 		return persistenceService.updateAllById(preparedModels)
-								 .stream()
-								 .map(this::identifiedModel)
-								 .toList();
+		                         .stream()
+		                         .map(this::identifiedModel)
+		                         .toList();
 	}
 
 	private IdentifiedModel<DomainID, DomainModel> prepareUpdatedModel(
@@ -78,12 +78,12 @@ public abstract class AbstractUpdateService<DomainModel, DomainModelCreate, Doma
 			final DomainModelUpdatePatch updatePatch)
 	{
 		var originalModel = fetchService.findById(id)
-										.map(IdentifiedModel::model)
-										.orElseThrow(() -> ResourceNotFoundException.withId(id));
+		                                .map(IdentifiedModel::model)
+		                                .orElseThrow(() -> ResourceNotFoundException.withId(id));
 		validateAccess(originalModel);
 
 		var updatedModel = modelPatcher.patchModel(originalModel, updatePatch);
-		validateAndPatch(originalModel, updatedModel);
+		validateAccessAndValidatePatch(originalModel, updatedModel);
 		return IdentifiedModel.of(id, updatedModel);
 	}
 
@@ -107,7 +107,7 @@ public abstract class AbstractUpdateService<DomainModel, DomainModelCreate, Doma
 			throw AccessDeniedException.withMessage("Access not allowed");
 	}
 
-	private void validateAndPatch(DomainModel original, DomainModel newModel)
+	private void validateAccessAndValidatePatch(DomainModel original, DomainModel newModel)
 	{
 		validateAccess(original);
 		validateAccess(newModel);
