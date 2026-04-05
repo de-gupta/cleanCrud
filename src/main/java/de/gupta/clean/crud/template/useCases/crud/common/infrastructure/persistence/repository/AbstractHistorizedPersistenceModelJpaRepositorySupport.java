@@ -5,6 +5,7 @@ import de.gupta.clean.crud.template.infrastructure.persistence.history.model.Tri
 import de.gupta.clean.crud.template.infrastructure.persistence.history.repository.JpaTriTemporalHistoryRepositoryAdapter;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.repository.TriTemporalHistoryJpaRepository;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.repository.TriTemporalHistoryRepository;
+import de.gupta.clean.crud.template.infrastructure.persistence.history.service.AuditActorSupplier;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.service.TriTemporalHistoryRecorder;
 import de.gupta.clean.crud.template.infrastructure.persistence.model.properties.WithID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -26,17 +27,20 @@ public abstract class AbstractHistorizedPersistenceModelJpaRepositorySupport<
 	protected AbstractHistorizedPersistenceModelJpaRepositorySupport(
 			final JpaRepository<ConcretePersistenceModel, PersistenceID> jpaRepository,
 			final TriTemporalHistoryRepository<PersistenceID, HistoryModel> historyRepository,
-			final TriTemporalHistorySnapshotFactory<PersistenceID, PersistenceModel, HistoryModel> snapshotFactory)
+			final TriTemporalHistorySnapshotFactory<PersistenceID, PersistenceModel, HistoryModel> snapshotFactory,
+			final AuditActorSupplier auditActorSupplier)
 	{
 		super(jpaRepository);
-		this.historyRecorder = new TriTemporalHistoryRecorder<>(historyRepository, snapshotFactory);
+		this.historyRecorder = new TriTemporalHistoryRecorder<>(historyRepository, snapshotFactory, auditActorSupplier);
 	}
 
 	protected AbstractHistorizedPersistenceModelJpaRepositorySupport(
 			final JpaRepository<ConcretePersistenceModel, PersistenceID> jpaRepository,
 			final TriTemporalHistoryJpaRepository<PersistenceID, HistoryModel> historyRepository,
-			final TriTemporalHistorySnapshotFactory<PersistenceID, PersistenceModel, HistoryModel> snapshotFactory)
+			final TriTemporalHistorySnapshotFactory<PersistenceID, PersistenceModel, HistoryModel> snapshotFactory,
+			final AuditActorSupplier auditActorSupplier)
 	{
-		this(jpaRepository, new JpaTriTemporalHistoryRepositoryAdapter<>(historyRepository), snapshotFactory);
+		this(jpaRepository, new JpaTriTemporalHistoryRepositoryAdapter<>(historyRepository), snapshotFactory,
+				auditActorSupplier);
 	}
 }

@@ -1,5 +1,6 @@
 package de.gupta.clean.crud.template.infrastructure.persistence.history.adapter;
 
+import de.gupta.clean.crud.template.infrastructure.persistence.history.model.AuditActor;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.model.TemporalChangeType;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.model.TriTemporalHistoryModel;
 import de.gupta.clean.crud.template.infrastructure.persistence.model.properties.WithID;
@@ -60,6 +61,7 @@ class AbstractPersistenceHistorySnapshotFactoryTest
 	private static final class TestHistoryModel implements TriTemporalHistoryModel<String>
 	{
 		private final String entityID;
+		private AuditActor auditActor;
 		private Instant transactionTime;
 		private Instant validTo;
 
@@ -67,6 +69,18 @@ class AbstractPersistenceHistorySnapshotFactoryTest
 		public String entityID()
 		{
 			return entityID;
+		}
+
+		@Override
+		public AuditActor auditActor()
+		{
+			return auditActor;
+		}
+
+		@Override
+		public void setAuditActor(final AuditActor auditActor)
+		{
+			this.auditActor = auditActor;
 		}
 
 		@Override

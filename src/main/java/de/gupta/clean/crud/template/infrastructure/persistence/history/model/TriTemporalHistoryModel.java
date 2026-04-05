@@ -8,6 +8,10 @@ public interface TriTemporalHistoryModel<EntityID> extends Validatable
 {
 	EntityID entityID();
 
+	AuditActor auditActor();
+
+	void setAuditActor(AuditActor auditActor);
+
 	TemporalChangeType changeType();
 
 	Instant transactionTime();

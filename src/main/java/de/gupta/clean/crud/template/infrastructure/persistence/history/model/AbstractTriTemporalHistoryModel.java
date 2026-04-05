@@ -1,5 +1,6 @@
 package de.gupta.clean.crud.template.infrastructure.persistence.history.model;
 
+import de.gupta.aletheia.functional.Unfolding;
 import jakarta.persistence.*;
 import org.hibernate.annotations.Check;
 
@@ -18,7 +19,21 @@ public abstract class AbstractTriTemporalHistoryModel<EntityID> implements TriTe
 	private EntityID entityID;
 
 	@Column(nullable = false, name = "change_type")
+	@Enumerated(EnumType.STRING)
 	private TemporalChangeType changeType;
+
+	@Embedded
+	@AttributeOverrides({
+			@AttributeOverride(name = "actorId", column = @Column(name = "actor_id")),
+			@AttributeOverride(name = "displayName", column = @Column(name = "actor_display_name")),
+			@AttributeOverride(name = "actorKind", column = @Column(name = "actor_kind")),
+			@AttributeOverride(name = "authenticationKind", column = @Column(name = "authentication_kind")),
+			@AttributeOverride(name = "tokenId", column = @Column(name = "actor_token_id")),
+			@AttributeOverride(name = "sessionId", column = @Column(name = "actor_session_id")),
+			@AttributeOverride(name = "issuer", column = @Column(name = "actor_issuer")),
+			@AttributeOverride(name = "clientId", column = @Column(name = "actor_client_id"))
+	})
+	private PersistedAuditActor persistedAuditActor;
 
 	@Column(nullable = false, updatable = false, name = "transaction_time")
 	private Instant transactionTime;
@@ -37,6 +52,19 @@ public abstract class AbstractTriTemporalHistoryModel<EntityID> implements TriTe
 	public EntityID entityID()
 	{
 		return entityID;
+	}
+
+	@Override
+	public AuditActor auditActor()
+	{
+		return persistedAuditActor;
+	}
+
+	@Override
+	public void setAuditActor(final AuditActor auditActor)
+	{
+		applyAuditActor(auditActor);
+		validate();
 	}
 
 	@Override
@@ -80,6 +108,18 @@ public abstract class AbstractTriTemporalHistoryModel<EntityID> implements TriTe
 	{
 		this.validTo = validTo;
 		validate();
+	}
+
+	@Override
+	public void validate()
+	{
+		Unfolding.beckon(persistedAuditActor)
+		         .unlace(AuditActor::validate);
+	}
+
+	protected void applyAuditActor(final AuditActor auditActor)
+	{
+		this.persistedAuditActor = PersistedAuditActor.from(auditActor);
 	}
 
 	protected void setEntityID(final EntityID entityID)

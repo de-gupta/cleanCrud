@@ -7,6 +7,7 @@ import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persisten
 import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.id.service.DomainIDGenerator;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.model.TemporalChangeType;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.repository.TriTemporalHistoryRepository;
+import de.gupta.clean.crud.template.infrastructure.persistence.history.service.AuditActorSupplier;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -43,24 +44,24 @@ class AbstractDomainPersistenceIDManagementTest
 				mappingRepository, historyRepository);
 
 		TestDomainPersistenceAdapterModel currentMapping = TestDomainPersistenceAdapterModel.builder()
-																							.withDomainID(7L)
-																							.withPersistenceID("p-1")
-																							.build();
+		                                                                                    .withDomainID(7L)
+		                                                                                    .withPersistenceID("p-1")
+		                                                                                    .build();
 		mappingRepository.save(currentMapping);
 		TestDomainPersistenceAdapterHistoryModel currentHistory = TestDomainPersistenceAdapterHistoryModel.builder()
-																										  .withDomainID(
+		                                                                                                  .withDomainID(
 																												  7L)
-																										  .withPersistenceID(
+		                                                                                                  .withPersistenceID(
 																												  "p-1")
-																										  .withChangeType(
+		                                                                                                  .withChangeType(
 																												  TemporalChangeType.CREATED)
-																										  .withDecisionTime(
+		                                                                                                  .withDecisionTime(
 																												  Instant.now())
-																										  .withValidFrom(
+		                                                                                                  .withValidFrom(
 																												  Instant.now())
-																										  .withValidTo(
+		                                                                                                  .withValidTo(
 																												  de.gupta.clean.crud.template.infrastructure.persistence.history.model.TemporalValidity.defaultEndValidity())
-																										  .build();
+		                                                                                                  .build();
 		historyRepository.currentHistoryByEntityID.put(7L, currentHistory);
 
 		management.update(7L, "p-2");
@@ -84,7 +85,7 @@ class AbstractDomainPersistenceIDManagementTest
 					BuilderFactories.of(TestDomainPersistenceAdapterModel::builder),
 					historyRepository,
 					BuilderFactories.of(TestDomainPersistenceAdapterHistoryModel::builder),
-					new FixedDomainIDGenerator());
+					new FixedDomainIDGenerator(), AuditActorSupplier.none());
 		}
 	}
 
@@ -155,7 +156,7 @@ class AbstractDomainPersistenceIDManagementTest
 		public Optional<TestDomainPersistenceAdapterModel> findByPersistenceID(final String persistenceID)
 		{
 			return byDomainID.values().stream().filter(model -> persistenceID.equals(model.persistenceID()))
-							 .findFirst();
+			                 .findFirst();
 		}
 
 		@Override
@@ -197,9 +198,9 @@ class AbstractDomainPersistenceIDManagementTest
 				final Collection<Long> entityIDs)
 		{
 			return entityIDs.stream()
-							.map(currentHistoryByEntityID::get)
-							.filter(Objects::nonNull)
-							.toList();
+			                .map(currentHistoryByEntityID::get)
+			                .filter(Objects::nonNull)
+			                .toList();
 		}
 	}
 

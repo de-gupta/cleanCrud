@@ -1,6 +1,7 @@
 package de.gupta.clean.crud.template.infrastructure.persistence.history.repository;
 
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceStateConflictException;
+import de.gupta.clean.crud.template.infrastructure.persistence.history.model.AuditActor;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.model.TemporalChangeType;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.model.TemporalValidity;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.model.TriTemporalHistoryModel;
@@ -57,23 +58,26 @@ class JpaTriTemporalHistoryRepositoryAdapterTest
 				new Class[]{TriTemporalHistoryJpaRepository.class},
 				(proxy, method, args) ->
 				{
-					if ("findAllByEntityIDInAndValidFromIsBeforeAndValidToIsAfter".equals(method.getName()))
+					switch (method.getName())
 					{
-						Collection<String> entityIDs = (Collection<String>) args[0];
-						return currentHistories.stream().filter(history -> entityIDs.contains(history.entityID()))
-											   .toList();
-					}
-					if ("toString".equals(method.getName()))
-					{
-						return "InMemoryTriTemporalHistoryJpaRepository";
-					}
-					if ("hashCode".equals(method.getName()))
-					{
-						return System.identityHashCode(proxy);
-					}
-					if ("equals".equals(method.getName()))
-					{
-						return proxy == args[0];
+						case "findAllByEntityIDInAndValidFromIsBeforeAndValidToIsAfter" ->
+						{
+							Collection<String> entityIDs = (Collection<String>) args[0];
+							return currentHistories.stream().filter(history -> entityIDs.contains(history.entityID()))
+							                       .toList();
+						}
+						case "toString" ->
+						{
+							return "InMemoryTriTemporalHistoryJpaRepository";
+						}
+						case "hashCode" ->
+						{
+							return System.identityHashCode(proxy);
+						}
+						case "equals" ->
+						{
+							return proxy == args[0];
+						}
 					}
 					throw new UnsupportedOperationException(method.getName());
 				});
@@ -84,6 +88,7 @@ class JpaTriTemporalHistoryRepositoryAdapterTest
 		private final String entityID;
 		private final Instant decisionTime = Instant.now();
 		private final Instant validFrom = Instant.now();
+		private AuditActor auditActor;
 		private Instant transactionTime = Instant.now();
 		private Instant validTo = TemporalValidity.defaultEndValidity();
 
@@ -91,6 +96,18 @@ class JpaTriTemporalHistoryRepositoryAdapterTest
 		public String entityID()
 		{
 			return entityID;
+		}
+
+		@Override
+		public AuditActor auditActor()
+		{
+			return auditActor;
+		}
+
+		@Override
+		public void setAuditActor(final AuditActor auditActor)
+		{
+			this.auditActor = auditActor;
 		}
 
 		@Override

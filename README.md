@@ -1,12 +1,16 @@
 # Clean CRUD Framework
 
-A robust Java library for implementing clean architecture-based CRUD operations with clear separation between API, domain, and infrastructure layers.
+A robust Java library for implementing clean architecture-based CRUD operations with clear separation between API,
+domain, and infrastructure layers.
 
 ## Overview
 
-The Clean CRUD Framework provides a comprehensive template for building CRUD (Create, Read, Update, Delete) endpoints following clean architecture principles. It enforces a clear separation of concerns between different layers of your application, making your code more maintainable, testable, and adaptable to change.
+The Clean CRUD Framework provides a comprehensive template for building CRUD (Create, Read, Update, Delete) endpoints
+following clean architecture principles. It enforces a clear separation of concerns between different layers of your
+application, making your code more maintainable, testable, and adaptable to change.
 
-A key feature of this framework is the hiding of infrastructure IDs from the web layer, ensuring that your domain remains isolated from infrastructure concerns.
+A key feature of this framework is the hiding of infrastructure IDs from the web layer, ensuring that your domain
+remains isolated from infrastructure concerns.
 
 ## Key Features
 
@@ -74,6 +78,7 @@ Communication between layers follows clean architecture principles:
 Add the following dependency to your Maven `pom.xml`:
 
 ```xml
+
 <dependency>
     <groupId>io.github.de-gupta</groupId>
     <artifactId>cleanCrud</artifactId>
@@ -86,27 +91,48 @@ Add the following dependency to your Maven `pom.xml`:
 ### Basic Implementation Steps
 
 1. **Define Domain Models**:
-   - Create domain models that implement `BaseDomainModel`
-   - Define domain-specific validation rules
+    - Create domain models that implement `BaseDomainModel`
+    - Define domain-specific validation rules
 
 2. **Create Persistence Models**:
-   - Implement JPA entities
-   - Create adapters between domain and persistence models
+    - Implement JPA entities
+    - Create adapters between domain and persistence models
 
 3. **Implement ID Adapters**:
-   - Create adapters to convert between domain IDs and persistence IDs
+    - Create adapters to convert between domain IDs and persistence IDs
 
 4. **Define Web Models**:
-   - Create DTOs for web requests and responses
-   - Implement adapters between web and domain models
+    - Create DTOs for web requests and responses
+    - Implement adapters between web and domain models
 
 5. **Configure Controllers**:
-   - Extend the appropriate controller templates for your CRUD operations
+    - Extend the appropriate controller templates for your CRUD operations
 
 ### Historized Persistence
 
 For historized persistence, `cleanCrud` now provides a single high-level repository base so consumers do not need
 separate save/delete/crud repository beans for the same aggregate.
+
+Historized persistence now also supports a nullable `AuditActor` on every history row. `AuditActor` is a framework
+contract, not a persistence type consumers must instantiate. Consumers provide any implementation through an
+`AuditActorSupplier`, and the framework normalizes that into its built-in persisted audit core. If actor capture is
+not desired, pass `AuditActorSupplier.none()`.
+
+Recommended mapping:
+
+- `actorId`: stable subject or user ID
+- `displayName`: human-readable username or email
+- `tokenId`: safe token/session reference such as JWT `jti`
+- `issuer`: token issuer
+- `clientId`: calling client/application ID
+
+Do not persist raw principal objects or raw JWT tokens. The framework is designed for stable, queryable audit
+metadata instead of secret-bearing authentication payloads.
+
+If a consumer needs richer audit storage, the recommended path is to keep the framework's canonical persisted audit
+core and add extra audit columns on the concrete history entity. Concrete history models can override the protected
+audit-application hook from the tri-temporal base class, call `super`, and then copy any extra subtype-specific audit
+data.
 
 Typical consumer shape:
 
@@ -121,6 +147,7 @@ Typical consumer shape:
 Example shape:
 
 ```java
+
 @Repository
 interface TaskHistoryJpaRepository extends TriTemporalHistoryJpaRepository<UUID, TaskPersistenceModelHistory>
 {
@@ -128,21 +155,24 @@ interface TaskHistoryJpaRepository extends TriTemporalHistoryJpaRepository<UUID,
 
 @Component
 final class TaskHistorizedJpaRepository extends AbstractHistorizedPersistenceModelJpaRepository<
-        TaskPersistenceModel, UUID, TaskPersistenceModelImpl, TaskPersistenceModelHistory>
+		TaskPersistenceModel, UUID, TaskPersistenceModelImpl, TaskPersistenceModelHistory>
 {
-    TaskHistorizedJpaRepository(
-            final TaskJpaRepository liveRepository,
-            final TaskHistoryJpaRepository historyRepository,
-            final TaskPersistenceHistorySnapshotFactory snapshotFactory)
-    {
-        super(liveRepository, historyRepository, snapshotFactory);
-    }
+	TaskHistorizedJpaRepository(
+			final TaskJpaRepository liveRepository,
+			final TaskHistoryJpaRepository historyRepository,
+			final TaskPersistenceHistorySnapshotFactory snapshotFactory,
+			final AuditActorSupplier auditActorSupplier)
+	{
+		super(liveRepository, historyRepository, snapshotFactory, auditActorSupplier);
+	}
 }
 ```
 
 For domain-persistence ID mapping history, `AbstractDomainPersistenceIDManagement` now defaults missing current
 mappings on update to an upsert-create flow and records `CREATED` history automatically. Consumers can still override
-that behavior through the protected `handleMissingCurrentMappingOnUpdate(...)` hook when needed.
+that behavior through the protected `handleMissingCurrentMappingOnUpdate(...)` hook when needed. The same
+`AuditActorSupplier` must be provided there as well so mapping-history rows receive the same actor metadata as
+aggregate-history rows.
 
 ### Example Implementation
 

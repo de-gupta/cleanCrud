@@ -6,11 +6,13 @@ import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persisten
 import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.id.model.DomainPersistenceAdapterModel;
 import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.id.repository.DomainPersistenceAdapterRepository;
 import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.id.service.DomainIDGenerator;
+import de.gupta.clean.crud.template.infrastructure.persistence.history.model.AuditActor;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.model.TemporalChangeType;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.model.TemporalValidity;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.repository.JpaTriTemporalHistoryRepositoryAdapter;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.repository.TriTemporalHistoryJpaRepository;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.repository.TriTemporalHistoryRepository;
+import de.gupta.clean.crud.template.infrastructure.persistence.history.service.AuditActorSupplier;
 
 import java.time.Instant;
 import java.util.*;
@@ -30,6 +32,7 @@ public abstract class AbstractDomainPersistenceIDManagement<DomainID, Persistenc
 			? extends DomainPersistenceAdapterHistoryModel.Builder<DomainID, PersistenceID, H>>
 			historyModelBuilderFactory;
 	private final DomainIDGenerator<DomainID> domainIDGenerator;
+	private final AuditActorSupplier auditActorSupplier;
 
 	@Override
 	public DomainID add(final PersistenceID persistenceID)
@@ -39,7 +42,7 @@ public abstract class AbstractDomainPersistenceIDManagement<DomainID, Persistenc
 		{
 			domainID = domainIDGenerator.generate(domainID);
 		}
-		associate(domainID, persistenceID);
+		associate(domainID, persistenceID, auditActorSupplier.get());
 		return domainID;
 	}
 
@@ -53,7 +56,7 @@ public abstract class AbstractDomainPersistenceIDManagement<DomainID, Persistenc
 
 		Map<PersistenceID, DomainID> idMap = generateInitialDomainIDs(persistenceIDs);
 		resolveDomainIDConflicts(idMap);
-		saveModels(persistenceIDs, idMap);
+		saveModels(persistenceIDs, idMap, auditActorSupplier.get());
 		return idMap;
 	}
 
@@ -61,26 +64,28 @@ public abstract class AbstractDomainPersistenceIDManagement<DomainID, Persistenc
 	public void update(final DomainID domainID, final PersistenceID persistenceID)
 	{
 		Instant decisionTime = Instant.now();
+		AuditActor auditActor = auditActorSupplier.get();
 		repository.findByDomainID(domainID).ifPresentOrElse(currentMapping ->
 		{
 			closeCurrentHistory(domainID, decisionTime);
 			currentMapping.setPersistenceID(persistenceID);
 			repository.save(currentMapping);
 			recordHistory(domainID, persistenceID, TemporalChangeType.UPDATED, decisionTime,
-					TemporalValidity.defaultEndValidity());
-		}, () -> handleMissingCurrentMappingOnUpdate(domainID, persistenceID, decisionTime));
+					TemporalValidity.defaultEndValidity(), auditActor);
+		}, () -> handleMissingCurrentMappingOnUpdate(domainID, persistenceID, decisionTime, auditActor));
 	}
 
 	@Override
 	public void delete(final DomainID domainID)
 	{
 		Instant decisionTime = Instant.now();
+		AuditActor auditActor = auditActorSupplier.get();
 		T currentMapping = repository.findByDomainID(domainID)
-									 .orElseThrow(() -> UnexpectedResourceException.withMessage(
+		                             .orElseThrow(() -> UnexpectedResourceException.withMessage(
 											 "Missing current mapping for domain ID: " + domainID));
 		closeCurrentHistory(domainID, decisionTime);
 		recordHistory(domainID, currentMapping.persistenceID(), TemporalChangeType.DELETED, decisionTime,
-				decisionTime);
+				decisionTime, auditActor);
 		repository.delete(currentMapping);
 	}
 
@@ -93,9 +98,10 @@ public abstract class AbstractDomainPersistenceIDManagement<DomainID, Persistenc
 		}
 
 		Instant decisionTime = Instant.now();
+		AuditActor auditActor = auditActorSupplier.get();
 		Map<DomainID, T> mappingsByDomainID = repository.findByDomainIDs(domainIDs)
-														.stream()
-														.collect(java.util.stream.Collectors.toMap(
+		                                                .stream()
+		                                                .collect(java.util.stream.Collectors.toMap(
 																DomainPersistenceAdapterModel::domainID,
 																java.util.function.Function.identity()));
 		for (DomainID domainID : domainIDs)
@@ -112,37 +118,35 @@ public abstract class AbstractDomainPersistenceIDManagement<DomainID, Persistenc
 		}
 
 		historyRepository.saveAll(domainIDs.stream()
-										   .map(mappingsByDomainID::get)
-										   .map(mapping -> historyModelBuilderFactory.builder()
-																					 .withDomainID(mapping.domainID())
-																					 .withPersistenceID(
-																							 mapping.persistenceID())
-																					 .withChangeType(
-																							 TemporalChangeType.DELETED)
-																					 .withDecisionTime(decisionTime)
-																					 .withValidFrom(decisionTime)
-																					 .withValidTo(decisionTime)
-																					 .build())
-										   .toList());
+		                                   .map(mappingsByDomainID::get)
+		                                   .map(mapping -> buildHistory(
+												   mapping.domainID(),
+												   mapping.persistenceID(),
+												   TemporalChangeType.DELETED,
+												   decisionTime,
+												   decisionTime,
+												   auditActor))
+		                                   .toList());
 		repository.deleteAll(new ArrayList<>(mappingsByDomainID.values()));
 	}
 
 	protected void handleMissingCurrentMappingOnUpdate(
 			final DomainID domainID,
 			final PersistenceID persistenceID,
-			final Instant decisionTime)
+			final Instant decisionTime,
+			final AuditActor auditActor)
 	{
 		repository.save(modelBuilderFactory.builder().withDomainID(domainID).withPersistenceID(persistenceID).build());
 		recordHistory(domainID, persistenceID, TemporalChangeType.CREATED, decisionTime,
-				TemporalValidity.defaultEndValidity());
+				TemporalValidity.defaultEndValidity(), auditActor);
 	}
 
-	private void associate(final DomainID domainID, final PersistenceID persistenceID)
+	private void associate(final DomainID domainID, final PersistenceID persistenceID, final AuditActor auditActor)
 	{
 		Instant decisionTime = Instant.now();
 		repository.save(modelBuilderFactory.builder().withDomainID(domainID).withPersistenceID(persistenceID).build());
 		recordHistory(domainID, persistenceID, TemporalChangeType.CREATED, decisionTime,
-				TemporalValidity.defaultEndValidity());
+				TemporalValidity.defaultEndValidity(), auditActor);
 	}
 
 	private Map<PersistenceID, DomainID> generateInitialDomainIDs(final Collection<PersistenceID> persistenceIDs)
@@ -177,8 +181,8 @@ public abstract class AbstractDomainPersistenceIDManagement<DomainID, Persistenc
 	}
 
 	private void processExistingDomainIDs(final Map<PersistenceID, DomainID> idMap,
-										  final Collection<DomainID> existingDomainIDs,
-										  final Set<DomainID> allGeneratedDomainIDs)
+	                                      final Collection<DomainID> existingDomainIDs,
+	                                      final Set<DomainID> allGeneratedDomainIDs)
 	{
 		// Map to track which entries need new domain IDs
 		Map<PersistenceID, DomainID> entriesToUpdate = new HashMap<>();
@@ -226,10 +230,10 @@ public abstract class AbstractDomainPersistenceIDManagement<DomainID, Persistenc
 		{
 			// Get the remaining persistence IDs that need new domain IDs
 			Set<PersistenceID> remainingPersistenceIDs = entriesToUpdate.entrySet().stream()
-																		.filter(entry -> existingNewDomainIDs.contains(
+			                                                            .filter(entry -> existingNewDomainIDs.contains(
 																				entry.getValue()))
-																		.map(Map.Entry::getKey)
-																		.collect(
+			                                                            .map(Map.Entry::getKey)
+			                                                            .collect(
 																				java.util.stream.Collectors.toSet());
 
 			if (!remainingPersistenceIDs.isEmpty())
@@ -266,38 +270,38 @@ public abstract class AbstractDomainPersistenceIDManagement<DomainID, Persistenc
 		}
 	}
 
-	private void saveModels(final Collection<PersistenceID> persistenceIDs, final Map<PersistenceID, DomainID> idMap)
+	private void saveModels(
+			final Collection<PersistenceID> persistenceIDs,
+			final Map<PersistenceID, DomainID> idMap,
+			final AuditActor auditActor)
 	{
 		Instant decisionTime = Instant.now();
 		var models =
 				persistenceIDs.stream()
-							  .map(persistenceID ->
+				              .map(persistenceID ->
 							  {
 								  DomainID domainID = idMap.get(persistenceID);
 								  return modelBuilderFactory.builder()
-															.withDomainID(domainID)
-															.withPersistenceID(persistenceID)
-															.build();
+					                                        .withDomainID(domainID)
+					                                        .withPersistenceID(persistenceID)
+					                                        .build();
 							  })
-							  .toList();
+				              .toList();
 
 		repository.saveAll(models);
 		historyRepository.saveAll(persistenceIDs.stream()
-												.map(persistenceID ->
+		                                        .map(persistenceID ->
 												{
 													DomainID domainID = idMap.get(persistenceID);
-													return historyModelBuilderFactory.builder()
-																					 .withDomainID(domainID)
-																					 .withPersistenceID(persistenceID)
-																					 .withChangeType(
-																							 TemporalChangeType.CREATED)
-																					 .withDecisionTime(decisionTime)
-																					 .withValidFrom(decisionTime)
-																					 .withValidTo(
-																							 TemporalValidity.defaultEndValidity())
-																					 .build();
+													return buildHistory(
+															domainID,
+															persistenceID,
+															TemporalChangeType.CREATED,
+															decisionTime,
+															TemporalValidity.defaultEndValidity(),
+															auditActor);
 												})
-												.toList());
+		                                        .toList());
 	}
 
 	private void closeCurrentHistory(final DomainID domainID, final Instant validTo)
@@ -314,16 +318,30 @@ public abstract class AbstractDomainPersistenceIDManagement<DomainID, Persistenc
 			final PersistenceID persistenceID,
 			final TemporalChangeType changeType,
 			final Instant decisionTime,
-			final Instant validTo)
+			final Instant validTo,
+			final AuditActor auditActor)
 	{
-		historyRepository.save(historyModelBuilderFactory.builder()
-														 .withDomainID(domainID)
-														 .withPersistenceID(persistenceID)
-														 .withChangeType(changeType)
-														 .withDecisionTime(decisionTime)
-														 .withValidFrom(decisionTime)
-														 .withValidTo(validTo)
-														 .build());
+		historyRepository.save(buildHistory(domainID, persistenceID, changeType, decisionTime, validTo, auditActor));
+	}
+
+	private H buildHistory(
+			final DomainID domainID,
+			final PersistenceID persistenceID,
+			final TemporalChangeType changeType,
+			final Instant decisionTime,
+			final Instant validTo,
+			final AuditActor auditActor)
+	{
+		H historyModel = historyModelBuilderFactory.builder()
+		                                           .withDomainID(domainID)
+		                                           .withPersistenceID(persistenceID)
+		                                           .withChangeType(changeType)
+		                                           .withDecisionTime(decisionTime)
+		                                           .withValidFrom(decisionTime)
+		                                           .withValidTo(validTo)
+		                                           .build();
+		historyModel.setAuditActor(auditActor);
+		return historyModel;
 	}
 
 	protected AbstractDomainPersistenceIDManagement(
@@ -333,13 +351,15 @@ public abstract class AbstractDomainPersistenceIDManagement<DomainID, Persistenc
 			final TriTemporalHistoryRepository<DomainID, H> historyRepository,
 			final ModelBuilderFactory<DomainPersistenceAdapterHistoryModel<DomainID, PersistenceID>,
 					? extends DomainPersistenceAdapterHistoryModel.Builder<DomainID, PersistenceID, H>> historyModelBuilderFactory,
-			final DomainIDGenerator<DomainID> domainIDGenerator)
+			final DomainIDGenerator<DomainID> domainIDGenerator,
+			final AuditActorSupplier auditActorSupplier)
 	{
 		this.repository = repository;
 		this.modelBuilderFactory = modelBuilderFactory;
 		this.historyRepository = historyRepository;
 		this.historyModelBuilderFactory = historyModelBuilderFactory;
 		this.domainIDGenerator = domainIDGenerator;
+		this.auditActorSupplier = auditActorSupplier;
 	}
 
 	protected AbstractDomainPersistenceIDManagement(
@@ -349,9 +369,10 @@ public abstract class AbstractDomainPersistenceIDManagement<DomainID, Persistenc
 			final TriTemporalHistoryJpaRepository<DomainID, H> historyRepository,
 			final ModelBuilderFactory<DomainPersistenceAdapterHistoryModel<DomainID, PersistenceID>,
 					? extends DomainPersistenceAdapterHistoryModel.Builder<DomainID, PersistenceID, H>> historyModelBuilderFactory,
-			final DomainIDGenerator<DomainID> domainIDGenerator)
+			final DomainIDGenerator<DomainID> domainIDGenerator,
+			final AuditActorSupplier auditActorSupplier)
 	{
 		this(repository, modelBuilderFactory, new JpaTriTemporalHistoryRepositoryAdapter<>(historyRepository),
-				historyModelBuilderFactory, domainIDGenerator);
+				historyModelBuilderFactory, domainIDGenerator, auditActorSupplier);
 	}
 }
