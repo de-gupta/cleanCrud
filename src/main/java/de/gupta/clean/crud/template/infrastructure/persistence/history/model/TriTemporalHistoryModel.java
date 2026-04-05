@@ -1,6 +1,7 @@
 package de.gupta.clean.crud.template.infrastructure.persistence.history.model;
 
 import de.gupta.clean.crud.template.domain.model.validation.Validatable;
+import de.gupta.clean.crud.template.infrastructure.persistence.history.audit.AuditActor;
 
 import java.time.Instant;
 

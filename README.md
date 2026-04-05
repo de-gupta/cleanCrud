@@ -116,7 +116,8 @@ separate save/delete/crud repository beans for the same aggregate.
 Historized persistence now also supports a nullable `AuditActor` on every history row. `AuditActor` is a framework
 contract, not a persistence type consumers must instantiate. Consumers provide any implementation through an
 `AuditActorSupplier`, and the framework normalizes that into its built-in persisted audit core. If actor capture is
-not desired, pass `AuditActorSupplier.none()`.
+not desired, pass `AuditActorSupplier.none()`. For convenience, the framework also provides `SampleAuditActor` with a
+nested builder for common cases.
 
 Recommended mapping:
 
@@ -128,6 +129,9 @@ Recommended mapping:
 
 Do not persist raw principal objects or raw JWT tokens. The framework is designed for stable, queryable audit
 metadata instead of secret-bearing authentication payloads.
+
+Only `actorId` is required. All other audit fields are optional and exposed as `Optional` values on the `AuditActor`
+contract.
 
 If a consumer needs richer audit storage, the recommended path is to keep the framework's canonical persisted audit
 core and add extra audit columns on the concrete history entity. Concrete history models can override the protected

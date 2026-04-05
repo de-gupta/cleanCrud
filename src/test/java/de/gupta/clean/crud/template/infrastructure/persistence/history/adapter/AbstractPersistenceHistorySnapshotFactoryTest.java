@@ -1,6 +1,6 @@
 package de.gupta.clean.crud.template.infrastructure.persistence.history.adapter;
 
-import de.gupta.clean.crud.template.infrastructure.persistence.history.model.AuditActor;
+import de.gupta.clean.crud.template.infrastructure.persistence.history.audit.AuditActor;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.model.TemporalChangeType;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.model.TriTemporalHistoryModel;
 import de.gupta.clean.crud.template.infrastructure.persistence.model.properties.WithID;

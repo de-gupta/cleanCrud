@@ -99,4 +99,5 @@ module de.gupta.clean.crud
 	exports de.gupta.clean.crud.template.useCases.query.suppliedProperty.collection.facade;
 	exports de.gupta.clean.crud.template.useCases.query.suppliedProperty.unique.api.web;
 	exports de.gupta.clean.crud.template.useCases.query.suppliedProperty.unique.facade;
+	exports de.gupta.clean.crud.template.infrastructure.persistence.history.audit;
 }

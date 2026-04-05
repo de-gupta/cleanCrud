@@ -1,6 +1,8 @@
 package de.gupta.clean.crud.template.infrastructure.persistence.history.model;
 
 import de.gupta.aletheia.functional.Unfolding;
+import de.gupta.clean.crud.template.infrastructure.persistence.history.audit.AuditActor;
+import de.gupta.clean.crud.template.infrastructure.persistence.history.audit.implementation.PersistenceAuditActor;
 import jakarta.persistence.*;
 import org.hibernate.annotations.Check;
 
@@ -33,7 +35,7 @@ public abstract class AbstractTriTemporalHistoryModel<EntityID> implements TriTe
 			@AttributeOverride(name = "issuer", column = @Column(name = "actor_issuer")),
 			@AttributeOverride(name = "clientId", column = @Column(name = "actor_client_id"))
 	})
-	private PersistedAuditActor persistedAuditActor;
+	private PersistenceAuditActor persistenceAuditActor;
 
 	@Column(nullable = false, updatable = false, name = "transaction_time")
 	private Instant transactionTime;
@@ -57,7 +59,7 @@ public abstract class AbstractTriTemporalHistoryModel<EntityID> implements TriTe
 	@Override
 	public AuditActor auditActor()
 	{
-		return persistedAuditActor;
+		return persistenceAuditActor;
 	}
 
 	@Override
@@ -113,13 +115,13 @@ public abstract class AbstractTriTemporalHistoryModel<EntityID> implements TriTe
 	@Override
 	public void validate()
 	{
-		Unfolding.beckon(persistedAuditActor)
+		Unfolding.beckon(persistenceAuditActor)
 		         .unlace(AuditActor::validate);
 	}
 
 	protected void applyAuditActor(final AuditActor auditActor)
 	{
-		this.persistedAuditActor = PersistedAuditActor.from(auditActor);
+		this.persistenceAuditActor = PersistenceAuditActor.from(auditActor);
 	}
 
 	protected void setEntityID(final EntityID entityID)

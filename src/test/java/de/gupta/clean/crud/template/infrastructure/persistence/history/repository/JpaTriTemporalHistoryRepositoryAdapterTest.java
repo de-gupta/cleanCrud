@@ -1,7 +1,7 @@
 package de.gupta.clean.crud.template.infrastructure.persistence.history.repository;
 
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceStateConflictException;
-import de.gupta.clean.crud.template.infrastructure.persistence.history.model.AuditActor;
+import de.gupta.clean.crud.template.infrastructure.persistence.history.audit.AuditActor;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.model.TemporalChangeType;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.model.TemporalValidity;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.model.TriTemporalHistoryModel;

@@ -1,6 +1,6 @@
 package de.gupta.clean.crud.template.infrastructure.persistence.history.service;
 
-import de.gupta.clean.crud.template.infrastructure.persistence.history.model.AuditActor;
+import de.gupta.clean.crud.template.infrastructure.persistence.history.audit.AuditActor;
 
 @FunctionalInterface
 public interface AuditActorSupplier

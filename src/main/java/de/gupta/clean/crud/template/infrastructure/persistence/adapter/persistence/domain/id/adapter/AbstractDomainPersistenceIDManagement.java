@@ -6,11 +6,9 @@ import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persisten
 import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.id.model.DomainPersistenceAdapterModel;
 import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.id.repository.DomainPersistenceAdapterRepository;
 import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.id.service.DomainIDGenerator;
-import de.gupta.clean.crud.template.infrastructure.persistence.history.model.AuditActor;
+import de.gupta.clean.crud.template.infrastructure.persistence.history.audit.AuditActor;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.model.TemporalChangeType;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.model.TemporalValidity;
-import de.gupta.clean.crud.template.infrastructure.persistence.history.repository.JpaTriTemporalHistoryRepositoryAdapter;
-import de.gupta.clean.crud.template.infrastructure.persistence.history.repository.TriTemporalHistoryJpaRepository;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.repository.TriTemporalHistoryRepository;
 import de.gupta.clean.crud.template.infrastructure.persistence.history.service.AuditActorSupplier;
 
@@ -360,19 +358,5 @@ public abstract class AbstractDomainPersistenceIDManagement<DomainID, Persistenc
 		this.historyModelBuilderFactory = historyModelBuilderFactory;
 		this.domainIDGenerator = domainIDGenerator;
 		this.auditActorSupplier = auditActorSupplier;
-	}
-
-	protected AbstractDomainPersistenceIDManagement(
-			final DomainPersistenceAdapterRepository<DomainID, PersistenceID, T> repository,
-			final ModelBuilderFactory<DomainPersistenceAdapterModel<DomainID, PersistenceID>,
-					? extends DomainPersistenceAdapterModel.Builder<DomainID, PersistenceID, T>> modelBuilderFactory,
-			final TriTemporalHistoryJpaRepository<DomainID, H> historyRepository,
-			final ModelBuilderFactory<DomainPersistenceAdapterHistoryModel<DomainID, PersistenceID>,
-					? extends DomainPersistenceAdapterHistoryModel.Builder<DomainID, PersistenceID, H>> historyModelBuilderFactory,
-			final DomainIDGenerator<DomainID> domainIDGenerator,
-			final AuditActorSupplier auditActorSupplier)
-	{
-		this(repository, modelBuilderFactory, new JpaTriTemporalHistoryRepositoryAdapter<>(historyRepository),
-				historyModelBuilderFactory, domainIDGenerator, auditActorSupplier);
 	}
 }
