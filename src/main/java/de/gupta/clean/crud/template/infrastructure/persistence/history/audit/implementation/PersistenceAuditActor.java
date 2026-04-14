@@ -45,7 +45,7 @@ public class PersistenceAuditActor implements AuditActor
 											a.issuer().orElse(null),
 											a.clientId().orElse(null));
 								})
-		                .rescue(() -> null);
+		                .infuse(() -> null);
 	}
 
 	static PersistenceAuditActor of(final String actorId, final String displayName, final AuditActorKind actorKind,

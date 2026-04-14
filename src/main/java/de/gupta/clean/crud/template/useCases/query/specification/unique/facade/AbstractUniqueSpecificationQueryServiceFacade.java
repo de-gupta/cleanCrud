@@ -18,16 +18,16 @@ public abstract class AbstractUniqueSpecificationQueryServiceFacade<DomainID, AP
 
 	@Override
 	public Optional<APIModelResponse> queryUniqueBy(final FilterSpecification filterSpecification,
-													final NotFoundStrategy notFoundStrategy)
+	                                                final NotFoundStrategy notFoundStrategy)
 	{
 		return Unfolding.beckon(service.queryBy(filterSpecification))
-						.discern(c -> c.size() <= 1,
+		                .discern(c -> c.size() <= 1,
 								NonUniqueResourceException.forMessage(
 										"Expected unique result, but found multiple results"))
-						.discern(c -> !c.isEmpty() || notFoundStrategy == NotFoundStrategy.RETURN_NULL,
+		                .discern(c -> !c.isEmpty() || notFoundStrategy == NotFoundStrategy.RETURN_NULL,
 								ResourceNotFoundException.forMessage("Expected unique result, but found none"))
-						.metamorphose(c -> c.stream().map(responseMapper::mapToAPIModelResponse).findFirst())
-						.rescue(Optional.empty());
+		                .metamorphose(c -> c.stream().map(responseMapper::mapToAPIModelResponse).findFirst())
+		                .infuse(Optional.empty());
 	}
 
 	protected AbstractUniqueSpecificationQueryServiceFacade(
