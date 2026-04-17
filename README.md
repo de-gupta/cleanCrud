@@ -23,6 +23,15 @@ remains isolated from infrastructure concerns.
 - **Validation**: Comprehensive validation at all layers
 - **Error Handling**: Consistent error handling across the application
 
+## Aggregate Relationships
+
+Single-aggregate CRUD remains the default `cleanCrud` usage model.
+
+The library now also includes Phase 1 foundation types for aggregate relationships using the term `Satellite` for
+related aggregates that may later participate in a master's lifecycle. This phase introduces only the public contracts
+and terminology needed for future work. It does not yet add runtime orchestration, relationship execution, or
+satellite-aware CRUD behavior.
+
 ## Architecture
 
 The framework is built on clean architecture principles with three main layers:
