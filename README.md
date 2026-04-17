@@ -32,6 +32,10 @@ related aggregates that may later participate in a master's lifecycle. This phas
 and terminology needed for future work. It does not yet add runtime orchestration, relationship execution, or
 satellite-aware CRUD behavior.
 
+Phase 2 connects those aggregate definitions to the runtime for the zero-relationship case. Single-aggregate CRUD is
+now engine-backed, while declared satellite relationships remain unsupported at runtime until a later phase introduces
+satellite lifecycle orchestration.
+
 ## Architecture
 
 The framework is built on clean architecture principles with three main layers:

@@ -6,6 +6,7 @@ import de.gupta.clean.crud.template.domain.mapping.update.DomainModelPatcher;
 import de.gupta.clean.crud.template.domain.service.crud.policy.DeletionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.InsertionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.PatchPolicy;
+import de.gupta.clean.crud.template.domain.service.equality.DuplicateDefinition;
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateFetchPort;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateMutationPort;
@@ -32,6 +33,8 @@ public interface AggregateCrudDefinition<MasterDomainId, MasterDomainModel, Mast
 	DeletionPolicy<MasterDomainModel> deletionPolicy();
 
 	DomainSecurityPolicy<MasterDomainModel> securityPolicy();
+
+	DuplicateDefinition<MasterDomainModel> duplicateDefinition();
 
 	Collection<AggregateRelationshipDefinitionContract<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch>> relationshipDefinitions();
 }

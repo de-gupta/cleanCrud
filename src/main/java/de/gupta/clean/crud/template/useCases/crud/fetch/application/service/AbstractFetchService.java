@@ -1,8 +1,8 @@
 package de.gupta.clean.crud.template.useCases.crud.fetch.application.service;
 
-import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
-import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateLifecycleEngine;
 import de.gupta.clean.crud.template.useCases.crud.common.utility.PageUtility;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -10,53 +10,48 @@ import org.springframework.data.domain.Slice;
 import java.util.Collection;
 import java.util.Set;
 
-public abstract class AbstractFetchService<DomainID, DomainModel>
-		implements FetchService<DomainModel, DomainID>
+public abstract class AbstractFetchService<
+		MasterDomainId,
+		MasterDomainModel,
+		MasterDomainModelCreate,
+		MasterDomainModelUpdatePatch,
+		MasterDomainModelResponse>
+		implements FetchService<MasterDomainModel, MasterDomainId>
 {
-	private final FetchPersistenceService<DomainID, DomainModel> persistenceService;
-	private final DomainSecurityPolicy<DomainModel> domainSecurityPolicy;
+	private final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+			MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition;
+	private final AggregateLifecycleEngine engine;
 
 	@Override
-	public Collection<IdentifiedModel<DomainID, DomainModel>> findAll()
+	public Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> findAll()
 	{
-		return persistenceService.findAll()
-								 .stream()
-								 .filter(this::isVisible)
-								 .toList();
+		return engine.findAll(definition);
 	}
 
 	@Override
-	public Slice<IdentifiedModel<DomainID, DomainModel>> findAll(final Pageable pageable)
+	public Slice<IdentifiedModel<MasterDomainId, MasterDomainModel>> findAll(final Pageable pageable)
 	{
-		return PageUtility.filterSlice(persistenceService.findAll(pageable), this::isVisible);
+		return PageUtility.mapSlice(engine.findAll(definition, pageable), identifiedModel -> identifiedModel);
 	}
 
 	@Override
-	public IdentifiedModel<DomainID, DomainModel> findById(final DomainID domainID)
+	public IdentifiedModel<MasterDomainId, MasterDomainModel> findById(final MasterDomainId domainID)
 	{
-		return persistenceService.findById(domainID)
-								 .filter(this::isVisible)
-								 .orElseThrow(() -> ResourceNotFoundException.withId(domainID));
+		return engine.findById(definition, domainID);
 	}
 
 	@Override
-	public Collection<IdentifiedModel<DomainID, DomainModel>> findByIds(final Set<DomainID> IDs)
+	public Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> findByIds(final Set<MasterDomainId> IDs)
 	{
-		return persistenceService.findByIds(IDs).stream()
-								 .filter(this::isVisible)
-								 .toList();
-	}
-
-	private boolean isVisible(IdentifiedModel<DomainID, DomainModel> identifiedModel)
-	{
-		return domainSecurityPolicy.isAccessAllowed(identifiedModel.model());
+		return engine.findByIds(definition, IDs);
 	}
 
 	protected AbstractFetchService(
-			final FetchPersistenceService<DomainID, DomainModel> persistenceService,
-			final DomainSecurityPolicy<DomainModel> domainSecurityPolicy)
+			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+			final AggregateLifecycleEngine engine)
 	{
-		this.persistenceService = persistenceService;
-		this.domainSecurityPolicy = domainSecurityPolicy;
+		this.definition = definition;
+		this.engine = engine;
 	}
 }

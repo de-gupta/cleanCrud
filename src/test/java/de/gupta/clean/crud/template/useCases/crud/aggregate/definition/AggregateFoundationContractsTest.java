@@ -7,6 +7,7 @@ import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.service.crud.policy.DeletionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.InsertionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.PatchPolicy;
+import de.gupta.clean.crud.template.domain.service.equality.DuplicateDefinition;
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteCreateIntent;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMutationIntent;
@@ -55,6 +56,7 @@ class AggregateFoundationContractsTest
 		{
 		};
 		DomainSecurityPolicy<String> securityPolicy = DomainSecurityPolicy.allowing();
+		DuplicateDefinition<String> duplicateDefinition = String::equals;
 		AggregateRelationshipDefinition<String, String, String, String, Long, Long, Long, Long> relationshipDefinition =
 				new TestAggregateRelationshipDefinition();
 
@@ -116,6 +118,12 @@ class AggregateFoundationContractsTest
 					}
 
 					@Override
+					public DuplicateDefinition<String> duplicateDefinition()
+					{
+						return duplicateDefinition;
+					}
+
+					@Override
 					public Collection<AggregateRelationshipDefinitionContract<String, String, String, String>>
 					relationshipDefinitions()
 					{
@@ -132,6 +140,7 @@ class AggregateFoundationContractsTest
 		assertSame(patchPolicy, definition.patchPolicy());
 		assertSame(deletionPolicy, definition.deletionPolicy());
 		assertSame(securityPolicy, definition.securityPolicy());
+		assertSame(duplicateDefinition, definition.duplicateDefinition());
 		assertEquals(List.of(relationshipDefinition), definition.relationshipDefinitions());
 	}
 
