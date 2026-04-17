@@ -2,9 +2,6 @@ package de.gupta.clean.crud.template.useCases.crud.aggregate.builder;
 
 import de.gupta.clean.crud.template.useCases.crud.aggregate.lifecycle.LifecycleSemantics;
 
-/**
- * Fluent builder for {@link LifecycleSemantics}.
- */
 public final class LifecycleSemanticsBuilder
 {
 	private boolean cascadeCreate;

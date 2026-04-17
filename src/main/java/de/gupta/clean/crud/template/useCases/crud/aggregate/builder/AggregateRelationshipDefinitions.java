@@ -11,9 +11,6 @@ import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.*;
 import java.util.Collection;
 import java.util.Objects;
 
-/**
- * Entry point for fluent {@link AggregateRelationshipDefinition} construction.
- */
 public final class AggregateRelationshipDefinitions
 {
 	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
@@ -23,6 +20,11 @@ public final class AggregateRelationshipDefinitions
 			SatelliteDomainModelUpdatePatch> aggregateRelationshipDefinition()
 	{
 		return new AggregateRelationshipDefinitionBuilder<>();
+	}
+
+	private static <Value> Value required(final Value value, final String name)
+	{
+		return Objects.requireNonNull(value, name);
 	}
 
 	private AggregateRelationshipDefinitions()
@@ -177,109 +179,68 @@ public final class AggregateRelationshipDefinitions
 				MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
 				SatelliteDomainModelUpdatePatch> build()
 		{
-			var requiredName = Objects.requireNonNull(name, "name");
-			var requiredCardinality = Objects.requireNonNull(cardinality, "cardinality");
-			var requiredLifecycleSemantics = Objects.requireNonNull(lifecycleSemantics, "lifecycleSemantics");
-			var requiredSatelliteDefinition = Objects.requireNonNull(satelliteDefinition, "satelliteDefinition");
+			var requiredSatelliteDefinition = required(satelliteDefinition, "satelliteDefinition");
 			var effectiveSatelliteMutationPort =
 					satelliteMutationPort == null ? requiredSatelliteDefinition.mutationPort() : satelliteMutationPort;
 			var effectiveSatelliteFetchPort =
 					satelliteFetchPort == null ? requiredSatelliteDefinition.fetchPort() : satelliteFetchPort;
-			var requiredCreateInputResolver = Objects.requireNonNull(createInputResolver, "createInputResolver");
-			var requiredPatchInputResolver = Objects.requireNonNull(patchInputResolver, "patchInputResolver");
-			var requiredIdentityResolver = Objects.requireNonNull(identityResolver, "identityResolver");
-			var requiredReconciliationStrategy =
-					Objects.requireNonNull(reconciliationStrategy, "reconciliationStrategy");
-			var requiredLinkStrategy = Objects.requireNonNull(linkStrategy, "linkStrategy");
-			var requiredHydrationStrategy = Objects.requireNonNull(hydrationStrategy, "hydrationStrategy");
-
-			return new AggregateRelationshipDefinition<>()
-			{
-				@Override
-				public String name()
-				{
-					return requiredName;
-				}
-
-				@Override
-				public Cardinality cardinality()
-				{
-					return requiredCardinality;
-				}
-
-				@Override
-				public LifecycleSemantics lifecycleSemantics()
-				{
-					return requiredLifecycleSemantics;
-				}
-
-				@Override
-				public ReconciliationStrategy reconciliationStrategy()
-				{
-					return requiredReconciliationStrategy;
-				}
-
-				@Override
-				public AggregateCrudDefinition<SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
-						SatelliteDomainModelUpdatePatch, ?> satelliteDefinition()
-				{
-					return requiredSatelliteDefinition;
-				}
-
-				@Override
-				public AggregateMutationPort<SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
-						SatelliteDomainModelUpdatePatch> satelliteMutationPort()
-				{
-					return effectiveSatelliteMutationPort;
-				}
-
-				@Override
-				public AggregateFetchPort<SatelliteDomainId, SatelliteDomainModel> satelliteFetchPort()
-				{
-					return effectiveSatelliteFetchPort;
-				}
-
-				@Override
-				public SatelliteCreateInputResolver<MasterDomainModelCreate,
-						Collection<SatelliteCreateIntent<SatelliteDomainId, SatelliteDomainModelCreate>>>
-				createInputResolver()
-				{
-					return requiredCreateInputResolver;
-				}
-
-				@Override
-				public SatellitePatchInputResolver<MasterDomainModelUpdatePatch,
-						Collection<SatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
-								SatelliteDomainModelUpdatePatch>>> patchInputResolver()
-				{
-					return requiredPatchInputResolver;
-				}
-
-				@Override
-				public SatelliteIdentityResolver<MasterDomainModel, SatelliteDomainModel, SatelliteDomainId>
-				identityResolver()
-				{
-					return requiredIdentityResolver;
-				}
-
-				@Override
-				public SatelliteLinkStrategy<MasterDomainId, MasterDomainModel, SatelliteDomainId, SatelliteDomainModel>
-				linkStrategy()
-				{
-					return requiredLinkStrategy;
-				}
-
-				@Override
-				public SatelliteHydrationStrategy<MasterDomainId, MasterDomainModel, SatelliteDomainId,
-						SatelliteDomainModel> hydrationStrategy()
-				{
-					return requiredHydrationStrategy;
-				}
-			};
+			return new BuiltAggregateRelationshipDefinition<>(
+					required(name, "name"),
+					required(cardinality, "cardinality"),
+					required(lifecycleSemantics, "lifecycleSemantics"),
+					requiredSatelliteDefinition,
+					effectiveSatelliteMutationPort,
+					effectiveSatelliteFetchPort,
+					required(createInputResolver, "createInputResolver"),
+					required(patchInputResolver, "patchInputResolver"),
+					required(identityResolver, "identityResolver"),
+					required(reconciliationStrategy, "reconciliationStrategy"),
+					required(linkStrategy, "linkStrategy"),
+					required(hydrationStrategy, "hydrationStrategy"));
 		}
 
 		private AggregateRelationshipDefinitionBuilder()
 		{
 		}
+	}
+
+	private record BuiltAggregateRelationshipDefinition<
+			MasterDomainId,
+			MasterDomainModel,
+			MasterDomainModelCreate,
+			MasterDomainModelUpdatePatch,
+			SatelliteDomainId,
+			SatelliteDomainModel,
+			SatelliteDomainModelCreate,
+			SatelliteDomainModelUpdatePatch>(
+			String name,
+			Cardinality cardinality,
+			LifecycleSemantics lifecycleSemantics,
+			AggregateCrudDefinition<SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch, ?> satelliteDefinition,
+			AggregateMutationPort<SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> satelliteMutationPort,
+			AggregateFetchPort<SatelliteDomainId, SatelliteDomainModel> satelliteFetchPort,
+			SatelliteCreateInputResolver<MasterDomainModelCreate,
+					Collection<SatelliteCreateIntent<SatelliteDomainId, SatelliteDomainModelCreate>>>
+			createInputResolver,
+			SatellitePatchInputResolver<MasterDomainModelUpdatePatch,
+					Collection<SatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
+							SatelliteDomainModelUpdatePatch>>> patchInputResolver,
+			SatelliteIdentityResolver<MasterDomainModel, SatelliteDomainModel, SatelliteDomainId> identityResolver,
+			ReconciliationStrategy reconciliationStrategy,
+			SatelliteLinkStrategy<MasterDomainId, MasterDomainModel, SatelliteDomainId, SatelliteDomainModel>
+			linkStrategy,
+			SatelliteHydrationStrategy<MasterDomainId, MasterDomainModel, SatelliteDomainId, SatelliteDomainModel>
+			hydrationStrategy)
+			implements AggregateRelationshipDefinition<MasterDomainId,
+			MasterDomainModel,
+			MasterDomainModelCreate,
+			MasterDomainModelUpdatePatch,
+			SatelliteDomainId,
+			SatelliteDomainModel,
+			SatelliteDomainModelCreate,
+			SatelliteDomainModelUpdatePatch>
+	{
 	}
 }

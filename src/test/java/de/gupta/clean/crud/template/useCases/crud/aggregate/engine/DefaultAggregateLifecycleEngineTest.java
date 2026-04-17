@@ -74,6 +74,33 @@ class DefaultAggregateLifecycleEngineTest
 	}
 
 	@Test
+	void saveAllWithRelationshipsRejectsDuplicateRequestItemsBeforePersistence()
+	{
+		var scenario = new TestScenario(List.of());
+		scenario.installRelationship(
+				Cardinality.ONE,
+				ReconciliationStrategy.REPLACE,
+				LifecycleSemantics.of(true, true, false, false, false),
+				SatellitePersistenceOrder.SATELLITE_BEFORE_MASTER);
+
+		assertThrows(
+				InvalidRequestException.class,
+				() -> scenario.engine.saveAll(
+						scenario.masterDefinition,
+						List.of(
+								new MasterCreate(
+										"duplicate",
+										List.of(new SatelliteCreateIntent.InlineSatelliteCreateIntent<>(
+												new SatelliteCreate("sat-one")))),
+								new MasterCreate(
+										"duplicate",
+										List.of(new SatelliteCreateIntent.InlineSatelliteCreateIntent<>(
+												new SatelliteCreate("sat-two")))))));
+		assertTrue(scenario.masterStore.isEmpty());
+		assertTrue(scenario.satelliteStore.isEmpty());
+	}
+
+	@Test
 	void oneToOneUpdateSupportsReferenceCreateUpdateAndRemove()
 	{
 		var scenario = new TestScenario(List.of());
@@ -174,6 +201,26 @@ class DefaultAggregateLifecycleEngineTest
 		assertTrue(merged.model().satelliteDomainIds().contains(1L));
 		assertFalse(mergeScenario.satelliteStore.containsKey(2L));
 		assertEquals(2, merged.model().satelliteDomainIds().size());
+	}
+
+	@Test
+	void oneRelationshipDoesNotSupportMergeById()
+	{
+		var scenario = new TestScenario(List.of());
+		scenario.installRelationship(
+				Cardinality.ONE,
+				ReconciliationStrategy.MERGE_BY_ID,
+				LifecycleSemantics.of(true, true, false, false, false),
+				SatellitePersistenceOrder.SATELLITE_BEFORE_MASTER);
+
+		assertThrows(
+				AggregateRelationshipExecutionNotSupportedException.class,
+				() -> scenario.engine.save(
+						scenario.masterDefinition,
+						new MasterCreate(
+								"master",
+								List.of(new SatelliteCreateIntent.InlineSatelliteCreateIntent<>(
+										new SatelliteCreate("satellite"))))));
 	}
 
 	@Test

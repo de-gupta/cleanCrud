@@ -12,10 +12,7 @@ import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMuta
 import de.gupta.clean.crud.template.useCases.crud.aggregate.lifecycle.LifecycleSemantics;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateFetchPort;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateMutationPort;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.Cardinality;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.ReconciliationStrategy;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.SatelliteLinkStrategy;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.SatellitePersistenceOrder;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.*;
 import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.AbstractFetchService;
 import de.gupta.clean.crud.template.useCases.crud.save.application.service.AbstractSaveService;
 import de.gupta.clean.crud.template.useCases.crud.update.application.service.AbstractUpdateService;
@@ -134,7 +131,8 @@ final class AggregateBuilderDslTest
 		}
 
 		private AggregateCrudDefinition<String, MasterModel, MasterCreate, MasterPatch, MasterResponse> masterDefinition(
-				final Collection<?> relationships)
+				final Collection<? extends AggregateRelationshipDefinitionContract<String, MasterModel, MasterCreate, MasterPatch>>
+						relationships)
 		{
 			return AggregateCrudDefinitions
 					.<String, MasterModel, MasterCreate, MasterPatch, MasterResponse>aggregateCrudDefinition()
@@ -157,7 +155,7 @@ final class AggregateBuilderDslTest
 					})
 					.securityPolicy(DomainSecurityPolicy.allowing())
 					.duplicateDefinition((KeyBasedDuplicateDefinition<MasterModel, String>) MasterModel::value)
-					.relationshipDefinitions(castRelationships(relationships))
+					.relationshipDefinitions(relationships)
 					.build();
 		}
 
@@ -174,13 +172,6 @@ final class AggregateBuilderDslTest
 		private TestFetchService fetchService()
 		{
 			return new TestFetchService(masterDefinition, engine);
-		}
-
-		@SuppressWarnings("unchecked")
-		private Collection<? extends de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinitionContract<String, MasterModel, MasterCreate, MasterPatch>>
-		castRelationships(final Collection<?> relationships)
-		{
-			return (Collection<? extends de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinitionContract<String, MasterModel, MasterCreate, MasterPatch>>) relationships;
 		}
 
 		private AggregateCrudDefinition<Long, SatelliteModel, SatelliteCreate, SatellitePatch, String> satelliteDefinition()

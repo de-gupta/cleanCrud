@@ -18,9 +18,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * Entry point for fluent {@link AggregateCrudDefinition} construction.
- */
 public final class AggregateCrudDefinitions
 {
 	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
@@ -29,6 +26,11 @@ public final class AggregateCrudDefinitions
 	aggregateCrudDefinition()
 	{
 		return new AggregateCrudDefinitionBuilder<>();
+	}
+
+	private static <Value> Value required(final Value value, final String name)
+	{
+		return Objects.requireNonNull(value, name);
 	}
 
 	private AggregateCrudDefinitions()
@@ -159,92 +161,49 @@ public final class AggregateCrudDefinitions
 		public AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 				MasterDomainModelUpdatePatch, MasterDomainModelResponse> build()
 		{
-			var requiredMutationPort = Objects.requireNonNull(mutationPort, "mutationPort");
-			var requiredFetchPort = Objects.requireNonNull(fetchPort, "fetchPort");
-			var requiredCreateBuilder = Objects.requireNonNull(createBuilder, "createBuilder");
-			var requiredPatcher = Objects.requireNonNull(patcher, "patcher");
-			var requiredResponseBuilder = Objects.requireNonNull(responseBuilder, "responseBuilder");
-			var requiredInsertionPolicy = Objects.requireNonNull(insertionPolicy, "insertionPolicy");
-			var requiredPatchPolicy = Objects.requireNonNull(patchPolicy, "patchPolicy");
-			var requiredDeletionPolicy = Objects.requireNonNull(deletionPolicy, "deletionPolicy");
-			var requiredSecurityPolicy = Objects.requireNonNull(securityPolicy, "securityPolicy");
-			var requiredDuplicateDefinition = Objects.requireNonNull(duplicateDefinition, "duplicateDefinition");
-			var declaredRelationships = List.copyOf(relationshipDefinitions);
-
-			return new AggregateCrudDefinition<>()
-			{
-				@Override
-				public AggregateMutationPort<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
-						MasterDomainModelUpdatePatch> mutationPort()
-				{
-					return requiredMutationPort;
-				}
-
-				@Override
-				public AggregateFetchPort<MasterDomainId, MasterDomainModel> fetchPort()
-				{
-					return requiredFetchPort;
-				}
-
-				@Override
-				public DomainModelBuilder<MasterDomainModelCreate, MasterDomainModel> createBuilder()
-				{
-					return requiredCreateBuilder;
-				}
-
-				@Override
-				public DomainModelPatcher<MasterDomainModel, MasterDomainModelUpdatePatch> patcher()
-				{
-					return requiredPatcher;
-				}
-
-				@Override
-				public DomainResponseBuilder<MasterDomainModel, MasterDomainModelResponse> responseBuilder()
-				{
-					return requiredResponseBuilder;
-				}
-
-				@Override
-				public InsertionPolicy<MasterDomainModel> insertionPolicy()
-				{
-					return requiredInsertionPolicy;
-				}
-
-				@Override
-				public PatchPolicy<MasterDomainModel> patchPolicy()
-				{
-					return requiredPatchPolicy;
-				}
-
-				@Override
-				public DeletionPolicy<MasterDomainModel> deletionPolicy()
-				{
-					return requiredDeletionPolicy;
-				}
-
-				@Override
-				public DomainSecurityPolicy<MasterDomainModel> securityPolicy()
-				{
-					return requiredSecurityPolicy;
-				}
-
-				@Override
-				public DuplicateDefinition<MasterDomainModel> duplicateDefinition()
-				{
-					return requiredDuplicateDefinition;
-				}
-
-				@Override
-				public Collection<AggregateRelationshipDefinitionContract<MasterDomainId, MasterDomainModel,
-						MasterDomainModelCreate, MasterDomainModelUpdatePatch>> relationshipDefinitions()
-				{
-					return declaredRelationships;
-				}
-			};
+			return new BuiltAggregateCrudDefinition<>(
+					required(mutationPort, "mutationPort"),
+					required(fetchPort, "fetchPort"),
+					required(createBuilder, "createBuilder"),
+					required(patcher, "patcher"),
+					required(responseBuilder, "responseBuilder"),
+					required(insertionPolicy, "insertionPolicy"),
+					required(patchPolicy, "patchPolicy"),
+					required(deletionPolicy, "deletionPolicy"),
+					required(securityPolicy, "securityPolicy"),
+					required(duplicateDefinition, "duplicateDefinition"),
+					List.copyOf(relationshipDefinitions));
 		}
 
 		private AggregateCrudDefinitionBuilder()
 		{
 		}
+	}
+
+	private record BuiltAggregateCrudDefinition<
+			MasterDomainId,
+			MasterDomainModel,
+			MasterDomainModelCreate,
+			MasterDomainModelUpdatePatch,
+			MasterDomainModelResponse>(
+			AggregateMutationPort<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch> mutationPort,
+			AggregateFetchPort<MasterDomainId, MasterDomainModel> fetchPort,
+			DomainModelBuilder<MasterDomainModelCreate, MasterDomainModel> createBuilder,
+			DomainModelPatcher<MasterDomainModel, MasterDomainModelUpdatePatch> patcher,
+			DomainResponseBuilder<MasterDomainModel, MasterDomainModelResponse> responseBuilder,
+			InsertionPolicy<MasterDomainModel> insertionPolicy,
+			PatchPolicy<MasterDomainModel> patchPolicy,
+			DeletionPolicy<MasterDomainModel> deletionPolicy,
+			DomainSecurityPolicy<MasterDomainModel> securityPolicy,
+			DuplicateDefinition<MasterDomainModel> duplicateDefinition,
+			Collection<AggregateRelationshipDefinitionContract<MasterDomainId, MasterDomainModel,
+					MasterDomainModelCreate, MasterDomainModelUpdatePatch>> relationshipDefinitions)
+			implements AggregateCrudDefinition<MasterDomainId,
+			MasterDomainModel,
+			MasterDomainModelCreate,
+			MasterDomainModelUpdatePatch,
+			MasterDomainModelResponse>
+	{
 	}
 }

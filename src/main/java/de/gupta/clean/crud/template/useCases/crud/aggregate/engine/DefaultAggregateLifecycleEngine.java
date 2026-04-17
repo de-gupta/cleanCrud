@@ -71,6 +71,7 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 			{
 				return saveAllWithoutRelationships(definition, models);
 			}
+			validateSaveModels(definition, models.stream().map(definition.createBuilder()::toModel).toList());
 			return saveCoordinator.saveAll(definition, relationships, models);
 		});
 	}

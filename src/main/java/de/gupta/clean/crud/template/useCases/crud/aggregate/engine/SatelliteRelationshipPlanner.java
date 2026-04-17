@@ -9,7 +9,6 @@ import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.Cardina
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.stream.Collectors;
 
 final class SatelliteRelationshipPlanner
 {
@@ -27,7 +26,7 @@ final class SatelliteRelationshipPlanner
 				                      .stream()
 				                      .map(this::<SatelliteDomainId, SatelliteDomainModelCreate>castCreateIntent)
 				                      .filter(intent -> !(intent instanceof SatelliteCreateIntent.NoSatelliteCreateIntent<?, ?>))
-				                      .collect(Collectors.toList());
+				                      .toList();
 		validateCardinality(relationshipDefinition.cardinality(), intents.size(), "create");
 		return intents;
 	}
@@ -49,7 +48,7 @@ final class SatelliteRelationshipPlanner
 				                      .map(this::<SatelliteDomainId,
 											  SatelliteDomainModelCreate,
 											  SatelliteDomainModelUpdatePatch>castMutationIntent)
-				                      .collect(Collectors.toList());
+				                      .toList();
 		validateCardinality(relationshipDefinition.cardinality(), intents.size(), "update");
 		return intents;
 	}
