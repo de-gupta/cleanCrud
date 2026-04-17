@@ -40,6 +40,90 @@ Current runtime support includes:
 Single-aggregate CRUD remains the default path, and satellite behavior is activated only when relationship definitions
 are declared on an aggregate.
 
+### Supported vs Deferred
+
+| Area                                               | Status    |
+|----------------------------------------------------|-----------|
+| `Cardinality.ONE + REPLACE`                        | Supported |
+| `Cardinality.MANY + REPLACE`                       | Supported |
+| `Cardinality.MANY + MERGE_BY_ID`                   | Supported |
+| Business-key reconciliation                        | Deferred  |
+| Arbitrary graph cycles                             | Deferred  |
+| Multi-level recursive orchestration                | Deferred  |
+| Cross-datasource compensation                      | Deferred  |
+| Distributed workflows / sagas                      | Deferred  |
+| Bulk graph orchestration beyond one root aggregate | Deferred  |
+
+### Builder DSL
+
+For consumer ergonomics, `cleanCrud` now provides a builder DSL on top of the raw contracts:
+
+- `AggregateCrudDefinitions`
+- `AggregateRelationshipDefinitions`
+- `LifecycleSemanticsBuilder`
+
+Typical shape:
+
+```java
+var credentialDefinition =
+		AggregateCrudDefinitions
+				.<Long, CredentialDomainModel, CredentialDomainModelCreate, CredentialDomainModelUpdatePatch,
+						CredentialDomainModelResponse>aggregateCrudDefinition()
+				.mutationPort(credentialMutationPort)
+				.fetchPort(credentialFetchPort)
+				.createBuilder(credentialCreateBuilder)
+				.patcher(credentialPatcher)
+				.responseBuilder(credentialResponseBuilder)
+				.insertionPolicy(credentialInsertionPolicy)
+				.patchPolicy(credentialPatchPolicy)
+				.deletionPolicy(credentialDeletionPolicy)
+				.securityPolicy(credentialSecurityPolicy)
+				.duplicateDefinition(credentialDuplicateDefinition)
+				.build();
+
+var accountRelationshipDefinition =
+		AggregateRelationshipDefinitions
+				.<Long, AccountDomainModel, AccountDomainModelCreate, AccountDomainModelUpdatePatch,
+						Long, CredentialDomainModel, CredentialDomainModelCreate, CredentialDomainModelUpdatePatch>
+						aggregateRelationshipDefinition()
+				.name("credential")
+				.cardinality(Cardinality.ONE)
+				.lifecycleSemantics(
+						LifecycleSemanticsBuilder.lifecycleSemantics()
+						                         .cascadeCreate()
+						                         .cascadeUpdate()
+						                         .cascadeDelete()
+						                         .hydrateOnFetch()
+						                         .build())
+				.satelliteDefinition(credentialDefinition)
+				.createInputResolver(AccountDomainModelCreate::satelliteCreateIntents)
+				.patchInputResolver(AccountDomainModelUpdatePatch::satelliteMutationIntents)
+				.identityResolver((master, satellite) -> Optional.empty())
+				.reconciliationStrategy(ReconciliationStrategy.REPLACE)
+				.linkStrategy(accountSatelliteLinkStrategy)
+				.hydrationStrategy(accountSatelliteHydrationStrategy)
+				.build();
+
+var accountDefinition =
+		AggregateCrudDefinitions
+				.<Long, AccountDomainModel, AccountDomainModelCreate, AccountDomainModelUpdatePatch,
+						AccountDomainModelResponse>aggregateCrudDefinition()
+				.mutationPort(accountMutationPort)
+				.fetchPort(accountFetchPort)
+				.createBuilder(accountCreateBuilder)
+				.patcher(accountPatcher)
+				.responseBuilder(accountResponseBuilder)
+				.insertionPolicy(accountInsertionPolicy)
+				.patchPolicy(accountPatchPolicy)
+				.deletionPolicy(accountDeletionPolicy)
+				.securityPolicy(accountSecurityPolicy)
+				.duplicateDefinition(accountDuplicateDefinition)
+				.relationshipDefinition(accountRelationshipDefinition)
+				.build();
+```
+
+The raw interfaces remain fully supported. The builder DSL is an additive convenience layer, not a mandatory API.
+
 ## Architecture
 
 The framework is built on clean architecture principles with three main layers:

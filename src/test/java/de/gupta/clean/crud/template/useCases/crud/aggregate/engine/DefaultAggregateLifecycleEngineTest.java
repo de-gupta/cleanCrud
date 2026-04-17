@@ -3,6 +3,7 @@ package de.gupta.clean.crud.template.useCases.crud.aggregate.engine;
 import de.gupta.clean.crud.template.domain.mapping.fetch.DomainResponseBuilder;
 import de.gupta.clean.crud.template.domain.mapping.save.DomainModelBuilder;
 import de.gupta.clean.crud.template.domain.mapping.update.DomainModelPatcher;
+import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceCannotBeDeletedException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.service.crud.policy.DeletionPolicy;
@@ -173,6 +174,62 @@ class DefaultAggregateLifecycleEngineTest
 		assertTrue(merged.model().satelliteDomainIds().contains(1L));
 		assertFalse(mergeScenario.satelliteStore.containsKey(2L));
 		assertEquals(2, merged.model().satelliteDomainIds().size());
+	}
+
+	@Test
+	void manyReplaceWithoutOrphanDeleteUnlinksRemovedSatellites()
+	{
+		var scenario = new TestScenario(List.of());
+		scenario.installRelationship(
+				Cardinality.MANY,
+				ReconciliationStrategy.REPLACE,
+				LifecycleSemantics.of(true, true, false, false, true),
+				SatellitePersistenceOrder.SATELLITE_BEFORE_MASTER);
+		scenario.masterStore.put("master-1", new MasterModel("master", List.of(1L, 2L), List.of()));
+		scenario.satelliteStore.put(1L, new SatelliteModel("one"));
+		scenario.satelliteStore.put(2L, new SatelliteModel("two"));
+
+		var updated = scenario.engine.updateById(
+				scenario.masterDefinition,
+				"master-1",
+				new MasterPatch(null, List.of(
+						new SatelliteMutationIntent.ReferenceSatelliteMutationIntent<>(1L))));
+
+		assertEquals(List.of(1L), updated.model().satelliteDomainIds());
+		assertTrue(scenario.satelliteStore.containsKey(2L));
+	}
+
+	@Test
+	void updateAndRemoveRequireCurrentlyLinkedSatelliteDomainIds()
+	{
+		var scenario = new TestScenario(List.of());
+		scenario.installRelationship(
+				Cardinality.MANY,
+				ReconciliationStrategy.MERGE_BY_ID,
+				LifecycleSemantics.of(true, true, false, false, false),
+				SatellitePersistenceOrder.SATELLITE_BEFORE_MASTER);
+		scenario.masterStore.put("master-1", new MasterModel("master", List.of(1L), List.of()));
+		scenario.satelliteStore.put(1L, new SatelliteModel("one"));
+		scenario.satelliteStore.put(2L, new SatelliteModel("two"));
+
+		assertThrows(
+				InvalidRequestException.class,
+				() -> scenario.engine.updateById(
+						scenario.masterDefinition,
+						"master-1",
+						new MasterPatch(
+								null,
+								List.of(new SatelliteMutationIntent.UpdateSatelliteMutationIntent<>(2L,
+										new SatellitePatch("updated"))))));
+
+		assertThrows(
+				InvalidRequestException.class,
+				() -> scenario.engine.updateById(
+						scenario.masterDefinition,
+						"master-1",
+						new MasterPatch(
+								null,
+								List.of(new SatelliteMutationIntent.RemoveSatelliteMutationIntent<>(2L)))));
 	}
 
 	@Test

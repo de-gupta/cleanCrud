@@ -764,7 +764,24 @@ final class AggregateCrudServicesSatelliteEndToEndTest
 											new SatelliteMutationIntent.CreateSatelliteMutationIntent<>(
 													new SatelliteCreate("three")))),
 							2,
-							List.of("one-updated", "three"))
+							List.of("one-updated", "three")),
+					UpdateCase.shape(
+							"many replace unlinks omitted satellites when orphan delete is disabled",
+							Cardinality.MANY,
+							ReconciliationStrategy.REPLACE,
+							LifecycleSemantics.of(true, true, false, false, true),
+							scenario ->
+							{
+								scenario.masterStore.put("master-1",
+										new MasterModel("master", List.of(1L, 2L), List.of()));
+								scenario.satelliteStore.put(1L, new SatelliteModel("one"));
+								scenario.satelliteStore.put(2L, new SatelliteModel("two"));
+							},
+							new MasterPatch(
+									null,
+									List.of(new SatelliteMutationIntent.ReferenceSatelliteMutationIntent<>(1L))),
+							1,
+							List.of("one"))
 			).map(tc -> Arguments.of(tc.as(), tc));
 		}
 

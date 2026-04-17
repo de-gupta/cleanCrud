@@ -8,6 +8,10 @@ import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateMutati
 
 import java.util.Collection;
 
+/**
+ * Executable aggregate relationship contract that provides the runtime collaborators required for satellite
+ * orchestration.
+ */
 public interface AggregateRelationshipDefinition<
 		MasterDomainId,
 		MasterDomainModel,
@@ -46,6 +50,11 @@ public interface AggregateRelationshipDefinition<
 					SatelliteDomainModelCreate,
 					SatelliteDomainModelUpdatePatch>>> patchInputResolver();
 
+	/**
+	 * Optional identity helper for relating master and satellite domain models.
+	 * <p>
+	 * Runtime reconciliation for {@link ReconciliationStrategy#MERGE_BY_ID} uses explicit IDs from mutation intents.
+	 */
 	SatelliteIdentityResolver<MasterDomainModel, SatelliteDomainModel, SatelliteDomainId> identityResolver();
 
 	SatelliteLinkStrategy<MasterDomainId, MasterDomainModel, SatelliteDomainId, SatelliteDomainModel> linkStrategy();

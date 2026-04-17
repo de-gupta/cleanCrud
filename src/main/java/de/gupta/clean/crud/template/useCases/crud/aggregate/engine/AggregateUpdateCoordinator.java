@@ -1,5 +1,6 @@
 package de.gupta.clean.crud.template.useCases.crud.aggregate.engine;
 
+import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDeniedException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
@@ -212,6 +213,11 @@ final class AggregateUpdateCoordinator
 				case SatelliteMutationIntent.UpdateSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
 						SatelliteDomainModelUpdatePatch> updateIntent ->
 				{
+					requireCurrentlyLinkedSatelliteDomainId(
+							relationship,
+							currentSatelliteDomainIds,
+							updateIntent.satelliteDomainId(),
+							"update");
 					updateSatellite(relationship, updateIntent.satelliteDomainId(),
 							updateIntent.satelliteDomainModelUpdatePatch());
 					targetSatelliteDomainIds.add(updateIntent.satelliteDomainId());
@@ -262,6 +268,11 @@ final class AggregateUpdateCoordinator
 				case SatelliteMutationIntent.UpdateSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
 						SatelliteDomainModelUpdatePatch> updateIntent ->
 				{
+					requireCurrentlyLinkedSatelliteDomainId(
+							relationship,
+							currentSatelliteDomainIds,
+							updateIntent.satelliteDomainId(),
+							"update");
 					updateSatellite(relationship, updateIntent.satelliteDomainId(),
 							updateIntent.satelliteDomainModelUpdatePatch());
 					targetSatelliteDomainIds.add(updateIntent.satelliteDomainId());
@@ -269,6 +280,11 @@ final class AggregateUpdateCoordinator
 				case SatelliteMutationIntent.RemoveSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
 						SatelliteDomainModelUpdatePatch> removeIntent ->
 				{
+					requireCurrentlyLinkedSatelliteDomainId(
+							relationship,
+							currentSatelliteDomainIds,
+							removeIntent.satelliteDomainId(),
+							"remove");
 					targetSatelliteDomainIds.remove(removeIntent.satelliteDomainId());
 					removedSatelliteDomainIds.add(removeIntent.satelliteDomainId());
 				}
@@ -436,6 +452,24 @@ final class AggregateUpdateCoordinator
 		var difference = new ArrayList<>(left);
 		difference.removeAll(right);
 		return difference;
+	}
+
+	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+	void requireCurrentlyLinkedSatelliteDomainId(
+			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> relationship,
+			final Collection<SatelliteDomainId> currentSatelliteDomainIds,
+			final SatelliteDomainId satelliteDomainId,
+			final String operation)
+	{
+		if (!currentSatelliteDomainIds.contains(satelliteDomainId))
+		{
+			throw InvalidRequestException.withMessage(
+					"Relationship '" + relationship.name() + "' cannot " + operation
+							+ " a satellite that is not currently linked");
+		}
 	}
 
 	AggregateUpdateCoordinator(

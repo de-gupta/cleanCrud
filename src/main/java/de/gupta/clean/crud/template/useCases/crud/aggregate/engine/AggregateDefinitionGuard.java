@@ -53,5 +53,12 @@ final class AggregateDefinitionGuard
 			throw AggregateRelationshipExecutionNotSupportedException.withMessage(
 					"MERGE_BY_ID is only supported for MANY satellite relationships");
 		}
+		if (relationship.cardinality() == Cardinality.MANY
+				&& relationship.reconciliationStrategy() != ReconciliationStrategy.REPLACE
+				&& relationship.reconciliationStrategy() != ReconciliationStrategy.MERGE_BY_ID)
+		{
+			throw AggregateRelationshipExecutionNotSupportedException.withMessage(
+					"Only REPLACE and MERGE_BY_ID are supported for MANY satellite relationships");
+		}
 	}
 }

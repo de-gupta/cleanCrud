@@ -55,6 +55,7 @@ module de.gupta.clean.crud
 	exports de.gupta.clean.crud.template.useCases.crud.common.infrastructure.persistence.repository;
 	exports de.gupta.clean.crud.template.useCases.crud.common.security;
 	exports de.gupta.clean.crud.template.useCases.crud.common.utility;
+	exports de.gupta.clean.crud.template.useCases.crud.aggregate.builder;
 	exports de.gupta.clean.crud.template.useCases.crud.aggregate.definition;
 	exports de.gupta.clean.crud.template.useCases.crud.aggregate.engine;
 	exports de.gupta.clean.crud.template.useCases.crud.aggregate.intent;

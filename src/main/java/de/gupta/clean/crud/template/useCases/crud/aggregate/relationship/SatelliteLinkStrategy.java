@@ -5,6 +5,13 @@ import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import java.util.Collection;
 import java.util.Optional;
 
+/**
+ * Declares how a master domain model stores and hydrates links to its satellites.
+ * <p>
+ * For collection relationships, {@link #replaceLinkedSatelliteDomainIds(Object, Collection)} receives the complete
+ * final linked set after reconciliation. When orphan delete is disabled, removed satellites are unlinked but not
+ * deleted.
+ */
 public interface SatelliteLinkStrategy<
 		MasterDomainId, MasterDomainModel, SatelliteDomainId, SatelliteDomainModel>
 {
