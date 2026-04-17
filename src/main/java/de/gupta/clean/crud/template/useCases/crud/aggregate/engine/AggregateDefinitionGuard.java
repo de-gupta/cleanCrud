@@ -1,0 +1,57 @@
+package de.gupta.clean.crud.template.useCases.crud.aggregate.engine;
+
+import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinition;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinitionContract;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.Cardinality;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.ReconciliationStrategy;
+
+import java.util.ArrayList;
+import java.util.List;
+
+final class AggregateDefinitionGuard
+{
+	<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			MasterDomainModelResponse>
+	List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+			MasterDomainModelUpdatePatch, ?, ?, ?, ?>> satelliteRelationships(
+			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition)
+	{
+		List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+				MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships = new ArrayList<>();
+		for (var contract : definition.relationshipDefinitions())
+		{
+			var relationship = typedRelationship(contract);
+			validateRelationship(relationship);
+			relationships.add(relationship);
+		}
+		return List.copyOf(relationships);
+	}
+
+	@SuppressWarnings("unchecked")
+	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch>
+	AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+			MasterDomainModelUpdatePatch, ?, ?, ?, ?> typedRelationship(
+			final AggregateRelationshipDefinitionContract<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch> contract)
+	{
+		if (!(contract instanceof AggregateRelationshipDefinition<?, ?, ?, ?, ?, ?, ?, ?> relationshipDefinition))
+		{
+			throw AggregateRelationshipExecutionNotSupportedException.withMessage(
+					"Only AggregateRelationshipDefinition instances are executable at runtime");
+		}
+		return (AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+				MasterDomainModelUpdatePatch, ?, ?, ?, ?>) relationshipDefinition;
+	}
+
+	private void validateRelationship(final AggregateRelationshipDefinition<?, ?, ?, ?, ?, ?, ?, ?> relationship)
+	{
+		if (relationship.cardinality() == Cardinality.ONE
+				&& relationship.reconciliationStrategy() == ReconciliationStrategy.MERGE_BY_ID)
+		{
+			throw AggregateRelationshipExecutionNotSupportedException.withMessage(
+					"MERGE_BY_ID is only supported for MANY satellite relationships");
+		}
+	}
+}

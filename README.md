@@ -27,14 +27,18 @@ remains isolated from infrastructure concerns.
 
 Single-aggregate CRUD remains the default `cleanCrud` usage model.
 
-The library now also includes Phase 1 foundation types for aggregate relationships using the term `Satellite` for
-related aggregates that may later participate in a master's lifecycle. This phase introduces only the public contracts
-and terminology needed for future work. It does not yet add runtime orchestration, relationship execution, or
-satellite-aware CRUD behavior.
+The library now also includes aggregate relationship support using the term `Satellite` for related aggregates that may
+participate in a master's lifecycle.
 
-Phase 2 connects those aggregate definitions to the runtime for the zero-relationship case. Single-aggregate CRUD is
-now engine-backed, while declared satellite relationships remain unsupported at runtime until a later phase introduces
-satellite lifecycle orchestration.
+Current runtime support includes:
+
+- zero-relationship CRUD through the aggregate lifecycle engine
+- one-to-one satellite save, fetch hydration, delete, update, and put flows
+- one-to-many satellite save, fetch hydration, delete, update, and put flows
+- collection reconciliation for `REPLACE` and `MERGE_BY_ID`
+
+Single-aggregate CRUD remains the default path, and satellite behavior is activated only when relationship definitions
+are declared on an aggregate.
 
 ## Architecture
 

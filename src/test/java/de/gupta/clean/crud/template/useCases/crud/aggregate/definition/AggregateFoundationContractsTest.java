@@ -212,11 +212,14 @@ class AggregateFoundationContractsTest
 	private static final class TestAggregateRelationshipDefinition
 			implements AggregateRelationshipDefinition<String, String, String, String, Long, Long, Long, Long>
 	{
+		private final AggregateCrudDefinition<Long, Long, Long, Long, Long> satelliteDefinition =
+				new TestSatelliteAggregateDefinition();
 		private final AggregateMutationPort<Long, Long, Long, Long> satelliteMutationPort =
 				new TestLongAggregateMutationPort();
 		private final AggregateFetchPort<Long, Long> satelliteFetchPort = new TestLongAggregateFetchPort();
-		private final SatelliteCreateInputResolver<String, SatelliteCreateIntent<Long, Long>> createInputResolver =
-				_ -> new SatelliteCreateIntent.NoSatelliteCreateIntent<>();
+		private final SatelliteCreateInputResolver<String, Collection<SatelliteCreateIntent<Long, Long>>>
+				createInputResolver =
+				_ -> List.of(new SatelliteCreateIntent.NoSatelliteCreateIntent<>());
 		private final SatellitePatchInputResolver<String,
 				Collection<SatelliteMutationIntent<Long, Long, Long>>> patchInputResolver = _ -> List.of();
 		private final SatelliteIdentityResolver<String, Long, Long> identityResolver = (_, _) -> Optional.empty();
@@ -249,6 +252,12 @@ class AggregateFoundationContractsTest
 		}
 
 		@Override
+		public AggregateCrudDefinition<Long, Long, Long, Long, ?> satelliteDefinition()
+		{
+			return satelliteDefinition;
+		}
+
+		@Override
 		public AggregateMutationPort<Long, Long, Long, Long> satelliteMutationPort()
 		{
 			return satelliteMutationPort;
@@ -261,7 +270,7 @@ class AggregateFoundationContractsTest
 		}
 
 		@Override
-		public SatelliteCreateInputResolver<String, SatelliteCreateIntent<Long, Long>> createInputResolver()
+		public SatelliteCreateInputResolver<String, Collection<SatelliteCreateIntent<Long, Long>>> createInputResolver()
 		{
 			return createInputResolver;
 		}
@@ -317,6 +326,85 @@ class AggregateFoundationContractsTest
 		}
 	}
 
+	private static final class TestSatelliteAggregateDefinition
+			implements AggregateCrudDefinition<Long, Long, Long, Long, Long>
+	{
+		private final AggregateMutationPort<Long, Long, Long, Long> mutationPort = new TestLongAggregateMutationPort();
+		private final AggregateFetchPort<Long, Long> fetchPort = new TestLongAggregateFetchPort();
+
+		@Override
+		public AggregateMutationPort<Long, Long, Long, Long> mutationPort()
+		{
+			return mutationPort;
+		}
+
+		@Override
+		public AggregateFetchPort<Long, Long> fetchPort()
+		{
+			return fetchPort;
+		}
+
+		@Override
+		public DomainModelBuilder<Long, Long> createBuilder()
+		{
+			return model -> model;
+		}
+
+		@Override
+		public DomainModelPatcher<Long, Long> patcher()
+		{
+			return (_, patch) -> patch;
+		}
+
+		@Override
+		public DomainResponseBuilder<Long, Long> responseBuilder()
+		{
+			return model -> model;
+		}
+
+		@Override
+		public InsertionPolicy<Long> insertionPolicy()
+		{
+			return _ ->
+			{
+			};
+		}
+
+		@Override
+		public PatchPolicy<Long> patchPolicy()
+		{
+			return (_, _) ->
+			{
+			};
+		}
+
+		@Override
+		public DeletionPolicy<Long> deletionPolicy()
+		{
+			return _ ->
+			{
+			};
+		}
+
+		@Override
+		public DomainSecurityPolicy<Long> securityPolicy()
+		{
+			return DomainSecurityPolicy.allowing();
+		}
+
+		@Override
+		public DuplicateDefinition<Long> duplicateDefinition()
+		{
+			return Long::equals;
+		}
+
+		@Override
+		public Collection<AggregateRelationshipDefinitionContract<Long, Long, Long, Long>> relationshipDefinitions()
+		{
+			return List.of();
+		}
+	}
+
 	private static final class TestLongAggregateFetchPort implements AggregateFetchPort<Long, Long>
 	{
 		@Override
@@ -365,9 +453,11 @@ class AggregateFoundationContractsTest
 		}
 
 		@Override
-		public String attachSatelliteReference(final String masterDomainModel, final Long satelliteDomainId)
+		public String replaceLinkedSatelliteDomainIds(
+				final String masterDomainModel,
+				final Collection<Long> satelliteDomainIds)
 		{
-			return masterDomainModel + satelliteDomainId;
+			return masterDomainModel + satelliteDomainIds.size();
 		}
 
 		@Override

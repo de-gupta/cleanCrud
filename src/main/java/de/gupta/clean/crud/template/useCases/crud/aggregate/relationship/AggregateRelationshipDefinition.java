@@ -1,5 +1,6 @@
 package de.gupta.clean.crud.template.useCases.crud.aggregate.relationship;
 
+import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteCreateIntent;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMutationIntent;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateFetchPort;
@@ -22,6 +23,12 @@ public interface AggregateRelationshipDefinition<
 		MasterDomainModelCreate,
 		MasterDomainModelUpdatePatch>
 {
+	AggregateCrudDefinition<SatelliteDomainId,
+			SatelliteDomainModel,
+			SatelliteDomainModelCreate,
+			SatelliteDomainModelUpdatePatch,
+			?> satelliteDefinition();
+
 	AggregateMutationPort<SatelliteDomainId,
 			SatelliteDomainModel,
 			SatelliteDomainModelCreate,
@@ -31,7 +38,7 @@ public interface AggregateRelationshipDefinition<
 
 	@Override
 	SatelliteCreateInputResolver<MasterDomainModelCreate,
-			SatelliteCreateIntent<SatelliteDomainId, SatelliteDomainModelCreate>> createInputResolver();
+			Collection<SatelliteCreateIntent<SatelliteDomainId, SatelliteDomainModelCreate>>> createInputResolver();
 
 	@Override
 	SatellitePatchInputResolver<MasterDomainModelUpdatePatch,

@@ -14,9 +14,16 @@ public interface SatelliteLinkStrategy<
 
 	Collection<SatelliteDomainId> currentLinkedSatelliteDomainIds(MasterDomainModel masterDomainModel);
 
-	MasterDomainModel attachSatelliteReference(
+	MasterDomainModel replaceLinkedSatelliteDomainIds(
 			MasterDomainModel masterDomainModel,
-			SatelliteDomainId satelliteDomainId);
+			Collection<SatelliteDomainId> satelliteDomainIds);
+
+	default MasterDomainModel attachSatelliteReference(
+			MasterDomainModel masterDomainModel,
+			SatelliteDomainId satelliteDomainId)
+	{
+		return replaceLinkedSatelliteDomainIds(masterDomainModel, java.util.List.of(satelliteDomainId));
+	}
 
 	MasterDomainModel attachHydratedSatellites(
 			MasterDomainModel masterDomainModel,

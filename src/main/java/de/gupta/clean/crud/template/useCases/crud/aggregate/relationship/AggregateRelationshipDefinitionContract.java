@@ -18,7 +18,8 @@ public interface AggregateRelationshipDefinitionContract<
 
 	LifecycleSemantics lifecycleSemantics();
 
-	SatelliteCreateInputResolver<MasterDomainModelCreate, ? extends SatelliteCreateIntent<?, ?>> createInputResolver();
+	SatelliteCreateInputResolver<MasterDomainModelCreate, ? extends Collection<? extends SatelliteCreateIntent<?, ?>>>
+	createInputResolver();
 
 	SatellitePatchInputResolver<MasterDomainModelUpdatePatch,
 			? extends Collection<? extends SatelliteMutationIntent<?, ?, ?>>> patchInputResolver();

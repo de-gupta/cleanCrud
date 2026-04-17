@@ -9,6 +9,7 @@ import de.gupta.clean.crud.template.domain.service.equality.DuplicateDefinition;
 import de.gupta.clean.crud.template.domain.service.equality.KeyBasedDuplicateDefinition;
 import de.gupta.clean.crud.template.infrastructure.persistence.transaction.PersistenceTransactionRunner;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.useCases.crud.common.BulkOperationMode;
 import de.gupta.clean.crud.template.useCases.crud.common.utility.PageUtility;
 import org.springframework.data.domain.Pageable;
@@ -19,10 +20,22 @@ import java.util.*;
 public final class DefaultAggregateLifecycleEngine implements AggregateLifecycleEngine
 {
 	private final PersistenceTransactionRunner transactionRunner;
+	private final AggregateDefinitionGuard definitionGuard;
+	private final AggregateSaveCoordinator saveCoordinator;
+	private final AggregateFetchCoordinator fetchCoordinator;
+	private final AggregateDeleteCoordinator deleteCoordinator;
+	private final AggregateUpdateCoordinator updateCoordinator;
 
 	public DefaultAggregateLifecycleEngine(final PersistenceTransactionRunner transactionRunner)
 	{
 		this.transactionRunner = transactionRunner;
+		var relationshipPlanner = new SatelliteRelationshipPlanner();
+		var referenceResolver = new SatelliteReferenceResolver();
+		this.definitionGuard = new AggregateDefinitionGuard();
+		this.saveCoordinator = new AggregateSaveCoordinator(relationshipPlanner, referenceResolver);
+		this.fetchCoordinator = new AggregateFetchCoordinator();
+		this.deleteCoordinator = new AggregateDeleteCoordinator(relationshipPlanner, referenceResolver);
+		this.updateCoordinator = new AggregateUpdateCoordinator(relationshipPlanner, referenceResolver);
 	}
 
 	@Override
@@ -32,8 +45,16 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final MasterDomainModelCreate model)
 	{
-		validateNoRelationships(definition);
-		return transactionRunner.inTransaction(() -> saveInternal(definition, model));
+		var relationships = definitionGuard.satelliteRelationships(definition);
+		return transactionRunner.inTransaction(() ->
+		{
+			if (relationships.isEmpty())
+			{
+				return saveAllWithoutRelationships(definition, List.of(model)).stream().findFirst().orElseThrow();
+			}
+			return saveCoordinator.saveAll(definition, relationships, List.of(model)).stream().findFirst()
+			                      .orElseThrow();
+		});
 	}
 
 	@Override
@@ -43,8 +64,15 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final Collection<MasterDomainModelCreate> models)
 	{
-		validateNoRelationships(definition);
-		return transactionRunner.inTransaction(() -> saveAllInternal(definition, models));
+		var relationships = definitionGuard.satelliteRelationships(definition);
+		return transactionRunner.inTransaction(() ->
+		{
+			if (relationships.isEmpty())
+			{
+				return saveAllWithoutRelationships(definition, models);
+			}
+			return saveCoordinator.saveAll(definition, relationships, models);
+		});
 	}
 
 	@Override
@@ -55,10 +83,17 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 			final MasterDomainId id,
 			final MasterDomainModelCreate model)
 	{
-		validateNoRelationships(definition);
+		var relationships = definitionGuard.satelliteRelationships(definition);
 		transactionRunner.inTransaction(() ->
 		{
-			putAtIdInternal(definition, id, model);
+			if (relationships.isEmpty())
+			{
+				putAtIdWithoutRelationships(definition, id, model);
+			}
+			else
+			{
+				updateCoordinator.putAtId(definition, relationships, id, model);
+			}
 			return null;
 		});
 	}
@@ -71,8 +106,15 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 			final MasterDomainId id,
 			final MasterDomainModelUpdatePatch updatePatch)
 	{
-		validateNoRelationships(definition);
-		return transactionRunner.inTransaction(() -> updateByIdInternal(definition, id, updatePatch));
+		var relationships = definitionGuard.satelliteRelationships(definition);
+		return transactionRunner.inTransaction(() ->
+		{
+			if (relationships.isEmpty())
+			{
+				return updateByIdWithoutRelationships(definition, id, updatePatch);
+			}
+			return updateCoordinator.updateById(definition, relationships, id, updatePatch);
+		});
 	}
 
 	@Override
@@ -83,17 +125,23 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 			final Collection<IdentifiedModel<MasterDomainId, MasterDomainModelUpdatePatch>> models,
 			final BulkOperationMode mode)
 	{
-		validateNoRelationships(definition);
+		var relationships = definitionGuard.satelliteRelationships(definition);
 		return switch (mode)
 		{
 			case ALL_OR_NOTHING -> transactionRunner.inTransaction(() -> models.stream()
-			                                                                   .map(model -> updateByIdInternal(
+			                                                                   .map(model -> relationships.isEmpty()
+																					   ? updateByIdWithoutRelationships(
 																					   definition,
+																					   model.id(),
+																					   model.model())
+																					   : updateCoordinator.updateById(
+																					   definition,
+																					   relationships,
 																					   model.id(),
 																					   model.model()))
 			                                                                   .toList());
 			case BEST_EFFORT -> models.stream()
-			                          .map(model -> tryUpdateById(definition, model.id(), model.model()))
+			                          .map(model -> tryUpdateById(definition, relationships, model.id(), model.model()))
 			                          .flatMap(Optional::stream)
 			                          .toList();
 		};
@@ -105,8 +153,12 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition)
 	{
-		validateNoRelationships(definition);
-		return definition.fetchPort().findAll().stream().filter(model -> isVisible(definition, model)).toList();
+		var relationships = definitionGuard.satelliteRelationships(definition);
+		if (relationships.isEmpty())
+		{
+			return definition.fetchPort().findAll().stream().filter(model -> isVisible(definition, model)).toList();
+		}
+		return fetchCoordinator.findAll(definition, relationships);
 	}
 
 	@Override
@@ -116,8 +168,13 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final Pageable pageable)
 	{
-		validateNoRelationships(definition);
-		return PageUtility.filterSlice(definition.fetchPort().findAll(pageable), model -> isVisible(definition, model));
+		var relationships = definitionGuard.satelliteRelationships(definition);
+		if (relationships.isEmpty())
+		{
+			return PageUtility.filterSlice(definition.fetchPort().findAll(pageable),
+					model -> isVisible(definition, model));
+		}
+		return fetchCoordinator.findAll(definition, relationships, pageable);
 	}
 
 	@Override
@@ -127,10 +184,14 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final MasterDomainId id)
 	{
-		validateNoRelationships(definition);
-		return definition.fetchPort().findById(id)
-		                 .filter(model -> isVisible(definition, model))
-		                 .orElseThrow(() -> ResourceNotFoundException.withId(id));
+		var relationships = definitionGuard.satelliteRelationships(definition);
+		if (relationships.isEmpty())
+		{
+			return definition.fetchPort().findById(id)
+			                 .filter(model -> isVisible(definition, model))
+			                 .orElseThrow(() -> ResourceNotFoundException.withId(id));
+		}
+		return fetchCoordinator.findById(definition, relationships, id);
 	}
 
 	@Override
@@ -140,8 +201,13 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final Set<MasterDomainId> ids)
 	{
-		validateNoRelationships(definition);
-		return definition.fetchPort().findByIds(ids).stream().filter(model -> isVisible(definition, model)).toList();
+		var relationships = definitionGuard.satelliteRelationships(definition);
+		if (relationships.isEmpty())
+		{
+			return definition.fetchPort().findByIds(ids).stream().filter(model -> isVisible(definition, model))
+			                 .toList();
+		}
+		return fetchCoordinator.findByIds(definition, relationships, ids);
 	}
 
 	@Override
@@ -151,10 +217,17 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final MasterDomainId id)
 	{
-		validateNoRelationships(definition);
+		var relationships = definitionGuard.satelliteRelationships(definition);
 		transactionRunner.inTransaction(() ->
 		{
-			deleteByIdInternal(definition, id);
+			if (relationships.isEmpty())
+			{
+				deleteByIdWithoutRelationships(definition, id);
+			}
+			else
+			{
+				deleteCoordinator.deleteById(definition, relationships, id);
+			}
 			return null;
 		});
 	}
@@ -167,29 +240,31 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 			final Collection<MasterDomainId> ids,
 			final BulkOperationMode mode)
 	{
-		validateNoRelationships(definition);
+		var relationships = definitionGuard.satelliteRelationships(definition);
 		switch (mode)
 		{
 			case ALL_OR_NOTHING -> transactionRunner.inTransaction(() ->
 			{
-				ids.forEach(id -> deleteByIdInternal(definition, id));
+				ids.forEach(id ->
+				{
+					if (relationships.isEmpty())
+					{
+						deleteByIdWithoutRelationships(definition, id);
+					}
+					else
+					{
+						deleteCoordinator.deleteById(definition, relationships, id);
+					}
+				});
 				return null;
 			});
-			case BEST_EFFORT -> ids.forEach(id -> tryDeleteById(definition, id));
+			case BEST_EFFORT -> ids.forEach(id -> tryDeleteById(definition, relationships, id));
 		}
 	}
 
 	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
-			MasterDomainModelResponse> IdentifiedModel<MasterDomainId, MasterDomainModel> saveInternal(
-			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
-					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
-			final MasterDomainModelCreate model)
-	{
-		return saveAllInternal(definition, List.of(model)).stream().findFirst().orElseThrow();
-	}
-
-	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
-			MasterDomainModelResponse> Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> saveAllInternal(
+			MasterDomainModelResponse> Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>>
+	saveAllWithoutRelationships(
 			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final Collection<MasterDomainModelCreate> models)
@@ -200,7 +275,7 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 	}
 
 	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
-			MasterDomainModelResponse> void putAtIdInternal(
+			MasterDomainModelResponse> void putAtIdWithoutRelationships(
 			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final MasterDomainId id,
@@ -216,7 +291,7 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 	}
 
 	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
-			MasterDomainModelResponse> IdentifiedModel<MasterDomainId, MasterDomainModel> updateByIdInternal(
+			MasterDomainModelResponse> IdentifiedModel<MasterDomainId, MasterDomainModel> updateByIdWithoutRelationships(
 			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final MasterDomainId id,
@@ -233,12 +308,16 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 			MasterDomainModelResponse> Optional<IdentifiedModel<MasterDomainId, MasterDomainModel>> tryUpdateById(
 			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships,
 			final MasterDomainId id,
 			final MasterDomainModelUpdatePatch updatePatch)
 	{
 		try
 		{
-			return Optional.of(transactionRunner.inTransaction(() -> updateByIdInternal(definition, id, updatePatch)));
+			return Optional.of(transactionRunner.inTransaction(() -> relationships.isEmpty()
+					? updateByIdWithoutRelationships(definition, id, updatePatch)
+					: updateCoordinator.updateById(definition, relationships, id, updatePatch)));
 		}
 		catch (DomainException e)
 		{
@@ -247,7 +326,7 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 	}
 
 	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
-			MasterDomainModelResponse> void deleteByIdInternal(
+			MasterDomainModelResponse> void deleteByIdWithoutRelationships(
 			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final MasterDomainId id)
@@ -262,13 +341,22 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 			MasterDomainModelResponse> void tryDeleteById(
 			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships,
 			final MasterDomainId id)
 	{
 		try
 		{
 			transactionRunner.inTransaction(() ->
 			{
-				deleteByIdInternal(definition, id);
+				if (relationships.isEmpty())
+				{
+					deleteByIdWithoutRelationships(definition, id);
+				}
+				else
+				{
+					deleteCoordinator.deleteById(definition, relationships, id);
+				}
 				return null;
 			});
 		}
@@ -363,17 +451,5 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 		validateAccess(definition, original);
 		validateAccess(definition, replacement);
 		definition.patchPolicy().validatePatchAttempt(original, replacement);
-	}
-
-	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
-			MasterDomainModelResponse> void validateNoRelationships(
-			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
-					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition)
-	{
-		if (!definition.relationshipDefinitions().isEmpty())
-		{
-			throw new UnsupportedOperationException(
-					"Aggregate relationships are not supported by the aggregate lifecycle engine in phase 2");
-		}
 	}
 }

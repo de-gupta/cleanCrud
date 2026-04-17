@@ -4,7 +4,6 @@ import de.gupta.clean.crud.template.domain.mapping.fetch.DomainResponseBuilder;
 import de.gupta.clean.crud.template.domain.mapping.save.DomainModelBuilder;
 import de.gupta.clean.crud.template.domain.mapping.update.DomainModelPatcher;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceCannotBeDeletedException;
-import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceCannotBePatchedException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.service.crud.policy.DeletionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.InsertionPolicy;
@@ -14,9 +13,12 @@ import de.gupta.clean.crud.template.domain.service.equality.KeyBasedDuplicateDef
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
 import de.gupta.clean.crud.template.infrastructure.persistence.transaction.PersistenceTransactionRunner;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteCreateIntent;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMutationIntent;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.lifecycle.LifecycleSemantics;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateFetchPort;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateMutationPort;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinitionContract;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.*;
 import de.gupta.clean.crud.template.useCases.crud.common.BulkOperationMode;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Pageable;
@@ -32,131 +34,154 @@ import static org.junit.jupiter.api.Assertions.*;
 class DefaultAggregateLifecycleEngineTest
 {
 	@Test
-	void saveValidatesAccessInsertionAndDuplicateRules()
+	void zeroRelationshipCrudStillWorks()
 	{
-		TestTransactionRunner runner = new TestTransactionRunner();
-		DefaultAggregateLifecycleEngine engine = new DefaultAggregateLifecycleEngine(runner);
-		TestAggregateDefinition definition = TestAggregateDefinition.standard();
+		var scenario = new TestScenario(List.of());
 
-		var saved = engine.save(definition, "alpha");
+		var saved = scenario.engine.save(scenario.masterDefinition, new MasterCreate("alpha", List.of()));
 
-		assertEquals(1, runner.transactionCount());
-		assertEquals("generated-1", saved.id());
+		assertEquals(1, scenario.transactionRunner.transactionCount());
+		assertEquals("master-1", saved.id());
 		assertEquals("alpha", saved.model().value());
-		assertEquals(List.of("alpha"), definition.insertionValidatedValues);
-
-		assertThrows(RuntimeException.class, () ->
-				engine.save(TestAggregateDefinition.withSecurity(_ -> false), "denied"));
-		assertThrows(RuntimeException.class, () ->
-				engine.saveAll(definition, List.of("same", "same")));
 	}
 
 	@Test
-	void putAtIdChoosesInsertionOrPatchBehaviorBasedOnCurrentState()
+	void oneToOneSaveFetchDeleteLifecycleWorks()
 	{
-		DefaultAggregateLifecycleEngine engine = new DefaultAggregateLifecycleEngine(new TestTransactionRunner());
-		TestAggregateDefinition absentDefinition = TestAggregateDefinition.standard();
+		var scenario = new TestScenario(List.of());
+		scenario.installRelationship(
+				Cardinality.ONE,
+				ReconciliationStrategy.REPLACE,
+				LifecycleSemantics.of(true, true, true, true, true),
+				SatellitePersistenceOrder.SATELLITE_BEFORE_MASTER);
 
-		engine.putAtId(absentDefinition, "42", "new");
+		var saved = scenario.engine.save(
+				scenario.masterDefinition,
+				new MasterCreate(
+						"master",
+						List.of(new SatelliteCreateIntent.InlineSatelliteCreateIntent<>(new SatelliteCreate("sat")))));
+		assertEquals(List.of(1L), saved.model().satelliteDomainIds());
+		assertEquals(List.of("satellite:create:sat", "master:create:master"), scenario.operationLog.subList(0, 2));
 
-		assertEquals(List.of("new"), absentDefinition.insertionValidatedValues);
-		assertEquals(List.of("42"), absentDefinition.putIds);
+		var fetched = scenario.engine.findById(scenario.masterDefinition, saved.id());
+		assertEquals(1, fetched.model().hydratedSatellites().size());
+		assertEquals("sat", fetched.model().hydratedSatellites().get(0).value());
 
-		TestAggregateDefinition currentDefinition = TestAggregateDefinition.standard();
-		currentDefinition.store.put("42", TestModel.of("current"));
-
-		engine.putAtId(currentDefinition, "42", "replacement");
-
-		assertEquals(List.of("current->replacement"), currentDefinition.patchValidatedPairs);
+		scenario.engine.deleteById(scenario.masterDefinition, saved.id());
+		assertFalse(scenario.masterStore.containsKey(saved.id()));
+		assertFalse(scenario.satelliteStore.containsKey(1L));
 	}
 
 	@Test
-	void updateByIdFetchesPatchesValidatesAndPersists()
+	void oneToOneUpdateSupportsReferenceCreateUpdateAndRemove()
 	{
-		DefaultAggregateLifecycleEngine engine = new DefaultAggregateLifecycleEngine(new TestTransactionRunner());
-		TestAggregateDefinition definition = TestAggregateDefinition.standard();
-		definition.store.put("1", TestModel.of("before"));
+		var scenario = new TestScenario(List.of());
+		scenario.installRelationship(
+				Cardinality.ONE,
+				ReconciliationStrategy.REPLACE,
+				LifecycleSemantics.of(true, true, false, true, false),
+				SatellitePersistenceOrder.SATELLITE_BEFORE_MASTER);
+		scenario.masterStore.put("master-1", new MasterModel("master", List.of(1L), List.of()));
+		scenario.satelliteStore.put(1L, new SatelliteModel("old"));
 
-		var updated = engine.updateById(definition, "1", "after");
+		scenario.engine.updateById(
+				scenario.masterDefinition,
+				"master-1",
+				new MasterPatch(
+						null,
+						List.of(new SatelliteMutationIntent.UpdateSatelliteMutationIntent<>(1L,
+								new SatellitePatch("updated")))));
+		assertEquals("updated", scenario.satelliteStore.get(1L).value());
 
-		assertEquals("after", updated.model().value());
-		assertEquals(List.of("before->after"), definition.patchValidatedPairs);
-		assertEquals(List.of("1"), definition.updatedIds);
+		scenario.satelliteStore.put(2L, new SatelliteModel("other"));
+		var referenced = scenario.engine.updateById(
+				scenario.masterDefinition,
+				"master-1",
+				new MasterPatch(null, List.of(new SatelliteMutationIntent.ReferenceSatelliteMutationIntent<>(2L))));
+		assertEquals(List.of(2L), referenced.model().satelliteDomainIds());
+		assertFalse(scenario.satelliteStore.containsKey(1L));
+
+		var created = scenario.engine.updateById(
+				scenario.masterDefinition,
+				"master-1",
+				new MasterPatch(
+						null,
+						List.of(new SatelliteMutationIntent.CreateSatelliteMutationIntent<>(
+								new SatelliteCreate("new")))));
+		var createdSatelliteDomainId = created.model().satelliteDomainIds().get(0);
+		assertEquals("new", scenario.satelliteStore.get(createdSatelliteDomainId).value());
+
+		var removed = scenario.engine.updateById(
+				scenario.masterDefinition,
+				"master-1",
+				new MasterPatch(
+						null,
+						List.of(new SatelliteMutationIntent.RemoveSatelliteMutationIntent<>(
+								createdSatelliteDomainId))));
+		assertTrue(removed.model().satelliteDomainIds().isEmpty());
+		assertFalse(scenario.satelliteStore.containsKey(createdSatelliteDomainId));
 	}
 
 	@Test
-	void findByIdEnforcesVisibilityAndDeleteByIdEnforcesDeletionPolicy()
+	void manyReplaceAndMergeByIdAreBothSupported()
 	{
-		DefaultAggregateLifecycleEngine engine = new DefaultAggregateLifecycleEngine(new TestTransactionRunner());
-		TestAggregateDefinition definition = TestAggregateDefinition.standard();
-		definition.store.put("1", TestModel.of("visible"));
+		var replaceScenario = new TestScenario(List.of());
+		replaceScenario.installRelationship(
+				Cardinality.MANY,
+				ReconciliationStrategy.REPLACE,
+				LifecycleSemantics.of(true, true, true, true, true),
+				SatellitePersistenceOrder.SATELLITE_BEFORE_MASTER);
+		replaceScenario.masterStore.put("master-1", new MasterModel("master", List.of(1L, 2L), List.of()));
+		replaceScenario.satelliteStore.put(1L, new SatelliteModel("one"));
+		replaceScenario.satelliteStore.put(2L, new SatelliteModel("two"));
 
-		assertEquals("visible", engine.findById(definition, "1").model().value());
+		var replaced = replaceScenario.engine.updateById(
+				replaceScenario.masterDefinition,
+				"master-1",
+				new MasterPatch(
+						null,
+						List.of(
+								new SatelliteMutationIntent.UpdateSatelliteMutationIntent<>(1L,
+										new SatellitePatch("one-updated")),
+								new SatelliteMutationIntent.CreateSatelliteMutationIntent<>(
+										new SatelliteCreate("three")))));
+		assertEquals("one-updated", replaceScenario.satelliteStore.get(1L).value());
+		assertFalse(replaceScenario.satelliteStore.containsKey(2L));
+		assertEquals(2, replaced.model().satelliteDomainIds().size());
 
-		TestAggregateDefinition hiddenDefinition = TestAggregateDefinition.withSecurity(model -> false);
-		hiddenDefinition.store.put("1", TestModel.of("hidden"));
-		assertThrows(RuntimeException.class, () -> engine.findById(hiddenDefinition, "1"));
+		var mergeScenario = new TestScenario(List.of());
+		mergeScenario.installRelationship(
+				Cardinality.MANY,
+				ReconciliationStrategy.MERGE_BY_ID,
+				LifecycleSemantics.of(true, true, true, true, true),
+				SatellitePersistenceOrder.SATELLITE_BEFORE_MASTER);
+		mergeScenario.masterStore.put("master-1", new MasterModel("master", List.of(1L, 2L), List.of()));
+		mergeScenario.satelliteStore.put(1L, new SatelliteModel("one"));
+		mergeScenario.satelliteStore.put(2L, new SatelliteModel("two"));
 
-		TestAggregateDefinition deleteBlocked = TestAggregateDefinition.standard();
-		deleteBlocked.store.put("1", TestModel.of("protected"));
-		deleteBlocked.deletionPolicy = model ->
-		{
-			throw ResourceCannotBeDeletedException.withMessage("blocked");
-		};
-		assertThrows(ResourceCannotBeDeletedException.class, () -> engine.deleteById(deleteBlocked, "1"));
+		var merged = mergeScenario.engine.updateById(
+				mergeScenario.masterDefinition,
+				"master-1",
+				new MasterPatch(
+						null,
+						List.of(
+								new SatelliteMutationIntent.UpdateSatelliteMutationIntent<>(1L,
+										new SatellitePatch("one-updated")),
+								new SatelliteMutationIntent.RemoveSatelliteMutationIntent<>(2L),
+								new SatelliteMutationIntent.CreateSatelliteMutationIntent<>(
+										new SatelliteCreate("three")))));
+		assertTrue(merged.model().satelliteDomainIds().contains(1L));
+		assertFalse(mergeScenario.satelliteStore.containsKey(2L));
+		assertEquals(2, merged.model().satelliteDomainIds().size());
 	}
 
 	@Test
-	void nonEmptyRelationshipDefinitionsAreRejected()
+	void bestEffortStillUsesPerItemTransactions()
 	{
-		DefaultAggregateLifecycleEngine engine = new DefaultAggregateLifecycleEngine(new TestTransactionRunner());
-		TestAggregateDefinition definition = TestAggregateDefinition.standard();
-		definition.relationshipDefinitions = List.of(new TestRelationshipContract());
-
-		var exception = assertThrows(UnsupportedOperationException.class, () -> engine.save(definition, "value"));
-		assertTrue(exception.getMessage().contains("phase 2"));
-	}
-
-	@Test
-	void bulkModesPreserveAllOrNothingAndBestEffortSemanticsAndTransactions()
-	{
-		TestTransactionRunner updateRunner = new TestTransactionRunner();
-		DefaultAggregateLifecycleEngine updateEngine = new DefaultAggregateLifecycleEngine(updateRunner);
-		TestAggregateDefinition updateDefinition = TestAggregateDefinition.standard();
-		updateDefinition.store.put("ok", TestModel.of("start"));
-		updateDefinition.store.put("bad", TestModel.of("blocked"));
-		updateDefinition.patchPolicy = (original, replacement) ->
-		{
-			if ("blocked".equals(original.value()))
-			{
-				throw ResourceCannotBePatchedException.withMessage("blocked");
-			}
-		};
-
-		assertThrows(ResourceCannotBePatchedException.class, () -> updateEngine.updateAllById(
-				updateDefinition,
-				List.of(
-						IdentifiedModel.of("ok", "ok-update"),
-						IdentifiedModel.of("bad", "bad-update")),
-				BulkOperationMode.ALL_OR_NOTHING));
-		assertEquals(1, updateRunner.transactionCount());
-
-		updateRunner.reset();
-		var bestEffortUpdates = updateEngine.updateAllById(
-				updateDefinition,
-				List.of(
-						IdentifiedModel.of("ok", "ok-update"),
-						IdentifiedModel.of("bad", "bad-update")),
-				BulkOperationMode.BEST_EFFORT);
-		assertEquals(1, bestEffortUpdates.size());
-		assertEquals(2, updateRunner.transactionCount());
-
-		TestTransactionRunner deleteRunner = new TestTransactionRunner();
-		DefaultAggregateLifecycleEngine deleteEngine = new DefaultAggregateLifecycleEngine(deleteRunner);
-		TestAggregateDefinition deleteDefinition = TestAggregateDefinition.standard();
-		deleteDefinition.store.put("good", TestModel.of("good"));
-		deleteDefinition.store.put("blocked", TestModel.of("blocked"));
-		deleteDefinition.deletionPolicy = model ->
+		var scenario = new TestScenario(List.of());
+		scenario.masterStore.put("ok", new MasterModel("ok", List.of(), List.of()));
+		scenario.masterStore.put("blocked", new MasterModel("blocked", List.of(), List.of()));
+		scenario.masterDefinition.deletionPolicy = model ->
 		{
 			if ("blocked".equals(model.value()))
 			{
@@ -164,235 +189,522 @@ class DefaultAggregateLifecycleEngineTest
 			}
 		};
 
-		assertThrows(ResourceCannotBeDeletedException.class, () -> deleteEngine.deleteAllById(
-				deleteDefinition,
-				List.of("good", "blocked"),
-				BulkOperationMode.ALL_OR_NOTHING));
-		assertEquals(1, deleteRunner.transactionCount());
+		scenario.engine.deleteAllById(scenario.masterDefinition, List.of("ok", "blocked"),
+				BulkOperationMode.BEST_EFFORT);
 
-		deleteRunner.reset();
-		deleteEngine.deleteAllById(deleteDefinition, List.of("good", "blocked"), BulkOperationMode.BEST_EFFORT);
-		assertEquals(2, deleteRunner.transactionCount());
-		assertTrue(deleteDefinition.deletedIds.contains("good"));
+		assertEquals(2, scenario.transactionRunner.transactionCount());
+		assertFalse(scenario.masterStore.containsKey("ok"));
+		assertTrue(scenario.masterStore.containsKey("blocked"));
 	}
 
-	private static final class TestAggregateDefinition
-			implements AggregateCrudDefinition<String, TestModel, String, String, String>
+	private record MasterCreate(String value,
+	                            Collection<SatelliteCreateIntent<Long, SatelliteCreate>> satelliteCreateIntents)
 	{
-		private final Map<String, TestModel> store = new HashMap<>();
-		private final AtomicInteger generatedIds = new AtomicInteger();
-		private final TestMutationPort mutationPort = new TestMutationPort();
-		private final TestFetchPort fetchPort = new TestFetchPort();
-		private final DomainModelBuilder<String, TestModel> createBuilder = TestModel::of;
-		private final DomainModelPatcher<TestModel, String> patcher = (_, patch) -> TestModel.of(patch);
-		private final DomainResponseBuilder<TestModel, String> responseBuilder = TestModel::value;
-		private final DuplicateDefinition<TestModel> duplicateDefinition =
-				(KeyBasedDuplicateDefinition<TestModel, String>) TestModel::value;
-		private final List<String> insertionValidatedValues = new ArrayList<>();
-		private final List<String> patchValidatedPairs = new ArrayList<>();
-		private final List<String> putIds = new ArrayList<>();
-		private final List<String> updatedIds = new ArrayList<>();
-		private final List<String> deletedIds = new ArrayList<>();
-		private final InsertionPolicy<TestModel> insertionPolicy = model -> insertionValidatedValues.add(model.value());
-		private DomainSecurityPolicy<TestModel> securityPolicy = DomainSecurityPolicy.allowing();
-		private PatchPolicy<TestModel> patchPolicy =
-				(original, replacement) -> patchValidatedPairs.add(original.value() + "->" + replacement.value());
-		private DeletionPolicy<TestModel> deletionPolicy = model ->
-		{
-		};
-		private Collection<AggregateRelationshipDefinitionContract<String, TestModel, String, String>>
-				relationshipDefinitions = List.of();
+	}
 
-		static TestAggregateDefinition standard()
+	private record MasterPatch(String value,
+	                           Collection<SatelliteMutationIntent<Long, SatelliteCreate, SatellitePatch>> satelliteMutationIntents)
+	{
+	}
+
+	private record MasterModel(String value, List<Long> satelliteDomainIds, List<SatelliteModel> hydratedSatellites)
+	{
+		private MasterModel withSatelliteDomainIds(final Collection<Long> newSatelliteDomainIds)
 		{
-			return new TestAggregateDefinition();
+			return new MasterModel(value, List.copyOf(newSatelliteDomainIds), hydratedSatellites);
 		}
 
-		static TestAggregateDefinition withSecurity(final DomainSecurityPolicy<TestModel> securityPolicy)
+		private MasterModel withHydratedSatellites(final Collection<IdentifiedModel<Long, SatelliteModel>> satellites)
 		{
-			TestAggregateDefinition definition = new TestAggregateDefinition();
-			definition.securityPolicy = securityPolicy;
-			return definition;
-		}
-
-		@Override
-		public AggregateMutationPort<String, TestModel, String, String> mutationPort()
-		{
-			return mutationPort;
-		}
-
-		@Override
-		public AggregateFetchPort<String, TestModel> fetchPort()
-		{
-			return fetchPort;
-		}
-
-		@Override
-		public DomainModelBuilder<String, TestModel> createBuilder()
-		{
-			return createBuilder;
-		}
-
-		@Override
-		public DomainModelPatcher<TestModel, String> patcher()
-		{
-			return patcher;
-		}
-
-		@Override
-		public DomainResponseBuilder<TestModel, String> responseBuilder()
-		{
-			return responseBuilder;
-		}
-
-		@Override
-		public InsertionPolicy<TestModel> insertionPolicy()
-		{
-			return insertionPolicy;
-		}
-
-		@Override
-		public PatchPolicy<TestModel> patchPolicy()
-		{
-			return patchPolicy;
-		}
-
-		@Override
-		public DeletionPolicy<TestModel> deletionPolicy()
-		{
-			return deletionPolicy;
-		}
-
-		@Override
-		public DomainSecurityPolicy<TestModel> securityPolicy()
-		{
-			return securityPolicy;
-		}
-
-		@Override
-		public DuplicateDefinition<TestModel> duplicateDefinition()
-		{
-			return duplicateDefinition;
-		}
-
-		@Override
-		public Collection<AggregateRelationshipDefinitionContract<String, TestModel, String, String>>
-		relationshipDefinitions()
-		{
-			return relationshipDefinitions;
-		}
-
-		private final class TestMutationPort implements AggregateMutationPort<String, TestModel, String, String>
-		{
-			@Override
-			public IdentifiedModel<String, TestModel> create(final TestModel domainModel)
-			{
-				String id = "generated-" + generatedIds.incrementAndGet();
-				store.put(id, domainModel);
-				return IdentifiedModel.of(id, domainModel);
-			}
-
-			@Override
-			public void put(final String domainId, final TestModel domainModel)
-			{
-				putIds.add(domainId);
-				store.put(domainId, domainModel);
-			}
-
-			@Override
-			public IdentifiedModel<String, TestModel> update(final String domainId, final TestModel domainModel)
-			{
-				updatedIds.add(domainId);
-				store.put(domainId, domainModel);
-				return IdentifiedModel.of(domainId, domainModel);
-			}
-
-			@Override
-			public void delete(final String domainId)
-			{
-				deletedIds.add(domainId);
-				store.remove(domainId);
-			}
-		}
-
-		private final class TestFetchPort implements AggregateFetchPort<String, TestModel>
-		{
-			@Override
-			public Optional<IdentifiedModel<String, TestModel>> findById(final String domainId)
-			{
-				return Optional.ofNullable(store.get(domainId)).map(model -> IdentifiedModel.of(domainId, model));
-			}
-
-			@Override
-			public Collection<IdentifiedModel<String, TestModel>> findByIds(final Set<String> domainIds)
-			{
-				return domainIds.stream().flatMap(domainId -> findById(domainId).stream()).toList();
-			}
-
-			@Override
-			public Collection<IdentifiedModel<String, TestModel>> findAll()
-			{
-				return store.entrySet().stream().map(entry -> IdentifiedModel.of(entry.getKey(), entry.getValue()))
-				            .toList();
-			}
-
-			@Override
-			public Slice<IdentifiedModel<String, TestModel>> findAll(final Pageable pageable)
-			{
-				return new SliceImpl<>(findAll().stream().toList());
-			}
+			return new MasterModel(value, satelliteDomainIds, satellites.stream().map(IdentifiedModel::model).toList());
 		}
 	}
 
-	private record TestModel(String value)
+	private record SatelliteCreate(String value)
 	{
-		private static TestModel of(final String value)
-		{
-			return new TestModel(value);
-		}
 	}
 
-	private static final class TestRelationshipContract
-			implements AggregateRelationshipDefinitionContract<String, TestModel, String, String>
+	private record SatellitePatch(String value)
 	{
-		@Override
-		public String name()
+	}
+
+	private record SatelliteModel(String value)
+	{
+	}
+
+	private static final class TestScenario
+	{
+		private final TestTransactionRunner transactionRunner = new TestTransactionRunner();
+		private final DefaultAggregateLifecycleEngine engine = new DefaultAggregateLifecycleEngine(transactionRunner);
+		private final Map<String, MasterModel> masterStore = new LinkedHashMap<>();
+		private final Map<Long, SatelliteModel> satelliteStore = new LinkedHashMap<>();
+		private final List<String> operationLog = new ArrayList<>();
+		private final TestMasterAggregateDefinition masterDefinition;
+		private final TestSatelliteAggregateDefinition satelliteDefinition;
+
+		private void installRelationship(
+				final Cardinality cardinality,
+				final ReconciliationStrategy reconciliationStrategy,
+				final LifecycleSemantics lifecycleSemantics,
+				final SatellitePersistenceOrder satellitePersistenceOrder)
 		{
-			return "satellite";
+			masterDefinition.relationshipDefinitions = List.of(
+					new TestRelationshipDefinition(cardinality, reconciliationStrategy, lifecycleSemantics,
+							satellitePersistenceOrder));
 		}
 
-		@Override
-		public de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.Cardinality cardinality()
+		private TestScenario(
+				final List<AggregateRelationshipDefinitionContract<String, MasterModel, MasterCreate, MasterPatch>> relationshipDefinitions)
 		{
-			return de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.Cardinality.ONE;
+			this.satelliteDefinition = new TestSatelliteAggregateDefinition();
+			this.masterDefinition = new TestMasterAggregateDefinition(relationshipDefinitions);
 		}
 
-		@Override
-		public de.gupta.clean.crud.template.useCases.crud.aggregate.lifecycle.LifecycleSemantics lifecycleSemantics()
+		private final class TestMasterAggregateDefinition
+				implements AggregateCrudDefinition<String, MasterModel, MasterCreate, MasterPatch, String>
 		{
-			return de.gupta.clean.crud.template.useCases.crud.aggregate.lifecycle.LifecycleSemantics.none();
+			private final AggregateMutationPort<String, MasterModel, MasterCreate, MasterPatch> mutationPort =
+					new TestMasterMutationPort();
+			private final AggregateFetchPort<String, MasterModel> fetchPort = new TestMasterFetchPort();
+			private final AtomicInteger generatedIds = new AtomicInteger();
+			private Collection<AggregateRelationshipDefinitionContract<String, MasterModel, MasterCreate, MasterPatch>>
+					relationshipDefinitions;
+			private DeletionPolicy<MasterModel> deletionPolicy = model ->
+			{
+			};
+
+			@Override
+			public AggregateMutationPort<String, MasterModel, MasterCreate, MasterPatch> mutationPort()
+			{
+				return mutationPort;
+			}
+
+			@Override
+			public AggregateFetchPort<String, MasterModel> fetchPort()
+			{
+				return fetchPort;
+			}
+
+			@Override
+			public DomainModelBuilder<MasterCreate, MasterModel> createBuilder()
+			{
+				return create -> new MasterModel(create.value(), List.of(), List.of());
+			}
+
+			@Override
+			public DomainModelPatcher<MasterModel, MasterPatch> patcher()
+			{
+				return (originalDomainModel, patch) -> new MasterModel(
+						patch.value() == null ? originalDomainModel.value() : patch.value(),
+						originalDomainModel.satelliteDomainIds(),
+						originalDomainModel.hydratedSatellites());
+			}
+
+			@Override
+			public DomainResponseBuilder<MasterModel, String> responseBuilder()
+			{
+				return MasterModel::value;
+			}
+
+			@Override
+			public InsertionPolicy<MasterModel> insertionPolicy()
+			{
+				return _ ->
+				{
+				};
+			}
+
+			@Override
+			public PatchPolicy<MasterModel> patchPolicy()
+			{
+				return (_, _) ->
+				{
+				};
+			}
+
+			@Override
+			public DeletionPolicy<MasterModel> deletionPolicy()
+			{
+				return deletionPolicy;
+			}
+
+			@Override
+			public DomainSecurityPolicy<MasterModel> securityPolicy()
+			{
+				return DomainSecurityPolicy.allowing();
+			}
+
+			@Override
+			public DuplicateDefinition<MasterModel> duplicateDefinition()
+			{
+				return (KeyBasedDuplicateDefinition<MasterModel, String>) MasterModel::value;
+			}
+
+			@Override
+			public Collection<AggregateRelationshipDefinitionContract<String, MasterModel, MasterCreate, MasterPatch>>
+			relationshipDefinitions()
+			{
+				return relationshipDefinitions;
+			}
+
+			private TestMasterAggregateDefinition(
+					final Collection<AggregateRelationshipDefinitionContract<String, MasterModel, MasterCreate, MasterPatch>>
+							relationshipDefinitions)
+			{
+				this.relationshipDefinitions = relationshipDefinitions;
+			}
+
+			private final class TestMasterMutationPort
+					implements AggregateMutationPort<String, MasterModel, MasterCreate, MasterPatch>
+			{
+				@Override
+				public IdentifiedModel<String, MasterModel> create(final MasterModel domainModel)
+				{
+					var id = "master-" + generatedIds.incrementAndGet();
+					operationLog.add("master:create:" + domainModel.value());
+					masterStore.put(id, domainModel);
+					return IdentifiedModel.of(id, domainModel);
+				}
+
+				@Override
+				public void put(final String domainId, final MasterModel domainModel)
+				{
+					operationLog.add("master:put:" + domainId);
+					masterStore.put(domainId, domainModel);
+				}
+
+				@Override
+				public IdentifiedModel<String, MasterModel> update(final String domainId, final MasterModel domainModel)
+				{
+					operationLog.add("master:update:" + domainId);
+					masterStore.put(domainId, domainModel);
+					return IdentifiedModel.of(domainId, domainModel);
+				}
+
+				@Override
+				public void delete(final String domainId)
+				{
+					operationLog.add("master:delete:" + domainId);
+					masterStore.remove(domainId);
+				}
+			}
+
+			private final class TestMasterFetchPort implements AggregateFetchPort<String, MasterModel>
+			{
+				@Override
+				public Optional<IdentifiedModel<String, MasterModel>> findById(final String domainId)
+				{
+					return Optional.ofNullable(masterStore.get(domainId))
+					               .map(model -> IdentifiedModel.of(domainId, model));
+				}
+
+				@Override
+				public Collection<IdentifiedModel<String, MasterModel>> findByIds(final Set<String> domainIds)
+				{
+					return domainIds.stream().flatMap(domainId -> findById(domainId).stream()).toList();
+				}
+
+				@Override
+				public Collection<IdentifiedModel<String, MasterModel>> findAll()
+				{
+					return masterStore.entrySet().stream()
+					                  .map(entry -> IdentifiedModel.of(entry.getKey(), entry.getValue())).toList();
+				}
+
+				@Override
+				public Slice<IdentifiedModel<String, MasterModel>> findAll(final Pageable pageable)
+				{
+					return new SliceImpl<>(findAll().stream().toList());
+				}
+			}
 		}
 
-		@Override
-		public de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.SatelliteCreateInputResolver<String,
-				? extends de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteCreateIntent<?, ?>>
-		createInputResolver()
+		private final class TestSatelliteAggregateDefinition
+				implements AggregateCrudDefinition<Long, SatelliteModel, SatelliteCreate, SatellitePatch, String>
 		{
-			return _ -> new de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteCreateIntent.NoSatelliteCreateIntent<>();
+			private final AggregateMutationPort<Long, SatelliteModel, SatelliteCreate, SatellitePatch> mutationPort =
+					new TestSatelliteMutationPort();
+			private final AggregateFetchPort<Long, SatelliteModel> fetchPort = new TestSatelliteFetchPort();
+			private final AtomicInteger generatedIds = new AtomicInteger();
+
+			@Override
+			public AggregateMutationPort<Long, SatelliteModel, SatelliteCreate, SatellitePatch> mutationPort()
+			{
+				return mutationPort;
+			}
+
+			@Override
+			public AggregateFetchPort<Long, SatelliteModel> fetchPort()
+			{
+				return fetchPort;
+			}
+
+			@Override
+			public DomainModelBuilder<SatelliteCreate, SatelliteModel> createBuilder()
+			{
+				return create -> new SatelliteModel(create.value());
+			}
+
+			@Override
+			public DomainModelPatcher<SatelliteModel, SatellitePatch> patcher()
+			{
+				return (_, patch) -> new SatelliteModel(patch.value());
+			}
+
+			@Override
+			public DomainResponseBuilder<SatelliteModel, String> responseBuilder()
+			{
+				return SatelliteModel::value;
+			}
+
+			@Override
+			public InsertionPolicy<SatelliteModel> insertionPolicy()
+			{
+				return _ ->
+				{
+				};
+			}
+
+			@Override
+			public PatchPolicy<SatelliteModel> patchPolicy()
+			{
+				return (_, _) ->
+				{
+				};
+			}
+
+			@Override
+			public DeletionPolicy<SatelliteModel> deletionPolicy()
+			{
+				return _ ->
+				{
+				};
+			}
+
+			@Override
+			public DomainSecurityPolicy<SatelliteModel> securityPolicy()
+			{
+				return DomainSecurityPolicy.allowing();
+			}
+
+			@Override
+			public DuplicateDefinition<SatelliteModel> duplicateDefinition()
+			{
+				return (left, right) -> left.value().equals(right.value());
+			}
+
+			@Override
+			public Collection<AggregateRelationshipDefinitionContract<Long, SatelliteModel, SatelliteCreate, SatellitePatch>>
+			relationshipDefinitions()
+			{
+				return List.of();
+			}
+
+			private final class TestSatelliteMutationPort
+					implements AggregateMutationPort<Long, SatelliteModel, SatelliteCreate, SatellitePatch>
+			{
+				@Override
+				public IdentifiedModel<Long, SatelliteModel> create(final SatelliteModel domainModel)
+				{
+					generatedIds.updateAndGet(current -> Math.max(current, satelliteStore.keySet().stream()
+					                                                                     .mapToInt(Long::intValue)
+					                                                                     .max()
+					                                                                     .orElse(0)));
+					var id = (long) generatedIds.incrementAndGet();
+					operationLog.add("satellite:create:" + domainModel.value());
+					satelliteStore.put(id, domainModel);
+					return IdentifiedModel.of(id, domainModel);
+				}
+
+				@Override
+				public void put(final Long domainId, final SatelliteModel domainModel)
+				{
+					operationLog.add("satellite:put:" + domainId);
+					satelliteStore.put(domainId, domainModel);
+				}
+
+				@Override
+				public IdentifiedModel<Long, SatelliteModel> update(final Long domainId,
+				                                                    final SatelliteModel domainModel)
+				{
+					operationLog.add("satellite:update:" + domainId);
+					satelliteStore.put(domainId, domainModel);
+					return IdentifiedModel.of(domainId, domainModel);
+				}
+
+				@Override
+				public void delete(final Long domainId)
+				{
+					operationLog.add("satellite:delete:" + domainId);
+					satelliteStore.remove(domainId);
+				}
+			}
+
+			private final class TestSatelliteFetchPort implements AggregateFetchPort<Long, SatelliteModel>
+			{
+				@Override
+				public Optional<IdentifiedModel<Long, SatelliteModel>> findById(final Long domainId)
+				{
+					return Optional.ofNullable(satelliteStore.get(domainId))
+					               .map(model -> IdentifiedModel.of(domainId, model));
+				}
+
+				@Override
+				public Collection<IdentifiedModel<Long, SatelliteModel>> findByIds(final Set<Long> domainIds)
+				{
+					return domainIds.stream().flatMap(domainId -> findById(domainId).stream()).toList();
+				}
+
+				@Override
+				public Collection<IdentifiedModel<Long, SatelliteModel>> findAll()
+				{
+					return satelliteStore.entrySet().stream()
+					                     .map(entry -> IdentifiedModel.of(entry.getKey(), entry.getValue())).toList();
+				}
+
+				@Override
+				public Slice<IdentifiedModel<Long, SatelliteModel>> findAll(final Pageable pageable)
+				{
+					return new SliceImpl<>(findAll().stream().toList());
+				}
+			}
 		}
 
-		@Override
-		public de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.SatellitePatchInputResolver<String,
-				? extends Collection<? extends de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMutationIntent<?, ?, ?>>>
-		patchInputResolver()
+		private final class TestRelationshipDefinition
+				implements AggregateRelationshipDefinition<String, MasterModel, MasterCreate, MasterPatch, Long,
+				SatelliteModel, SatelliteCreate, SatellitePatch>
 		{
-			return _ -> List.of();
-		}
+			private final Cardinality cardinality;
+			private final ReconciliationStrategy reconciliationStrategy;
+			private final LifecycleSemantics lifecycleSemantics;
+			private final SatellitePersistenceOrder satellitePersistenceOrder;
 
-		@Override
-		public de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.ReconciliationStrategy reconciliationStrategy()
-		{
-			return de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.ReconciliationStrategy.REPLACE;
+			@Override
+			public String name()
+			{
+				return "satellite";
+			}
+
+			@Override
+			public Cardinality cardinality()
+			{
+				return cardinality;
+			}
+
+			@Override
+			public LifecycleSemantics lifecycleSemantics()
+			{
+				return lifecycleSemantics;
+			}
+
+			@Override
+			public ReconciliationStrategy reconciliationStrategy()
+			{
+				return reconciliationStrategy;
+			}
+
+			@Override
+			public AggregateCrudDefinition<Long, SatelliteModel, SatelliteCreate, SatellitePatch, ?> satelliteDefinition()
+			{
+				return satelliteDefinition;
+			}
+
+			@Override
+			public AggregateMutationPort<Long, SatelliteModel, SatelliteCreate, SatellitePatch> satelliteMutationPort()
+			{
+				return satelliteDefinition.mutationPort();
+			}
+
+			@Override
+			public AggregateFetchPort<Long, SatelliteModel> satelliteFetchPort()
+			{
+				return satelliteDefinition.fetchPort();
+			}
+
+			@Override
+			public SatelliteCreateInputResolver<MasterCreate, Collection<SatelliteCreateIntent<Long, SatelliteCreate>>> createInputResolver()
+			{
+				return MasterCreate::satelliteCreateIntents;
+			}
+
+			@Override
+			public SatellitePatchInputResolver<MasterPatch, Collection<SatelliteMutationIntent<Long, SatelliteCreate, SatellitePatch>>> patchInputResolver()
+			{
+				return MasterPatch::satelliteMutationIntents;
+			}
+
+			@Override
+			public SatelliteIdentityResolver<MasterModel, SatelliteModel, Long> identityResolver()
+			{
+				return (_, _) -> Optional.empty();
+			}
+
+			@Override
+			public SatelliteLinkStrategy<String, MasterModel, Long, SatelliteModel> linkStrategy()
+			{
+				return new SatelliteLinkStrategy<>()
+				{
+					@Override
+					public SatellitePersistenceOrder persistenceOrder()
+					{
+						return satellitePersistenceOrder;
+					}
+
+					@Override
+					public Optional<Long> currentLinkedSatelliteDomainId(final MasterModel masterDomainModel)
+					{
+						return masterDomainModel.satelliteDomainIds().stream().findFirst();
+					}
+
+					@Override
+					public Collection<Long> currentLinkedSatelliteDomainIds(final MasterModel masterDomainModel)
+					{
+						return masterDomainModel.satelliteDomainIds();
+					}
+
+					@Override
+					public MasterModel replaceLinkedSatelliteDomainIds(
+							final MasterModel masterDomainModel,
+							final Collection<Long> satelliteDomainIds)
+					{
+						return masterDomainModel.withSatelliteDomainIds(satelliteDomainIds);
+					}
+
+					@Override
+					public MasterModel attachHydratedSatellites(
+							final MasterModel masterDomainModel,
+							final Collection<IdentifiedModel<Long, SatelliteModel>> satellites)
+					{
+						return masterDomainModel.withHydratedSatellites(satellites);
+					}
+				};
+			}
+
+			@Override
+			public SatelliteHydrationStrategy<String, MasterModel, Long, SatelliteModel> hydrationStrategy()
+			{
+				return (master, satelliteFetchPort, satelliteLinkStrategy) ->
+				{
+					var hydratedSatellites = new ArrayList<IdentifiedModel<Long, SatelliteModel>>();
+					for (var satelliteDomainId : satelliteLinkStrategy.currentLinkedSatelliteDomainIds(master.model()))
+					{
+						satelliteFetchPort.findById(satelliteDomainId).ifPresent(hydratedSatellites::add);
+					}
+					return satelliteLinkStrategy.attachHydratedSatellites(master.model(), hydratedSatellites);
+				};
+			}
+
+			private TestRelationshipDefinition(
+					final Cardinality cardinality,
+					final ReconciliationStrategy reconciliationStrategy,
+					final LifecycleSemantics lifecycleSemantics,
+					final SatellitePersistenceOrder satellitePersistenceOrder)
+			{
+				this.cardinality = cardinality;
+				this.reconciliationStrategy = reconciliationStrategy;
+				this.lifecycleSemantics = lifecycleSemantics;
+				this.satellitePersistenceOrder = satellitePersistenceOrder;
+			}
 		}
 	}
 
@@ -410,11 +722,6 @@ class DefaultAggregateLifecycleEngineTest
 		int transactionCount()
 		{
 			return transactionCount;
-		}
-
-		void reset()
-		{
-			transactionCount = 0;
 		}
 	}
 }
