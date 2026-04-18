@@ -248,13 +248,12 @@ final class AggregateUpdateCoordinator
 					targetSatelliteDomainIds.add(currentSatelliteDomainId);
 				}
 				case SatelliteMutationIntent.RemoveSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
-						SatelliteDomainModelUpdatePatch> ignored ->
+						SatelliteDomainModelUpdatePatch> _ ->
 				{
 				}
 				case SatelliteMutationIntent.RemoveCurrentSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
-						SatelliteDomainModelUpdatePatch> ignored ->
-				{
-				}
+						SatelliteDomainModelUpdatePatch> _ ->
+						requiredCurrentLinkedSatelliteDomainId(relationship, currentSatelliteDomainIds, "remove");
 			}
 		}
 		deleteOrphanedSatellitesIfNeeded(

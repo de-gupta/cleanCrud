@@ -247,6 +247,59 @@ class DefaultAggregateLifecycleEngineTest
 	}
 
 	@Test
+	void manyReplaceRemoveCurrentFailsWhenMoreThanOneSatelliteIsCurrentlyLinked()
+	{
+		var scenario = new TestScenario(List.of());
+		scenario.installRelationship(
+				Cardinality.MANY,
+				ReconciliationStrategy.REPLACE,
+				LifecycleSemantics.of(true, true, false, false, false),
+				SatellitePersistenceOrder.SATELLITE_BEFORE_MASTER);
+		scenario.masterStore.put("master-1", new MasterModel("master", List.of(1L, 2L), List.of()));
+		scenario.satelliteStore.put(1L, new SatelliteModel("one"));
+		scenario.satelliteStore.put(2L, new SatelliteModel("two"));
+
+		var exception = assertThrows(
+				InvalidRequestException.class,
+				() -> scenario.engine.updateById(
+						scenario.masterDefinition,
+						"master-1",
+						new MasterPatch(
+								null,
+								List.of(new SatelliteMutationIntent.RemoveCurrentSatelliteMutationIntent<>()))));
+
+		assertEquals(
+				"Relationship 'satellite' cannot remove implicitly because more than one satellite is currently linked",
+				exception.getMessage());
+		assertEquals(List.of(1L, 2L), scenario.masterStore.get("master-1").satelliteDomainIds());
+		assertTrue(scenario.satelliteStore.containsKey(1L));
+		assertTrue(scenario.satelliteStore.containsKey(2L));
+	}
+
+	@Test
+	void replaceRemoveCurrentRemovesTheSingleCurrentlyLinkedSatellite()
+	{
+		var scenario = new TestScenario(List.of());
+		scenario.installRelationship(
+				Cardinality.ONE,
+				ReconciliationStrategy.REPLACE,
+				LifecycleSemantics.of(true, true, false, true, false),
+				SatellitePersistenceOrder.SATELLITE_BEFORE_MASTER);
+		scenario.masterStore.put("master-1", new MasterModel("master", List.of(1L), List.of()));
+		scenario.satelliteStore.put(1L, new SatelliteModel("one"));
+
+		var updated = scenario.engine.updateById(
+				scenario.masterDefinition,
+				"master-1",
+				new MasterPatch(
+						null,
+						List.of(new SatelliteMutationIntent.RemoveCurrentSatelliteMutationIntent<>())));
+
+		assertTrue(updated.model().satelliteDomainIds().isEmpty());
+		assertFalse(scenario.satelliteStore.containsKey(1L));
+	}
+
+	@Test
 	void updateAndRemoveRequireCurrentlyLinkedSatelliteDomainIds()
 	{
 		var scenario = new TestScenario(List.of());
