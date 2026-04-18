@@ -37,6 +37,9 @@ class SatelliteIntentTypesTest
 				"ReferenceSatelliteMutationIntent",
 				"CreateSatelliteMutationIntent",
 				"UpdateSatelliteMutationIntent",
-				"RemoveSatelliteMutationIntent"), permittedTypeNames);
+				"RemoveSatelliteMutationIntent",
+				"UpdateCurrentSatelliteMutationIntent",
+				"RemoveCurrentSatelliteMutationIntent",
+				"UpsertCurrentSatelliteMutationIntent"), permittedTypeNames);
 	}
 }

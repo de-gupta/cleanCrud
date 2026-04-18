@@ -66,7 +66,7 @@ class DefaultAggregateLifecycleEngineTest
 
 		var fetched = scenario.engine.findById(scenario.masterDefinition, saved.id());
 		assertEquals(1, fetched.model().hydratedSatellites().size());
-		assertEquals("sat", fetched.model().hydratedSatellites().get(0).value());
+		assertEquals("sat", fetched.model().hydratedSatellites().getFirst().value());
 
 		scenario.engine.deleteById(scenario.masterDefinition, saved.id());
 		assertFalse(scenario.masterStore.containsKey(saved.id()));
@@ -136,7 +136,7 @@ class DefaultAggregateLifecycleEngineTest
 						null,
 						List.of(new SatelliteMutationIntent.CreateSatelliteMutationIntent<>(
 								new SatelliteCreate("new")))));
-		var createdSatelliteDomainId = created.model().satelliteDomainIds().get(0);
+		var createdSatelliteDomainId = created.model().satelliteDomainIds().getFirst();
 		assertEquals("new", scenario.satelliteStore.get(createdSatelliteDomainId).value());
 
 		var removed = scenario.engine.updateById(
@@ -339,7 +339,8 @@ class DefaultAggregateLifecycleEngineTest
 	private static final class TestScenario
 	{
 		private final TestTransactionRunner transactionRunner = new TestTransactionRunner();
-		private final DefaultAggregateLifecycleEngine engine = new DefaultAggregateLifecycleEngine(transactionRunner);
+		private final DefaultAggregateLifecycleEngine engine =
+				DefaultAggregateLifecycleEngine.withTransactionRunner(transactionRunner);
 		private final Map<String, MasterModel> masterStore = new LinkedHashMap<>();
 		private final Map<Long, SatelliteModel> satelliteStore = new LinkedHashMap<>();
 		private final List<String> operationLog = new ArrayList<>();
@@ -373,7 +374,7 @@ class DefaultAggregateLifecycleEngineTest
 			private final AtomicInteger generatedIds = new AtomicInteger();
 			private Collection<AggregateRelationshipDefinitionContract<String, MasterModel, MasterCreate, MasterPatch>>
 					relationshipDefinitions;
-			private DeletionPolicy<MasterModel> deletionPolicy = model ->
+			private DeletionPolicy<MasterModel> deletionPolicy = _ ->
 			{
 			};
 

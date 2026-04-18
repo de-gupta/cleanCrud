@@ -37,7 +37,8 @@ class AbstractCrudServicesEngineBackedTest
 	void saveAndUpdateServicesMapDomainResultsToResponseModels()
 	{
 		TestAggregateDefinition definition = new TestAggregateDefinition();
-		DefaultAggregateLifecycleEngine engine = new DefaultAggregateLifecycleEngine(new InlineTransactionRunner());
+		DefaultAggregateLifecycleEngine engine =
+				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
 
 		TestSaveService saveService = new TestSaveService(definition, engine);
 		TestUpdateService updateService = new TestUpdateService(definition, engine);
@@ -52,7 +53,8 @@ class AbstractCrudServicesEngineBackedTest
 	{
 		TestAggregateDefinition definition = new TestAggregateDefinition();
 		definition.store.put("id", "value");
-		DefaultAggregateLifecycleEngine engine = new DefaultAggregateLifecycleEngine(new InlineTransactionRunner());
+		DefaultAggregateLifecycleEngine engine =
+				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
 
 		TestFetchService fetchService = new TestFetchService(definition, engine);
 		TestDeleteService deleteService = new TestDeleteService(definition, engine);

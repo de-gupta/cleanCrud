@@ -100,7 +100,8 @@ final class AggregateCrudServicesSatelliteEndToEndTest
 	{
 		private final TestMasterAggregateDefinition masterDefinition = new TestMasterAggregateDefinition();
 		private final TestTransactionRunner transactionRunner = new TestTransactionRunner();
-		private final DefaultAggregateLifecycleEngine engine = new DefaultAggregateLifecycleEngine(transactionRunner);
+		private final DefaultAggregateLifecycleEngine engine =
+				DefaultAggregateLifecycleEngine.withTransactionRunner(transactionRunner);
 		private final TestSaveService saveService = new TestSaveService(masterDefinition, engine);
 		private final TestUpdateService updateService = new TestUpdateService(masterDefinition, engine);
 		private final TestFetchService fetchService = new TestFetchService(masterDefinition, engine);

@@ -89,7 +89,7 @@ final class AggregateBuilderDslTest
 		private final Map<String, MasterModel> masterStore = new LinkedHashMap<>();
 		private final Map<Long, SatelliteModel> satelliteStore = new LinkedHashMap<>();
 		private final AggregateLifecycleEngine engine =
-				new DefaultAggregateLifecycleEngine(new InlineTransactionRunner());
+				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
 		private final AtomicInteger generatedMasterIds = new AtomicInteger();
 		private final AtomicInteger generatedSatelliteIds = new AtomicInteger();
 		private final AggregateCrudDefinition<Long, SatelliteModel, SatelliteCreate, SatellitePatch, String>

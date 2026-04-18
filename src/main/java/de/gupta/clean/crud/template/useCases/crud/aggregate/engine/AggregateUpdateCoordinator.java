@@ -222,7 +222,36 @@ final class AggregateUpdateCoordinator
 							updateIntent.satelliteDomainModelUpdatePatch());
 					targetSatelliteDomainIds.add(updateIntent.satelliteDomainId());
 				}
+				case SatelliteMutationIntent.UpsertCurrentSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
+						SatelliteDomainModelUpdatePatch> upsertCurrentIntent ->
+				{
+					if (currentSatelliteDomainIds.isEmpty())
+					{
+						targetSatelliteDomainIds.add(createSatellite(
+								relationship,
+								upsertCurrentIntent.satelliteDomainModelCreate()));
+						break;
+					}
+					var currentSatelliteDomainId =
+							requiredCurrentLinkedSatelliteDomainId(relationship, currentSatelliteDomainIds, "update");
+					updateSatellite(relationship, currentSatelliteDomainId,
+							upsertCurrentIntent.satelliteDomainModelUpdatePatch());
+					targetSatelliteDomainIds.add(currentSatelliteDomainId);
+				}
+				case SatelliteMutationIntent.UpdateCurrentSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
+						SatelliteDomainModelUpdatePatch> updateCurrentIntent ->
+				{
+					var currentSatelliteDomainId =
+							requiredCurrentLinkedSatelliteDomainId(relationship, currentSatelliteDomainIds, "update");
+					updateSatellite(relationship, currentSatelliteDomainId,
+							updateCurrentIntent.satelliteDomainModelUpdatePatch());
+					targetSatelliteDomainIds.add(currentSatelliteDomainId);
+				}
 				case SatelliteMutationIntent.RemoveSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
+						SatelliteDomainModelUpdatePatch> ignored ->
+				{
+				}
+				case SatelliteMutationIntent.RemoveCurrentSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
 						SatelliteDomainModelUpdatePatch> ignored ->
 				{
 				}
@@ -277,6 +306,31 @@ final class AggregateUpdateCoordinator
 							updateIntent.satelliteDomainModelUpdatePatch());
 					targetSatelliteDomainIds.add(updateIntent.satelliteDomainId());
 				}
+				case SatelliteMutationIntent.UpsertCurrentSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
+						SatelliteDomainModelUpdatePatch> upsertCurrentIntent ->
+				{
+					if (currentSatelliteDomainIds.isEmpty())
+					{
+						targetSatelliteDomainIds.add(createSatellite(
+								relationship,
+								upsertCurrentIntent.satelliteDomainModelCreate()));
+						break;
+					}
+					var currentSatelliteDomainId =
+							requiredCurrentLinkedSatelliteDomainId(relationship, currentSatelliteDomainIds, "update");
+					updateSatellite(relationship, currentSatelliteDomainId,
+							upsertCurrentIntent.satelliteDomainModelUpdatePatch());
+					targetSatelliteDomainIds.add(currentSatelliteDomainId);
+				}
+				case SatelliteMutationIntent.UpdateCurrentSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
+						SatelliteDomainModelUpdatePatch> updateCurrentIntent ->
+				{
+					var currentSatelliteDomainId =
+							requiredCurrentLinkedSatelliteDomainId(relationship, currentSatelliteDomainIds, "update");
+					updateSatellite(relationship, currentSatelliteDomainId,
+							updateCurrentIntent.satelliteDomainModelUpdatePatch());
+					targetSatelliteDomainIds.add(currentSatelliteDomainId);
+				}
 				case SatelliteMutationIntent.RemoveSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
 						SatelliteDomainModelUpdatePatch> removeIntent ->
 				{
@@ -287,6 +341,14 @@ final class AggregateUpdateCoordinator
 							"remove");
 					targetSatelliteDomainIds.remove(removeIntent.satelliteDomainId());
 					removedSatelliteDomainIds.add(removeIntent.satelliteDomainId());
+				}
+				case SatelliteMutationIntent.RemoveCurrentSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
+						SatelliteDomainModelUpdatePatch> ignored ->
+				{
+					var currentSatelliteDomainId =
+							requiredCurrentLinkedSatelliteDomainId(relationship, currentSatelliteDomainIds, "remove");
+					targetSatelliteDomainIds.remove(currentSatelliteDomainId);
+					removedSatelliteDomainIds.add(currentSatelliteDomainId);
 				}
 			}
 		}
@@ -470,6 +532,30 @@ final class AggregateUpdateCoordinator
 					"Relationship '" + relationship.name() + "' cannot " + operation
 							+ " a satellite that is not currently linked");
 		}
+	}
+
+	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+	SatelliteDomainId requiredCurrentLinkedSatelliteDomainId(
+			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> relationship,
+			final Collection<SatelliteDomainId> currentSatelliteDomainIds,
+			final String operation)
+	{
+		if (currentSatelliteDomainIds.isEmpty())
+		{
+			throw InvalidRequestException.withMessage(
+					"Relationship '" + relationship.name() + "' cannot " + operation
+							+ " because no satellite is currently linked");
+		}
+		if (currentSatelliteDomainIds.size() > 1)
+		{
+			throw InvalidRequestException.withMessage(
+					"Relationship '" + relationship.name() + "' cannot " + operation
+							+ " implicitly because more than one satellite is currently linked");
+		}
+		return currentSatelliteDomainIds.iterator().next();
 	}
 
 	AggregateUpdateCoordinator(

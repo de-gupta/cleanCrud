@@ -23,7 +23,7 @@ class AggregatePortAdapterTest
 	{
 		TestMutationServices services = new TestMutationServices();
 		AggregateMutationPortAdapter<String, String, String, String> adapter =
-				new AggregateMutationPortAdapter<>(services, services, services);
+				AggregateMutationPortAdapter.withPersistenceServices(services, services, services);
 
 		assertEquals("saved", adapter.create("saved").model());
 		adapter.put("id", "put");
@@ -40,7 +40,8 @@ class AggregatePortAdapterTest
 	void aggregateFetchPortAdapterDelegatesToFetchPersistenceService()
 	{
 		TestFetchService service = new TestFetchService();
-		AggregateFetchPortAdapter<String, String> adapter = new AggregateFetchPortAdapter<>(service);
+		AggregateFetchPortAdapter<String, String> adapter =
+				AggregateFetchPortAdapter.withPersistenceService(service);
 
 		assertEquals("one", adapter.findById("one").orElseThrow().model());
 		assertEquals(2, adapter.findByIds(Set.of("one", "two")).size());
