@@ -15,6 +15,7 @@ Its core promise is:
 Add the library to your Maven `pom.xml`:
 
 ```xml
+
 <dependency>
     <groupId>io.github.de-gupta</groupId>
     <artifactId>cleanCrud</artifactId>
@@ -63,168 +64,154 @@ That is the only extra framework-level declaration surface. The orchestration it
 The normal standalone shape looks like this:
 
 ```java
+
 @Configuration
 class CommonPersistenceConfiguration
 {
-    @Bean
-    PersistenceTransactionRunner persistenceTransactionRunner(
-            final PlatformTransactionManager transactionManager)
-    {
-        return SpringPersistenceTransactionRunner.withTransactionManager(transactionManager);
-    }
+	@Bean
+	PersistenceTransactionRunner persistenceTransactionRunner(
+			final PlatformTransactionManager transactionManager)
+	{
+		return SpringPersistenceTransactionRunner.withTransactionManager(transactionManager);
+	}
 
-    @Bean
-    AggregateLifecycleEngine aggregateLifecycleEngine(
-            final PersistenceTransactionRunner persistenceTransactionRunner)
-    {
-        return DefaultAggregateLifecycleEngine.withTransactionRunner(persistenceTransactionRunner);
-    }
+	@Bean
+	AggregateLifecycleEngine aggregateLifecycleEngine(
+			final PersistenceTransactionRunner persistenceTransactionRunner)
+	{
+		return DefaultAggregateLifecycleEngine.withTransactionRunner(persistenceTransactionRunner);
+	}
 }
 ```
 
 ```java
+
 @Configuration
 class TaskCrudPortsConfiguration
 {
-    @Bean
-    @Qualifier("taskAggregateMutationPort")
-    AggregateMutationPort<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch>
-    taskAggregateMutationPort(
-            @Qualifier("taskSavePersistenceService")
-            final SavePersistenceService<Long, TaskDomainModel> savePersistenceService,
-            @Qualifier("taskUpdatePersistenceService")
-            final UpdatePersistenceService<Long, TaskDomainModel> updatePersistenceService,
-            @Qualifier("taskDeletePersistenceService")
-            final DeletePersistenceService<Long> deletePersistenceService)
-    {
-        return AggregateMutationPortAdapter.withPersistenceServices(
-                savePersistenceService,
-                updatePersistenceService,
-                deletePersistenceService);
-    }
+	@Bean
+	@Qualifier("taskAggregateMutationPort")
+	AggregateMutationPort<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch>
+	taskAggregateMutationPort(
+			@Qualifier("taskSavePersistenceService") final SavePersistenceService<Long, TaskDomainModel> savePersistenceService,
+			@Qualifier("taskUpdatePersistenceService") final UpdatePersistenceService<Long, TaskDomainModel> updatePersistenceService,
+			@Qualifier("taskDeletePersistenceService") final DeletePersistenceService<Long> deletePersistenceService)
+	{
+		return AggregateMutationPortAdapter.withPersistenceServices(
+				savePersistenceService,
+				updatePersistenceService,
+				deletePersistenceService);
+	}
 
-    @Bean
-    @Qualifier("taskAggregateFetchPort")
-    AggregateFetchPort<Long, TaskDomainModel> taskAggregateFetchPort(
-            @Qualifier("taskFetchPersistenceService")
-            final FetchPersistenceService<Long, TaskDomainModel> fetchPersistenceService)
-    {
-        return AggregateFetchPortAdapter.withPersistenceService(fetchPersistenceService);
-    }
+	@Bean
+	@Qualifier("taskAggregateFetchPort")
+	AggregateFetchPort<Long, TaskDomainModel> taskAggregateFetchPort(
+			@Qualifier("taskFetchPersistenceService") final FetchPersistenceService<Long, TaskDomainModel> fetchPersistenceService)
+	{
+		return AggregateFetchPortAdapter.withPersistenceService(fetchPersistenceService);
+	}
 }
 ```
 
 ```java
+
 @Configuration
 class TaskCrudDefinitionConfiguration
 {
-    @Bean
-    @Qualifier("taskAggregateCrudDefinition")
-    AggregateCrudDefinition<
-            Long,
-            TaskDomainModel,
-            TaskDomainModelCreate,
-            TaskDomainModelUpdatePatch,
-            TaskDomainModelResponse> taskAggregateCrudDefinition(
-            @Qualifier("taskAggregateMutationPort")
-            final AggregateMutationPort<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch> mutationPort,
-            @Qualifier("taskAggregateFetchPort")
-            final AggregateFetchPort<Long, TaskDomainModel> fetchPort,
-            @Qualifier("taskDomainModelBuilder")
-            final DomainModelBuilder<TaskDomainModelCreate, TaskDomainModel> createBuilder,
-            @Qualifier("taskDomainModelPatcher")
-            final DomainModelPatcher<TaskDomainModel, TaskDomainModelUpdatePatch> patcher,
-            @Qualifier("taskDomainResponseBuilder")
-            final DomainResponseBuilder<TaskDomainModel, TaskDomainModelResponse> responseBuilder,
-            @Qualifier("taskInsertionPolicy")
-            final InsertionPolicy<TaskDomainModel> insertionPolicy,
-            @Qualifier("taskPatchPolicy")
-            final PatchPolicy<TaskDomainModel> patchPolicy,
-            @Qualifier("taskDeletionPolicy")
-            final DeletionPolicy<TaskDomainModel> deletionPolicy,
-            @Qualifier("taskDomainSecurityPolicy")
-            final DomainSecurityPolicy<TaskDomainModel> securityPolicy,
-            @Qualifier("taskDuplicateDefinition")
-            final DuplicateDefinition<TaskDomainModel> duplicateDefinition)
-    {
-        return AggregateCrudDefinitions
-                .<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch, TaskDomainModelResponse>
-                        aggregateCrudDefinition()
-                .mutationPort(mutationPort)
-                .fetchPort(fetchPort)
-                .createBuilder(createBuilder)
-                .patcher(patcher)
-                .responseBuilder(responseBuilder)
-                .insertionPolicy(insertionPolicy)
-                .patchPolicy(patchPolicy)
-                .deletionPolicy(deletionPolicy)
-                .securityPolicy(securityPolicy)
-                .duplicateDefinition(duplicateDefinition)
-                .build();
-    }
+	@Bean
+	@Qualifier("taskAggregateCrudDefinition")
+	AggregateCrudDefinition<
+			Long,
+			TaskDomainModel,
+			TaskDomainModelCreate,
+			TaskDomainModelUpdatePatch,
+			TaskDomainModelResponse> taskAggregateCrudDefinition(
+			@Qualifier("taskAggregateMutationPort") final AggregateMutationPort<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch> mutationPort,
+			@Qualifier("taskAggregateFetchPort") final AggregateFetchPort<Long, TaskDomainModel> fetchPort,
+			@Qualifier("taskDomainModelBuilder") final DomainModelBuilder<TaskDomainModelCreate, TaskDomainModel> createBuilder,
+			@Qualifier("taskDomainModelPatcher") final DomainModelPatcher<TaskDomainModel, TaskDomainModelUpdatePatch> patcher,
+			@Qualifier("taskDomainResponseBuilder") final DomainResponseBuilder<TaskDomainModel, TaskDomainModelResponse> responseBuilder,
+			@Qualifier("taskInsertionPolicy") final InsertionPolicy<TaskDomainModel> insertionPolicy,
+			@Qualifier("taskPatchPolicy") final PatchPolicy<TaskDomainModel> patchPolicy,
+			@Qualifier("taskDeletionPolicy") final DeletionPolicy<TaskDomainModel> deletionPolicy,
+			@Qualifier("taskDomainSecurityPolicy") final DomainSecurityPolicy<TaskDomainModel> securityPolicy,
+			@Qualifier("taskDuplicateDefinition") final DuplicateDefinition<TaskDomainModel> duplicateDefinition)
+	{
+		return AggregateCrudDefinitions
+				.<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch, TaskDomainModelResponse>
+						aggregateCrudDefinition()
+				.mutationPort(mutationPort)
+				.fetchPort(fetchPort)
+				.createBuilder(createBuilder)
+				.patcher(patcher)
+				.responseBuilder(responseBuilder)
+				.insertionPolicy(insertionPolicy)
+				.patchPolicy(patchPolicy)
+				.deletionPolicy(deletionPolicy)
+				.securityPolicy(securityPolicy)
+				.duplicateDefinition(duplicateDefinition)
+				.build();
+	}
 }
 ```
 
 ```java
+
 @Configuration
 class TaskCrudServicesConfiguration
 {
-    @Bean
-    SaveService<TaskDomainModelCreate, TaskDomainModelResponse, Long> taskSaveService(
-            @Qualifier("taskAggregateCrudDefinition")
-            final AggregateCrudDefinition<
-                    Long,
-                    TaskDomainModel,
-                    TaskDomainModelCreate,
-                    TaskDomainModelUpdatePatch,
-                    TaskDomainModelResponse> definition,
-            final AggregateLifecycleEngine aggregateLifecycleEngine)
-    {
-        return AggregateCrudServices.saveService(definition, aggregateLifecycleEngine);
-    }
+	@Bean
+	SaveService<TaskDomainModelCreate, TaskDomainModelResponse, Long> taskSaveService(
+			@Qualifier("taskAggregateCrudDefinition") final AggregateCrudDefinition<
+					Long,
+					TaskDomainModel,
+					TaskDomainModelCreate,
+					TaskDomainModelUpdatePatch,
+					TaskDomainModelResponse> definition,
+			final AggregateLifecycleEngine aggregateLifecycleEngine)
+	{
+		return AggregateCrudServices.saveService(definition, aggregateLifecycleEngine);
+	}
 
-    @Bean
-    FetchService<TaskDomainModel, Long> taskFetchService(
-            @Qualifier("taskAggregateCrudDefinition")
-            final AggregateCrudDefinition<
-                    Long,
-                    TaskDomainModel,
-                    TaskDomainModelCreate,
-                    TaskDomainModelUpdatePatch,
-                    TaskDomainModelResponse> definition,
-            final AggregateLifecycleEngine aggregateLifecycleEngine)
-    {
-        return AggregateCrudServices.fetchService(definition, aggregateLifecycleEngine);
-    }
+	@Bean
+	FetchService<TaskDomainModel, Long> taskFetchService(
+			@Qualifier("taskAggregateCrudDefinition") final AggregateCrudDefinition<
+					Long,
+					TaskDomainModel,
+					TaskDomainModelCreate,
+					TaskDomainModelUpdatePatch,
+					TaskDomainModelResponse> definition,
+			final AggregateLifecycleEngine aggregateLifecycleEngine)
+	{
+		return AggregateCrudServices.fetchService(definition, aggregateLifecycleEngine);
+	}
 
-    @Bean
-    UpdateService<TaskDomainModelCreate, TaskDomainModelUpdatePatch, TaskDomainModelResponse, Long> taskUpdateService(
-            @Qualifier("taskAggregateCrudDefinition")
-            final AggregateCrudDefinition<
-                    Long,
-                    TaskDomainModel,
-                    TaskDomainModelCreate,
-                    TaskDomainModelUpdatePatch,
-                    TaskDomainModelResponse> definition,
-            final AggregateLifecycleEngine aggregateLifecycleEngine)
-    {
-        return AggregateCrudServices.updateService(definition, aggregateLifecycleEngine);
-    }
+	@Bean
+	UpdateService<TaskDomainModelCreate, TaskDomainModelUpdatePatch, TaskDomainModelResponse, Long> taskUpdateService(
+			@Qualifier("taskAggregateCrudDefinition") final AggregateCrudDefinition<
+					Long,
+					TaskDomainModel,
+					TaskDomainModelCreate,
+					TaskDomainModelUpdatePatch,
+					TaskDomainModelResponse> definition,
+			final AggregateLifecycleEngine aggregateLifecycleEngine)
+	{
+		return AggregateCrudServices.updateService(definition, aggregateLifecycleEngine);
+	}
 
-    @Bean
-    @Qualifier("taskDeleteService")
-    DeleteService<Long> taskDeleteService(
-            @Qualifier("taskAggregateCrudDefinition")
-            final AggregateCrudDefinition<
-                    Long,
-                    TaskDomainModel,
-                    TaskDomainModelCreate,
-                    TaskDomainModelUpdatePatch,
-                    TaskDomainModelResponse> definition,
-            final AggregateLifecycleEngine aggregateLifecycleEngine)
-    {
-        return AggregateCrudServices.deleteService(definition, aggregateLifecycleEngine);
-    }
+	@Bean
+	@Qualifier("taskDeleteService")
+	DeleteService<Long> taskDeleteService(
+			@Qualifier("taskAggregateCrudDefinition") final AggregateCrudDefinition<
+					Long,
+					TaskDomainModel,
+					TaskDomainModelCreate,
+					TaskDomainModelUpdatePatch,
+					TaskDomainModelResponse> definition,
+			final AggregateLifecycleEngine aggregateLifecycleEngine)
+	{
+		return AggregateCrudServices.deleteService(definition, aggregateLifecycleEngine);
+	}
 }
 ```
 
@@ -243,48 +230,74 @@ Typical relationship declaration:
 
 ```java
 var versionRelationshipDefinition =
-        AggregateRelationshipDefinitions
-                .<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch,
-                        Long, VersionDomainModel, VersionDomainModelCreate, VersionDomainModelUpdatePatch>
-                        aggregateRelationshipDefinition()
-                .name("version")
-                .cardinality(Cardinality.ONE)
-                .lifecycleSemantics(
-                        LifecycleSemanticsBuilder.lifecycleSemantics()
-                                                 .cascadeCreate()
-                                                 .cascadeUpdate()
-                                                 .cascadeDelete()
-                                                 .orphanDelete()
-                                                 .hydrateOnFetch()
-                                                 .build())
-                .satelliteDefinition(versionAggregateCrudDefinition)
-                .createInputResolver(TaskDomainModelCreate::satelliteCreateIntents)
-                .patchInputResolver(TaskDomainModelUpdatePatch::satelliteMutationIntents)
-                .identityResolver(taskVersionIdentityResolver)
-                .reconciliationStrategy(ReconciliationStrategy.REPLACE)
-                .linkStrategy(taskVersionLinkStrategy)
-                .hydrationStrategy(taskVersionHydrationStrategy)
-                .build();
+		AggregateRelationshipDefinitions
+				.<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch,
+						Long, VersionDomainModel, VersionDomainModelCreate, VersionDomainModelUpdatePatch>
+						aggregateRelationshipDefinition()
+				.name("version")
+				.cardinality(Cardinality.ONE)
+				.lifecycleSemantics(
+						LifecycleSemanticsBuilder.lifecycleSemantics()
+						                         .cascadeCreate()
+						                         .cascadeUpdate()
+						                         .cascadeDelete()
+						                         .orphanDelete()
+						                         .hydrateOnFetch()
+						                         .build())
+				.satelliteDefinition(versionAggregateCrudDefinition)
+				.createInputResolver(TaskDomainModelCreate::satelliteCreateIntents)
+				.patchInputResolver(TaskDomainModelUpdatePatch::satelliteMutationIntents)
+				.identityResolver(taskVersionIdentityResolver)
+				.reconciliationStrategy(ReconciliationStrategy.REPLACE)
+				.linkStrategy(taskVersionLinkStrategy)
+				.hydrationStrategy(taskVersionHydrationStrategy)
+				.build();
 ```
 
 Then attach it to the aggregate definition:
 
 ```java
 return AggregateCrudDefinitions
-        .<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch, TaskDomainModelResponse>
-                aggregateCrudDefinition()
-        .mutationPort(mutationPort)
-        .fetchPort(fetchPort)
-        .createBuilder(createBuilder)
-        .patcher(patcher)
-        .responseBuilder(responseBuilder)
-        .insertionPolicy(insertionPolicy)
-        .patchPolicy(patchPolicy)
-        .deletionPolicy(deletionPolicy)
-        .securityPolicy(securityPolicy)
-        .duplicateDefinition(duplicateDefinition)
-        .relationshipDefinition(versionRelationshipDefinition)
-        .build();
+		.
+
+<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch, TaskDomainModelResponse>
+aggregateCrudDefinition()
+        .
+
+mutationPort(mutationPort)
+        .
+
+fetchPort(fetchPort)
+        .
+
+createBuilder(createBuilder)
+        .
+
+patcher(patcher)
+        .
+
+responseBuilder(responseBuilder)
+        .
+
+insertionPolicy(insertionPolicy)
+        .
+
+patchPolicy(patchPolicy)
+        .
+
+deletionPolicy(deletionPolicy)
+        .
+
+securityPolicy(securityPolicy)
+        .
+
+duplicateDefinition(duplicateDefinition)
+        .
+
+relationshipDefinition(versionRelationshipDefinition)
+        .
+
+build();
 ```
 
 After that, the framework owns:
@@ -355,6 +368,7 @@ Typical historized shape:
 Example:
 
 ```java
+
 @Repository
 interface TaskHistoryJpaRepository extends TriTemporalHistoryJpaRepository<UUID, TaskPersistenceModelHistory>
 {
@@ -362,16 +376,16 @@ interface TaskHistoryJpaRepository extends TriTemporalHistoryJpaRepository<UUID,
 
 @Component
 final class TaskHistorizedJpaRepository extends AbstractHistorizedPersistenceModelJpaRepository<
-        TaskPersistenceModel, UUID, TaskPersistenceModelImpl, TaskPersistenceModelHistory>
+		TaskPersistenceModel, UUID, TaskPersistenceModelImpl, TaskPersistenceModelHistory>
 {
-    TaskHistorizedJpaRepository(
-            final TaskJpaRepository liveRepository,
-            final TaskHistoryJpaRepository historyRepository,
-            final TaskPersistenceHistorySnapshotFactory snapshotFactory,
-            final AuditActorSupplier auditActorSupplier)
-    {
-        super(liveRepository, historyRepository, snapshotFactory, auditActorSupplier);
-    }
+	TaskHistorizedJpaRepository(
+			final TaskJpaRepository liveRepository,
+			final TaskHistoryJpaRepository historyRepository,
+			final TaskPersistenceHistorySnapshotFactory snapshotFactory,
+			final AuditActorSupplier auditActorSupplier)
+	{
+		super(liveRepository, historyRepository, snapshotFactory, auditActorSupplier);
+	}
 }
 ```
 
@@ -408,7 +422,7 @@ The aggregate runtime sits above the persistence services and orchestrates CRUD 
 
 A full example is available in the companion repository `cleanCrud-sampleImplementation`.
 
-That sample now demonstrates both:
+That sample demonstrates both:
 
 - normal standalone aggregates
 - aggregates that own and lifecycle-manage satellites
