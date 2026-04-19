@@ -74,6 +74,27 @@ class DefaultAggregateLifecycleEngineTest
 	}
 
 	@Test
+	void oneToOneSaveSupportsReferenceSatelliteCreateIntent()
+	{
+		var scenario = new TestScenario(List.of());
+		scenario.installRelationship(
+				Cardinality.ONE,
+				ReconciliationStrategy.REPLACE,
+				LifecycleSemantics.of(true, true, true, true, true),
+				SatellitePersistenceOrder.SATELLITE_BEFORE_MASTER);
+		scenario.satelliteStore.put(7L, new SatelliteModel("existing"));
+
+		var saved = scenario.engine.save(
+				scenario.masterDefinition,
+				new MasterCreate(
+						"master",
+						List.of(new SatelliteCreateIntent.ReferenceSatelliteCreateIntent<>(7L))));
+
+		assertEquals(List.of(7L), saved.model().satelliteDomainIds());
+		assertEquals("existing", scenario.satelliteStore.get(7L).value());
+	}
+
+	@Test
 	void saveAllWithRelationshipsRejectsDuplicateRequestItemsBeforePersistence()
 	{
 		var scenario = new TestScenario(List.of());
@@ -148,6 +169,30 @@ class DefaultAggregateLifecycleEngineTest
 								createdSatelliteDomainId))));
 		assertTrue(removed.model().satelliteDomainIds().isEmpty());
 		assertFalse(scenario.satelliteStore.containsKey(createdSatelliteDomainId));
+	}
+
+	@Test
+	void oneToOneUpdateCurrentSatelliteUpdatesTheSingleCurrentlyLinkedSatellite()
+	{
+		var scenario = new TestScenario(List.of());
+		scenario.installRelationship(
+				Cardinality.ONE,
+				ReconciliationStrategy.REPLACE,
+				LifecycleSemantics.of(true, true, false, true, false),
+				SatellitePersistenceOrder.SATELLITE_BEFORE_MASTER);
+		scenario.masterStore.put("master-1", new MasterModel("master", List.of(1L), List.of()));
+		scenario.satelliteStore.put(1L, new SatelliteModel("old"));
+
+		var updated = scenario.engine.updateById(
+				scenario.masterDefinition,
+				"master-1",
+				new MasterPatch(
+						null,
+						List.of(new SatelliteMutationIntent.UpdateCurrentSatelliteMutationIntent<>(
+								new SatellitePatch("updated")))));
+
+		assertEquals(List.of(1L), updated.model().satelliteDomainIds());
+		assertEquals("updated", scenario.satelliteStore.get(1L).value());
 	}
 
 	@Test
@@ -247,33 +292,44 @@ class DefaultAggregateLifecycleEngineTest
 	}
 
 	@Test
-	void manyReplaceRemoveCurrentFailsWhenMoreThanOneSatelliteIsCurrentlyLinked()
+	void manyRelationshipsRejectImplicitCurrentSatelliteMutationIntents()
 	{
-		var scenario = new TestScenario(List.of());
-		scenario.installRelationship(
-				Cardinality.MANY,
-				ReconciliationStrategy.REPLACE,
-				LifecycleSemantics.of(true, true, false, false, false),
-				SatellitePersistenceOrder.SATELLITE_BEFORE_MASTER);
-		scenario.masterStore.put("master-1", new MasterModel("master", List.of(1L, 2L), List.of()));
-		scenario.satelliteStore.put(1L, new SatelliteModel("one"));
-		scenario.satelliteStore.put(2L, new SatelliteModel("two"));
+		for (var reconciliationStrategy : List.of(ReconciliationStrategy.REPLACE, ReconciliationStrategy.MERGE_BY_ID))
+		{
+			var scenario = new TestScenario(List.of());
+			scenario.installRelationship(
+					Cardinality.MANY,
+					reconciliationStrategy,
+					LifecycleSemantics.of(true, true, false, false, false),
+					SatellitePersistenceOrder.SATELLITE_BEFORE_MASTER);
+			scenario.masterStore.put("master-1", new MasterModel("master", List.of(1L, 2L), List.of()));
+			scenario.satelliteStore.put(1L, new SatelliteModel("one"));
+			scenario.satelliteStore.put(2L, new SatelliteModel("two"));
 
-		var exception = assertThrows(
-				InvalidRequestException.class,
-				() -> scenario.engine.updateById(
-						scenario.masterDefinition,
-						"master-1",
-						new MasterPatch(
-								null,
-								List.of(new SatelliteMutationIntent.RemoveCurrentSatelliteMutationIntent<>()))));
+			List<SatelliteMutationIntent<Long, SatelliteCreate, SatellitePatch>> mutationIntents = List.of(
+					new SatelliteMutationIntent.UpsertCurrentSatelliteMutationIntent<>(
+							new SatelliteCreate("created"),
+							new SatellitePatch("patched")),
+					new SatelliteMutationIntent.UpdateCurrentSatelliteMutationIntent<>(
+							new SatellitePatch("patched")),
+					new SatelliteMutationIntent.RemoveCurrentSatelliteMutationIntent<>());
+			for (var mutationIntent : mutationIntents)
+			{
+				var exception = assertThrows(
+						InvalidRequestException.class,
+						() -> scenario.engine.updateById(
+								scenario.masterDefinition,
+								"master-1",
+								new MasterPatch(null, List.of(mutationIntent))));
+				assertEquals(
+						"Relationship 'satellite' cannot use implicit current satellite mutations for MANY cardinality; use explicit satellite ids instead",
+						exception.getMessage());
+			}
 
-		assertEquals(
-				"Relationship 'satellite' cannot remove implicitly because more than one satellite is currently linked",
-				exception.getMessage());
-		assertEquals(List.of(1L, 2L), scenario.masterStore.get("master-1").satelliteDomainIds());
-		assertTrue(scenario.satelliteStore.containsKey(1L));
-		assertTrue(scenario.satelliteStore.containsKey(2L));
+			assertEquals(List.of(1L, 2L), scenario.masterStore.get("master-1").satelliteDomainIds());
+			assertTrue(scenario.satelliteStore.containsKey(1L));
+			assertTrue(scenario.satelliteStore.containsKey(2L));
+		}
 	}
 
 	@Test
@@ -297,6 +353,34 @@ class DefaultAggregateLifecycleEngineTest
 
 		assertTrue(updated.model().satelliteDomainIds().isEmpty());
 		assertFalse(scenario.satelliteStore.containsKey(1L));
+	}
+
+	@Test
+	void replaceRemoveCurrentRequiresOrphanDeleteToBeEnabled()
+	{
+		var scenario = new TestScenario(List.of());
+		scenario.installRelationship(
+				Cardinality.ONE,
+				ReconciliationStrategy.REPLACE,
+				LifecycleSemantics.of(true, true, false, false, false),
+				SatellitePersistenceOrder.SATELLITE_BEFORE_MASTER);
+		scenario.masterStore.put("master-1", new MasterModel("master", List.of(1L), List.of()));
+		scenario.satelliteStore.put(1L, new SatelliteModel("one"));
+
+		var exception = assertThrows(
+				InvalidRequestException.class,
+				() -> scenario.engine.updateById(
+						scenario.masterDefinition,
+						"master-1",
+						new MasterPatch(
+								null,
+								List.of(new SatelliteMutationIntent.RemoveCurrentSatelliteMutationIntent<>()))));
+
+		assertEquals(
+				"Relationship 'satellite' cannot remove the current satellite under REPLACE unless orphanDelete is enabled",
+				exception.getMessage());
+		assertEquals(List.of(1L), scenario.masterStore.get("master-1").satelliteDomainIds());
+		assertTrue(scenario.satelliteStore.containsKey(1L));
 	}
 
 	@Test
@@ -352,6 +436,26 @@ class DefaultAggregateLifecycleEngineTest
 		assertEquals(2, scenario.transactionRunner.transactionCount());
 		assertFalse(scenario.masterStore.containsKey("ok"));
 		assertTrue(scenario.masterStore.containsKey("blocked"));
+	}
+
+	@Test
+	void updateAllByIdUpdatesAllRequestedModels()
+	{
+		var scenario = new TestScenario(List.of());
+		scenario.masterStore.put("first", new MasterModel("first", List.of(), List.of()));
+		scenario.masterStore.put("second", new MasterModel("second", List.of(), List.of()));
+
+		var updated = scenario.engine.updateAllById(
+				scenario.masterDefinition,
+				List.of(
+						IdentifiedModel.of("first", new MasterPatch("first-updated", List.of())),
+						IdentifiedModel.of("second", new MasterPatch("second-updated", List.of()))),
+				BulkOperationMode.ALL_OR_NOTHING);
+
+		assertEquals(2, updated.size());
+		assertEquals("first-updated", scenario.masterStore.get("first").value());
+		assertEquals("second-updated", scenario.masterStore.get("second").value());
+		assertEquals(1, scenario.transactionRunner.transactionCount());
 	}
 
 	private record MasterCreate(String value,

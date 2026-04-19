@@ -167,6 +167,7 @@ final class AggregateUpdateCoordinator
 			throw AggregateRelationshipExecutionNotSupportedException.withMessage(
 					"Relationship '" + relationship.name() + "' does not allow satellite update participation");
 		}
+		validateCurrentMutationIntentSupport(relationship, mutationIntents);
 
 		return switch (relationship.reconciliationStrategy())
 		{
@@ -253,7 +254,15 @@ final class AggregateUpdateCoordinator
 				}
 				case SatelliteMutationIntent.RemoveCurrentSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
 						SatelliteDomainModelUpdatePatch> _ ->
-						requiredCurrentLinkedSatelliteDomainId(relationship, currentSatelliteDomainIds, "remove");
+				{
+					if (!relationship.lifecycleSemantics().orphanDelete())
+					{
+						throw InvalidRequestException.withMessage(
+								"Relationship '" + relationship.name()
+										+ "' cannot remove the current satellite under REPLACE unless orphanDelete is enabled");
+					}
+					requiredCurrentLinkedSatelliteDomainId(relationship, currentSatelliteDomainIds, "remove");
+				}
 			}
 		}
 		deleteOrphanedSatellitesIfNeeded(
@@ -356,6 +365,30 @@ final class AggregateUpdateCoordinator
 				relationship,
 				updatedMasterDomainModel,
 				new ArrayList<>(targetSatelliteDomainIds));
+	}
+
+	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+	void validateCurrentMutationIntentSupport(
+			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> relationship,
+			final Collection<SatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch>> mutationIntents)
+	{
+		if (relationship.cardinality() != de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.Cardinality.MANY)
+		{
+			return;
+		}
+		if (mutationIntents.stream().anyMatch(mutationIntent -> mutationIntent
+				instanceof SatelliteMutationIntent.UpsertCurrentSatelliteMutationIntent<?, ?, ?>
+				|| mutationIntent instanceof SatelliteMutationIntent.UpdateCurrentSatelliteMutationIntent<?, ?, ?>
+				|| mutationIntent instanceof SatelliteMutationIntent.RemoveCurrentSatelliteMutationIntent<?, ?, ?>))
+		{
+			throw InvalidRequestException.withMessage(
+					"Relationship '" + relationship.name()
+							+ "' cannot use implicit current satellite mutations for MANY cardinality; use explicit satellite ids instead");
+		}
 	}
 
 	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,

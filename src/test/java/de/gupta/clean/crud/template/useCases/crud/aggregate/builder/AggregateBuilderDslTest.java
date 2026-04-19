@@ -31,10 +31,84 @@ import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("Aggregate builder DSL tests")
 final class AggregateBuilderDslTest
 {
+	@org.junit.jupiter.api.Test
+	void relationshipDefaultsToNoOpHydrationStrategyWhenHydrationOnFetchIsDisabled()
+	{
+		var scenario = new TestScenario();
+		var relationshipDefinition = AggregateRelationshipDefinitions
+				.<String, MasterModel, MasterCreate, MasterPatch, Long, SatelliteModel, SatelliteCreate, SatellitePatch>aggregateRelationshipDefinition()
+				.name("satellite")
+				.cardinality(Cardinality.ONE)
+				.lifecycleSemantics(LifecycleSemantics.none())
+				.satelliteDefinition(scenario.satelliteDefinition())
+				.createInputResolver(MasterCreate::satelliteCreateIntents)
+				.patchInputResolver(MasterPatch::satelliteMutationIntents)
+				.identityResolver((_, _) -> Optional.empty())
+				.reconciliationStrategy(ReconciliationStrategy.REPLACE)
+				.linkStrategy(scenario.linkStrategy(SatellitePersistenceOrder.NO_ORDER_CONSTRAINT))
+				.build();
+
+		var hydrated = relationshipDefinition.hydrationStrategy().hydrate(
+				IdentifiedModel.of("master-1", new MasterModel("master", List.of(1L), List.of())),
+				new AggregateFetchPort<>()
+				{
+					@Override
+					public Optional<IdentifiedModel<Long, SatelliteModel>> findById(final Long domainId)
+					{
+						throw new AssertionError("No-op hydration strategy should not fetch satellites");
+					}
+
+					@Override
+					public Collection<IdentifiedModel<Long, SatelliteModel>> findByIds(final Set<Long> domainIds)
+					{
+						return List.of();
+					}
+
+					@Override
+					public Collection<IdentifiedModel<Long, SatelliteModel>> findAll()
+					{
+						return List.of();
+					}
+
+					@Override
+					public Slice<IdentifiedModel<Long, SatelliteModel>> findAll(final Pageable pageable)
+					{
+						return new SliceImpl<>(List.of());
+					}
+				},
+				scenario.linkStrategy(SatellitePersistenceOrder.NO_ORDER_CONSTRAINT));
+
+		assertThat(hydrated)
+				.as("No-op hydration should return the unchanged master model")
+				.isEqualTo(new MasterModel("master", List.of(1L), List.of()));
+	}
+
+	@org.junit.jupiter.api.Test
+	void relationshipStillRequiresHydrationStrategyWhenHydrationOnFetchIsEnabled()
+	{
+		var scenario = new TestScenario();
+		assertThatThrownBy(() -> AggregateRelationshipDefinitions
+				.<String, MasterModel, MasterCreate, MasterPatch, Long, SatelliteModel, SatelliteCreate, SatellitePatch>aggregateRelationshipDefinition()
+				.name("satellite")
+				.cardinality(Cardinality.ONE)
+				.lifecycleSemantics(LifeCycleBuilders.oneToOneLifecycle())
+				.satelliteDefinition(scenario.satelliteDefinition())
+				.createInputResolver(MasterCreate::satelliteCreateIntents)
+				.patchInputResolver(MasterPatch::satelliteMutationIntents)
+				.identityResolver((_, _) -> Optional.empty())
+				.reconciliationStrategy(ReconciliationStrategy.REPLACE)
+				.linkStrategy(scenario.linkStrategy(SatellitePersistenceOrder.NO_ORDER_CONSTRAINT))
+				.build())
+				.as("Hydrating relationships should still require an explicit hydration strategy")
+				.isInstanceOf(NullPointerException.class)
+				.hasMessage("hydrationStrategy");
+	}
+
 	private record MasterCreate(
 			String value,
 			Collection<SatelliteCreateIntent<Long, SatelliteCreate>> satelliteCreateIntents)
@@ -144,13 +218,13 @@ final class AggregateBuilderDslTest
 							originalDomainModel.satelliteDomainIds(),
 							originalDomainModel.hydratedSatellites()))
 					.responseBuilder(MasterResponse::from)
-					.insertionPolicy(model ->
+					.insertionPolicy(_ ->
 					{
 					})
-					.patchPolicy((left, right) ->
+					.patchPolicy((_, _) ->
 					{
 					})
-					.deletionPolicy(model ->
+					.deletionPolicy(_ ->
 					{
 					})
 					.securityPolicy(DomainSecurityPolicy.allowing())
@@ -183,13 +257,13 @@ final class AggregateBuilderDslTest
 					.createBuilder(create -> new SatelliteModel(create.value()))
 					.patcher((_, patch) -> new SatelliteModel(patch.value()))
 					.responseBuilder(SatelliteModel::value)
-					.insertionPolicy(model ->
+					.insertionPolicy(_ ->
 					{
 					})
-					.patchPolicy((left, right) ->
+					.patchPolicy((_, _) ->
 					{
 					})
-					.deletionPolicy(model ->
+					.deletionPolicy(_ ->
 					{
 					})
 					.securityPolicy(DomainSecurityPolicy.allowing())
@@ -515,7 +589,7 @@ final class AggregateBuilderDslTest
 			return Stream.of(
 					BuilderCase.shape(
 							"zero-relationship aggregate definition",
-							scenario ->
+							_ ->
 							{
 							},
 							scenario ->

@@ -196,7 +196,9 @@ public final class AggregateRelationshipDefinitions
 					required(identityResolver, "identityResolver"),
 					required(reconciliationStrategy, "reconciliationStrategy"),
 					required(linkStrategy, "linkStrategy"),
-					required(hydrationStrategy, "hydrationStrategy"));
+					hydrationStrategy == null && !lifecycleSemantics.hydrateOnFetch()
+							? SatelliteHydrationStrategies.none()
+							: required(hydrationStrategy, "hydrationStrategy"));
 		}
 
 		private AggregateRelationshipDefinitionBuilder()
