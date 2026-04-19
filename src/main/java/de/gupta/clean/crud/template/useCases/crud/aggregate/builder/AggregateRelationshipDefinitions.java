@@ -7,6 +7,8 @@ import de.gupta.clean.crud.template.useCases.crud.aggregate.lifecycle.LifecycleS
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateFetchPort;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateMutationPort;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.*;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.standard.StandardOneToManySatelliteRelationshipBuilder;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.standard.StandardOneToOneSatelliteRelationshipBuilder;
 
 import java.util.Collection;
 import java.util.Objects;
@@ -20,6 +22,34 @@ public final class AggregateRelationshipDefinitions
 			SatelliteDomainModelUpdatePatch> aggregateRelationshipDefinition()
 	{
 		return new AggregateRelationshipDefinitionBuilder<>();
+	}
+
+	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch,
+			SatelliteAggregateResponse, SatellitePublicCreate, SatellitePublicUpdatePatch, SatellitePublicResponse>
+	StandardOneToOneSatelliteRelationshipBuilder<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+			MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+			SatelliteDomainModelUpdatePatch, SatelliteAggregateResponse, SatellitePublicCreate,
+			SatellitePublicUpdatePatch, SatellitePublicResponse> oneToOneSatellite(
+			final String name,
+			final AggregateCrudDefinition<SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch, SatelliteAggregateResponse> satelliteDefinition)
+	{
+		return new StandardOneToOneSatelliteRelationshipBuilder<>(name, satelliteDefinition);
+	}
+
+	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch,
+			SatelliteAggregateResponse, SatellitePublicCreate, SatellitePublicUpdatePatch, SatellitePublicResponse>
+	StandardOneToManySatelliteRelationshipBuilder<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+			MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+			SatelliteDomainModelUpdatePatch, SatelliteAggregateResponse, SatellitePublicCreate,
+			SatellitePublicUpdatePatch, SatellitePublicResponse> oneToManySatellite(
+			final String name,
+			final AggregateCrudDefinition<SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch, SatelliteAggregateResponse> satelliteDefinition)
+	{
+		return new StandardOneToManySatelliteRelationshipBuilder<>(name, satelliteDefinition);
 	}
 
 	private static <Value> Value required(final Value value, final String name)

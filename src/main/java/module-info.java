@@ -62,6 +62,7 @@ module de.gupta.clean.crud
 	exports de.gupta.clean.crud.template.useCases.crud.aggregate.lifecycle;
 	exports de.gupta.clean.crud.template.useCases.crud.aggregate.port;
 	exports de.gupta.clean.crud.template.useCases.crud.aggregate.relationship;
+	exports de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.standard;
 	exports de.gupta.clean.crud.template.useCases.crud.aggregate.service;
 	exports de.gupta.clean.crud.template.useCases.crud.delete.api.application;
 	exports de.gupta.clean.crud.template.useCases.crud.delete.api.web;
