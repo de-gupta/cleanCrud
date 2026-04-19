@@ -330,142 +330,151 @@ Now suppose:
 - `Task -> Note` is `1:N`
 - `Task` lifecycle-manages both
 
-The only additional responsibility for the owning aggregate is to define the relationships.
+The current recommended path is the standard satellite DSL. It keeps the relationship definition small and centered on
+the few things that are actually domain-specific:
 
-For each owned relationship, you provide:
+- where nested create values come from
+- where nested patch values come from
+- how to rebuild the master with hydrated public contracts
+- optional lifecycle or reconciliation overrides
 
-- one relationship definition
-- one create input resolver
-- one patch input resolver
-- one identity resolver
-- one link strategy
-- one hydration strategy
+The framework supplies the repetitive parts:
 
-Everything else stays on the normal CRUD path.
+- lifecycle defaults
+- create and patch intent resolution
+- identity resolution
+- link strategy
+- hydration strategy
+- satellite fetch plus response mapping pipeline
 
-### `Task -> Version` (`1:1`)
-
-Typical semantics:
-
-- `Cardinality.ONE`
-- `ReconciliationStrategy.REPLACE`
-- `cascadeCreate`
-- `cascadeUpdate`
-- `cascadeDelete`
-- `orphanDelete`
-- `hydrateOnFetch`
+### `Task -> Version` (`1:1` owned satellite)
 
 ```java
 var versionRelationshipDefinition =
 		AggregateRelationshipDefinitions
 				.<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch,
-						Long, VersionDomainModel, VersionDomainModelCreate, VersionDomainModelUpdatePatch>
-						aggregateRelationshipDefinition()
-				.name("version")
-				.cardinality(Cardinality.ONE)
-				.lifecycleSemantics(
-						LifecycleSemanticsBuilder.lifecycleSemantics()
-						                         .cascadeCreate()
-						                         .cascadeUpdate()
-						                         .cascadeDelete()
-						                         .orphanDelete()
-						                         .hydrateOnFetch()
-						                         .build())
-				.satelliteDefinition(versionAggregateCrudDefinition)
-				.createInputResolver(versionCreateInputResolver)
-				.patchInputResolver(versionPatchInputResolver)
-				.identityResolver(versionIdentityResolver)
-				.reconciliationStrategy(ReconciliationStrategy.REPLACE)
-				.linkStrategy(versionLinkStrategy)
-				.hydrationStrategy(versionHydrationStrategy)
+						Long, VersionDomainModel, VersionDomainModelCreate, VersionDomainModelUpdatePatch,
+						VersionAPIModelResponse, VersionAPIModelCreate, VersionAPIModelUpdatePatch,
+						VersionAPIModelResponse>
+						oneToOneSatellite("version", versionAggregateCrudDefinition)
+				.createExtractor(TaskDomainModelCreate::version)
+				.createMapper(version -> version)
+				.patchExtractor(TaskDomainModelUpdatePatch::version)
+				.patchMapper(VersionAPIToDomainUpdateAdapter::toDomainModelUpdatePatch)
+				.patchCreateMapper(VersionAPIToDomainCreateAdapter::toDomainModelCreate)
+				.removeIdExtractor(TaskDomainModelUpdatePatch::removeVersionIds)
+				.currentSatellite(task -> task.versions().stream().findFirst())
+				.replaceSatellite((task, version) -> task.withVersions(version.stream().toList()))
+				.publicResponseMapper(identifiedResponse -> identifiedResponse.model())
 				.build();
 ```
 
-### `Task -> Note` (`1:N`)
+Default standard semantics here are:
 
-Typical semantics:
+- `Cardinality.ONE`
+- `ReconciliationStrategy.REPLACE`
+- `cascadeCreate = true`
+- `cascadeUpdate = true`
+- `cascadeDelete = false`
+- `orphanDelete = false`
+- `hydrateOnFetch = true`
 
-- `Cardinality.MANY`
-- `ReconciliationStrategy.MERGE_BY_ID`
-- `cascadeCreate`
-- `cascadeUpdate`
-- `cascadeDelete`
-- `orphanDelete`
-- `hydrateOnFetch`
+If `Task` should fully own `Version`, you can override lifecycle semantics and turn delete/orphan delete on.
+
+### `Task -> Note` (`1:N` owned satellite)
 
 ```java
 var noteRelationshipDefinition =
 		AggregateRelationshipDefinitions
 				.<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch,
-						Long, NoteDomainModel, NoteDomainModelCreate, NoteDomainModelUpdatePatch>
-						aggregateRelationshipDefinition()
-				.name("note")
-				.cardinality(Cardinality.MANY)
-				.lifecycleSemantics(
-						LifecycleSemanticsBuilder.lifecycleSemantics()
-						                         .cascadeCreate()
-						                         .cascadeUpdate()
-						                         .cascadeDelete()
-						                         .orphanDelete()
-						                         .hydrateOnFetch()
-						                         .build())
-				.satelliteDefinition(noteAggregateCrudDefinition)
-				.createInputResolver(noteCreateInputResolver)
-				.patchInputResolver(notePatchInputResolver)
-				.identityResolver(noteIdentityResolver)
-				.reconciliationStrategy(ReconciliationStrategy.MERGE_BY_ID)
-				.linkStrategy(noteLinkStrategy)
-				.hydrationStrategy(noteHydrationStrategy)
+						Long, NoteDomainModel, NoteDomainModelCreate, NoteDomainModelUpdatePatch,
+						NoteAPIModelResponse, NoteAPIModelCreate, NoteAPIModelUpdatePatch,
+						NoteAPIModelResponse>
+						oneToManySatellite("note", noteAggregateCrudDefinition)
+				.createExtractor(TaskDomainModelCreate::notes)
+				.createMapper(note -> note)
+				.patchExtractor(TaskDomainModelUpdatePatch::notes)
+				.patchMapper(NoteAPIToDomainUpdateAdapter::toDomainModelUpdatePatch)
+				.patchCreateMapper(NoteAPIToDomainCreateAdapter::toDomainModelCreate)
+				.removeIdExtractor(TaskDomainModelUpdatePatch::removeNoteIds)
+				.currentSatellites(TaskDomainModel::notes)
+				.replaceSatellites(TaskDomainModel::withNotes)
+				.publicResponseMapper(identifiedResponse -> identifiedResponse.model())
 				.build();
 ```
+
+Default standard semantics here are:
+
+- `Cardinality.MANY`
+- `ReconciliationStrategy.MERGE_BY_ID`
+- `cascadeCreate = true`
+- `cascadeUpdate = true`
+- `cascadeDelete = false`
+- `orphanDelete = false`
+- `hydrateOnFetch = true`
+
+### Reference-only relationships are also first-class
+
+Not every relationship is lifecycle-owned. Sometimes the master should only point at already existing satellites.
+
+For that case, use:
+
+- `oneToOneReferencedSatellite(...)`
+- `oneToManyReferencedSatellite(...)`
+
+Those standard builders are meant for the “reference existing aggregate only” use case:
+
+- `cascadeCreate = false`
+- `cascadeUpdate = true`
+- `cascadeDelete = false`
+- `orphanDelete = false`
+- `hydrateOnFetch = true`
+
+Example: `Task` only refers to existing `Note`s by id.
+
+```java
+var noteReferenceRelationshipDefinition =
+		AggregateRelationshipDefinitions
+				.<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch,
+						Long, NoteDomainModel, NoteDomainModelCreate, NoteDomainModelUpdatePatch,
+						NoteAPIModelResponse, NoteAPIModelResponse>
+						oneToManyReferencedSatellite("note", noteAggregateCrudDefinition)
+				.createReferenceIdsExtractor(TaskDomainModelCreate::noteIds)
+				.patchReferenceIdsExtractor(TaskDomainModelUpdatePatch::noteIds)
+				.removeIdExtractor(TaskDomainModelUpdatePatch::removeNoteIds)
+				.currentSatellites(TaskDomainModel::notes)
+				.replaceSatellites(TaskDomainModel::withNotes)
+				.publicResponseMapper(identifiedResponse -> identifiedResponse.model())
+				.build();
+```
+
+Effect of the reference-only DSL:
+
+- create does **not** create new satellites
+- patch does **not** create new satellites
+- referenced ids are validated through the satellite fetch port
+- missing ids fail with `ResourceNotFoundException`
+- the master still gets hydrated public satellite contracts on fetch
 
 ### Attach the relationships to `Task`
 
 ```java
 return AggregateCrudDefinitions
-		.
-
-<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch, TaskDomainModelResponse>
-aggregateCrudDefinition()
-		.
-
-mutationPort(mutationPort)
-		.
-
-fetchPort(fetchPort)
-		.
-
-createBuilder(createBuilder)
-		.
-
-patcher(patcher)
-		.
-
-responseBuilder(responseBuilder)
-		.
-
-insertionPolicy(insertionPolicy)
-		.
-
-patchPolicy(patchPolicy)
-		.
-
-deletionPolicy(deletionPolicy)
-		.
-
-securityPolicy(securityPolicy)
-		.
-
-duplicateDefinition(duplicateDefinition)
-		.
-
-relationshipDefinition(versionRelationshipDefinition)
-		.
-
-relationshipDefinition(noteRelationshipDefinition)
-		.
-
-build();
+		.<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch, TaskDomainModelResponse>
+				aggregateCrudDefinition()
+		.mutationPort(mutationPort)
+		.fetchPort(fetchPort)
+		.createBuilder(createBuilder)
+		.patcher(patcher)
+		.responseBuilder(responseBuilder)
+		.insertionPolicy(insertionPolicy)
+		.patchPolicy(patchPolicy)
+		.deletionPolicy(deletionPolicy)
+		.securityPolicy(securityPolicy)
+		.duplicateDefinition(duplicateDefinition)
+		.relationshipDefinition(versionRelationshipDefinition)
+		.relationshipDefinition(noteRelationshipDefinition)
+		.build();
 ```
 
 After that, `Task` still uses the same save, fetch, update, and delete services. There is no second consumer-facing API.
@@ -474,9 +483,10 @@ After that, `Task` still uses the same save, fetch, update, and delete services.
 
 Once relationships are declared, `cleanCrud` takes care of:
 
-- creating owned satellites during master create
+- creating owned satellites during master create when lifecycle semantics allow it
 - linking referenced satellites
-- updating owned satellites during master update
+- validating referenced ids through the satellite fetch port
+- updating owned satellites during master update when lifecycle semantics allow it
 - replacing or removing owned satellites according to reconciliation strategy
 - orphan deletion when configured
 - cascade deletion when the master is deleted
@@ -503,6 +513,8 @@ Current relationship runtime support includes:
 - zero-relationship CRUD
 - one-to-one satellite save, fetch hydration, delete, update, and put flows
 - one-to-many satellite save, fetch hydration, delete, update, and put flows
+- one-to-one referenced-satellite save, fetch hydration, update, and put flows
+- one-to-many referenced-satellite save, fetch hydration, update, and put flows
 - collection reconciliation for `REPLACE` and `MERGE_BY_ID`
 
 ### Supported vs deferred

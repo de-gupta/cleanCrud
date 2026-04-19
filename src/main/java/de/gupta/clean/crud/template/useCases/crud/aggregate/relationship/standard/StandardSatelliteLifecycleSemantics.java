@@ -9,6 +9,11 @@ public final class StandardSatelliteLifecycleSemantics
 		return LifecycleSemantics.of(true, true, false, false, true);
 	}
 
+	public static LifecycleSemantics referenceOnlyDefaults()
+	{
+		return LifecycleSemantics.of(false, true, false, false, true);
+	}
+
 	private StandardSatelliteLifecycleSemantics()
 	{
 	}

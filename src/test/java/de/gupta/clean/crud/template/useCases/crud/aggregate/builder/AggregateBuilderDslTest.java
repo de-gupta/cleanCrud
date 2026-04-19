@@ -1,5 +1,6 @@
 package de.gupta.clean.crud.template.useCases.crud.aggregate.builder;
 
+import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.service.equality.KeyBasedDuplicateDefinition;
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
@@ -34,6 +35,7 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.groups.Tuple.tuple;
 
 @DisplayName("Aggregate builder DSL tests")
 final class AggregateBuilderDslTest
@@ -137,6 +139,68 @@ final class AggregateBuilderDslTest
 				.as("many standard relationships should update by id, create id-less items, and remove explicit ids")
 				.extracting(StandardSatellitePublicResponse::value)
 				.containsExactly("note-one-updated", "note-three");
+	}
+
+	@org.junit.jupiter.api.Test
+	void oneToOneReferencedSatelliteBuilderLinksExistingSatelliteAndHydratesIt()
+	{
+		var scenario = new StandardRelationshipTestScenario();
+		scenario.installOneToOneReferencedRelationship();
+		var versionId = scenario.createStandaloneSatellite("version-one");
+
+		var saved = scenario.referencedSaveService().save(new StandardReferenceMasterCreate(
+				"master",
+				Optional.of(versionId),
+				List.of()));
+
+		assertThat(saved.model().versions())
+				.as("reference-only one-to-one relationships should link and hydrate an existing satellite")
+				.extracting(StandardSatellitePublicResponse::id, StandardSatellitePublicResponse::value)
+				.containsExactly(tuple(versionId, "version-one"));
+	}
+
+	@org.junit.jupiter.api.Test
+	void oneToOneReferencedSatelliteBuilderThrowsWhenReferencedSatelliteDoesNotExist()
+	{
+		var scenario = new StandardRelationshipTestScenario();
+		scenario.installOneToOneReferencedRelationship();
+
+		assertThatThrownBy(() -> scenario.referencedSaveService().save(new StandardReferenceMasterCreate(
+				"master",
+				Optional.of(999L),
+				List.of())))
+				.as("reference-only one-to-one relationships should validate referenced ids")
+				.isInstanceOf(ResourceNotFoundException.class);
+	}
+
+	@org.junit.jupiter.api.Test
+	void oneToManyReferencedSatelliteBuilderAddsAndRemovesReferencesById()
+	{
+		var scenario = new StandardRelationshipTestScenario();
+		scenario.installOneToManyReferencedRelationship();
+		var firstNoteId = scenario.createStandaloneSatellite("note-one");
+		var secondNoteId = scenario.createStandaloneSatellite("note-two");
+		var thirdNoteId = scenario.createStandaloneSatellite("note-three");
+
+		var saved = scenario.referencedSaveService().save(new StandardReferenceMasterCreate(
+				"master",
+				Optional.empty(),
+				List.of(firstNoteId, secondNoteId)));
+
+		var updated = scenario.referencedUpdateService().updateById(
+				saved.id(),
+				new StandardReferenceMasterPatch(
+						Optional.empty(),
+						List.of(),
+						List.of(thirdNoteId),
+						List.of(secondNoteId)));
+
+		assertThat(updated.model().notes())
+				.as("reference-only one-to-many relationships should add and remove linked ids without creating satellites")
+				.extracting(StandardSatellitePublicResponse::id, StandardSatellitePublicResponse::value)
+				.containsExactly(
+						tuple(firstNoteId, "note-one"),
+						tuple(thirdNoteId, "note-three"));
 	}
 
 	@org.junit.jupiter.api.Test
@@ -302,6 +366,21 @@ final class AggregateBuilderDslTest
 			return new StandardMasterResponse(masterDomainModel.value(), masterDomainModel.versions(),
 					masterDomainModel.notes());
 		}
+	}
+
+	private record StandardReferenceMasterCreate(
+			String value,
+			Optional<Long> versionId,
+			Collection<Long> noteIds)
+	{
+	}
+
+	private record StandardReferenceMasterPatch(
+			Optional<Long> versionId,
+			Collection<Long> removeVersionIds,
+			Collection<Long> noteIds,
+			Collection<Long> removeNoteIds)
+	{
 	}
 
 	private record StandardSatelliteCreate(String value)
@@ -641,6 +720,9 @@ final class AggregateBuilderDslTest
 		private AggregateCrudDefinition<String, StandardMasterModel, StandardMasterCreate, StandardMasterPatch,
 				StandardMasterResponse> masterDefinition =
 				masterDefinition(List.of());
+		private AggregateCrudDefinition<String, StandardMasterModel, StandardReferenceMasterCreate,
+				StandardReferenceMasterPatch, StandardMasterResponse> referencedMasterDefinition =
+				referencedMasterDefinition(List.of());
 
 		private void installOneToOneRelationship()
 		{
@@ -650,6 +732,18 @@ final class AggregateBuilderDslTest
 		private void installOneToManyRelationship()
 		{
 			masterDefinition = masterDefinition(List.of(oneToManyRelationshipDefinition()));
+		}
+
+		private void installOneToOneReferencedRelationship()
+		{
+			referencedMasterDefinition =
+					referencedMasterDefinition(List.of(oneToOneReferencedRelationshipDefinition()));
+		}
+
+		private void installOneToManyReferencedRelationship()
+		{
+			referencedMasterDefinition =
+					referencedMasterDefinition(List.of(oneToManyReferencedRelationshipDefinition()));
 		}
 
 		private AggregateRelationshipDefinition<String, StandardMasterModel, StandardMasterCreate, StandardMasterPatch,
@@ -698,6 +792,47 @@ final class AggregateBuilderDslTest
 					.build();
 		}
 
+		private AggregateRelationshipDefinition<String, StandardMasterModel, StandardReferenceMasterCreate,
+				StandardReferenceMasterPatch, Long, StandardSatelliteDomainModel, StandardSatelliteDomainCreate,
+				StandardSatelliteDomainPatch> oneToOneReferencedRelationshipDefinition()
+		{
+			return AggregateRelationshipDefinitions
+					.<String, StandardMasterModel, StandardReferenceMasterCreate, StandardReferenceMasterPatch, Long,
+							StandardSatelliteDomainModel, StandardSatelliteDomainCreate, StandardSatelliteDomainPatch,
+							StandardSatelliteAggregateResponse, StandardSatellitePublicResponse>
+							oneToOneReferencedSatellite("version", satelliteDefinition)
+					.createReferenceIdExtractor(StandardReferenceMasterCreate::versionId)
+					.patchReferenceIdExtractor(StandardReferenceMasterPatch::versionId)
+					.removeIdExtractor(StandardReferenceMasterPatch::removeVersionIds)
+					.currentSatellite(masterDomainModel -> masterDomainModel.versions().stream().findFirst())
+					.replaceSatellite((masterDomainModel, version) -> masterDomainModel.withVersions(
+							version.stream().toList()))
+					.publicResponseMapper(identifiedAggregateResponse -> new StandardSatellitePublicResponse(
+							identifiedAggregateResponse.id(),
+							identifiedAggregateResponse.model().value()))
+					.build();
+		}
+
+		private AggregateRelationshipDefinition<String, StandardMasterModel, StandardReferenceMasterCreate,
+				StandardReferenceMasterPatch, Long, StandardSatelliteDomainModel, StandardSatelliteDomainCreate,
+				StandardSatelliteDomainPatch> oneToManyReferencedRelationshipDefinition()
+		{
+			return AggregateRelationshipDefinitions
+					.<String, StandardMasterModel, StandardReferenceMasterCreate, StandardReferenceMasterPatch, Long,
+							StandardSatelliteDomainModel, StandardSatelliteDomainCreate, StandardSatelliteDomainPatch,
+							StandardSatelliteAggregateResponse, StandardSatellitePublicResponse>
+							oneToManyReferencedSatellite("note", satelliteDefinition)
+					.createReferenceIdsExtractor(StandardReferenceMasterCreate::noteIds)
+					.patchReferenceIdsExtractor(StandardReferenceMasterPatch::noteIds)
+					.removeIdExtractor(StandardReferenceMasterPatch::removeNoteIds)
+					.currentSatellites(StandardMasterModel::notes)
+					.replaceSatellites(StandardMasterModel::withNotes)
+					.publicResponseMapper(identifiedAggregateResponse -> new StandardSatellitePublicResponse(
+							identifiedAggregateResponse.id(),
+							identifiedAggregateResponse.model().value()))
+					.build();
+		}
+
 		private AggregateCrudDefinition<String, StandardMasterModel, StandardMasterCreate, StandardMasterPatch,
 				StandardMasterResponse> masterDefinition(
 				final Collection<? extends AggregateRelationshipDefinitionContract<String, StandardMasterModel,
@@ -708,6 +843,35 @@ final class AggregateBuilderDslTest
 							StandardMasterResponse>aggregateCrudDefinition()
 					.mutationPort(masterMutationPort())
 					.fetchPort(masterFetchPort())
+					.createBuilder(create -> new StandardMasterModel(create.value(), List.of(), List.of()))
+					.patcher((originalDomainModel, _) -> originalDomainModel)
+					.responseBuilder(StandardMasterResponse::from)
+					.insertionPolicy(_ ->
+					{
+					})
+					.patchPolicy((_, _) ->
+					{
+					})
+					.deletionPolicy(_ ->
+					{
+					})
+					.securityPolicy(DomainSecurityPolicy.allowing())
+					.duplicateDefinition(
+							(KeyBasedDuplicateDefinition<StandardMasterModel, String>) StandardMasterModel::value)
+					.relationshipDefinitions(relationships)
+					.build();
+		}
+
+		private AggregateCrudDefinition<String, StandardMasterModel, StandardReferenceMasterCreate,
+				StandardReferenceMasterPatch, StandardMasterResponse> referencedMasterDefinition(
+				final Collection<? extends AggregateRelationshipDefinitionContract<String, StandardMasterModel,
+						StandardReferenceMasterCreate, StandardReferenceMasterPatch>> relationships)
+		{
+			return AggregateCrudDefinitions
+					.<String, StandardMasterModel, StandardReferenceMasterCreate, StandardReferenceMasterPatch,
+							StandardMasterResponse>aggregateCrudDefinition()
+					.mutationPort(referencedMasterMutationPort())
+					.fetchPort(referencedMasterFetchPort())
 					.createBuilder(create -> new StandardMasterModel(create.value(), List.of(), List.of()))
 					.patcher((originalDomainModel, _) -> originalDomainModel)
 					.responseBuilder(StandardMasterResponse::from)
@@ -742,6 +906,21 @@ final class AggregateBuilderDslTest
 			return new TestStandardFetchService(masterDefinition, engine);
 		}
 
+		private TestStandardReferencedSaveService referencedSaveService()
+		{
+			return new TestStandardReferencedSaveService(referencedMasterDefinition, engine);
+		}
+
+		private TestStandardReferencedUpdateService referencedUpdateService()
+		{
+			return new TestStandardReferencedUpdateService(referencedMasterDefinition, engine);
+		}
+
+		private long createStandaloneSatellite(final String value)
+		{
+			return satelliteMutationPort().create(new StandardSatelliteDomainModel(value)).id();
+		}
+
 		private AggregateCrudDefinition<Long, StandardSatelliteDomainModel, StandardSatelliteDomainCreate,
 				StandardSatelliteDomainPatch, StandardSatelliteAggregateResponse> satelliteDefinition()
 		{
@@ -770,6 +949,42 @@ final class AggregateBuilderDslTest
 
 		private AggregateMutationPort<String, StandardMasterModel, StandardMasterCreate, StandardMasterPatch>
 		masterMutationPort()
+		{
+			return new AggregateMutationPort<>()
+			{
+				@Override
+				public IdentifiedModel<String, StandardMasterModel> create(final StandardMasterModel domainModel)
+				{
+					var masterDomainId = "master-" + generatedMasterIds.incrementAndGet();
+					masterStore.put(masterDomainId, domainModel);
+					return IdentifiedModel.of(masterDomainId, domainModel);
+				}
+
+				@Override
+				public void put(final String masterDomainId, final StandardMasterModel domainModel)
+				{
+					masterStore.put(masterDomainId, domainModel);
+				}
+
+				@Override
+				public IdentifiedModel<String, StandardMasterModel> update(
+						final String masterDomainId,
+						final StandardMasterModel domainModel)
+				{
+					masterStore.put(masterDomainId, domainModel);
+					return IdentifiedModel.of(masterDomainId, domainModel);
+				}
+
+				@Override
+				public void delete(final String masterDomainId)
+				{
+					masterStore.remove(masterDomainId);
+				}
+			};
+		}
+
+		private AggregateMutationPort<String, StandardMasterModel, StandardReferenceMasterCreate,
+				StandardReferenceMasterPatch> referencedMasterMutationPort()
 		{
 			return new AggregateMutationPort<>()
 			{
@@ -915,6 +1130,40 @@ final class AggregateBuilderDslTest
 				}
 			};
 		}
+
+		private AggregateFetchPort<String, StandardMasterModel> referencedMasterFetchPort()
+		{
+			return new AggregateFetchPort<>()
+			{
+				@Override
+				public Optional<IdentifiedModel<String, StandardMasterModel>> findById(final String masterDomainId)
+				{
+					return Optional.ofNullable(masterStore.get(masterDomainId))
+					               .map(model -> IdentifiedModel.of(masterDomainId, model));
+				}
+
+				@Override
+				public Collection<IdentifiedModel<String, StandardMasterModel>> findByIds(
+						final Set<String> masterDomainIds)
+				{
+					return masterDomainIds.stream().flatMap(masterDomainId -> findById(masterDomainId).stream())
+					                      .toList();
+				}
+
+				@Override
+				public Collection<IdentifiedModel<String, StandardMasterModel>> findAll()
+				{
+					return masterStore.entrySet().stream()
+					                  .map(entry -> IdentifiedModel.of(entry.getKey(), entry.getValue())).toList();
+				}
+
+				@Override
+				public Slice<IdentifiedModel<String, StandardMasterModel>> findAll(final Pageable pageable)
+				{
+					return new SliceImpl<>(findAll().stream().toList());
+				}
+			};
+		}
 	}
 
 	private static final class TestStandardSaveService
@@ -950,6 +1199,32 @@ final class AggregateBuilderDslTest
 		private TestStandardFetchService(
 				final AggregateCrudDefinition<String, StandardMasterModel, StandardMasterCreate, StandardMasterPatch,
 						StandardMasterResponse> definition,
+				final AggregateLifecycleEngine engine)
+		{
+			super(definition, engine);
+		}
+	}
+
+	private static final class TestStandardReferencedSaveService
+			extends AbstractSaveService<String, StandardMasterModel, StandardReferenceMasterCreate,
+			StandardReferenceMasterPatch, StandardMasterResponse>
+	{
+		private TestStandardReferencedSaveService(
+				final AggregateCrudDefinition<String, StandardMasterModel, StandardReferenceMasterCreate,
+						StandardReferenceMasterPatch, StandardMasterResponse> definition,
+				final AggregateLifecycleEngine engine)
+		{
+			super(definition, engine);
+		}
+	}
+
+	private static final class TestStandardReferencedUpdateService
+			extends AbstractUpdateService<String, StandardMasterModel, StandardReferenceMasterCreate,
+			StandardReferenceMasterPatch, StandardMasterResponse>
+	{
+		private TestStandardReferencedUpdateService(
+				final AggregateCrudDefinition<String, StandardMasterModel, StandardReferenceMasterCreate,
+						StandardReferenceMasterPatch, StandardMasterResponse> definition,
 				final AggregateLifecycleEngine engine)
 		{
 			super(definition, engine);
