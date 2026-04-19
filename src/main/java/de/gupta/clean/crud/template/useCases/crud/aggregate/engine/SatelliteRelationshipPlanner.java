@@ -1,0 +1,112 @@
+package de.gupta.clean.crud.template.useCases.crud.aggregate.engine;
+
+import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteCreateIntent;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMutationIntent;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinition;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.Cardinality;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+final class SatelliteRelationshipPlanner
+{
+	<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+	List<SatelliteCreateIntent<SatelliteDomainId, SatelliteDomainModelCreate>> createIntents(
+			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> relationshipDefinition,
+			final MasterDomainModelCreate masterDomainModelCreate)
+	{
+		List<SatelliteCreateIntent<SatelliteDomainId, SatelliteDomainModelCreate>> intents =
+				relationshipDefinition.createInputResolver()
+				                      .resolveSatelliteCreateIntent(masterDomainModelCreate)
+				                      .stream()
+				                      .map(this::<SatelliteDomainId, SatelliteDomainModelCreate>castCreateIntent)
+				                      .filter(intent -> !(intent instanceof SatelliteCreateIntent.NoSatelliteCreateIntent<?, ?>))
+				                      .toList();
+		validateCardinality(relationshipDefinition.cardinality(), intents.size(), "create");
+		return intents;
+	}
+
+	<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+	List<SatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>>
+	mutationIntents(
+			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> relationshipDefinition,
+			final MasterDomainModelUpdatePatch masterDomainModelUpdatePatch)
+	{
+		List<SatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>>
+				intents =
+				relationshipDefinition.patchInputResolver()
+				                      .resolveSatelliteMutationIntents(masterDomainModelUpdatePatch)
+				                      .stream()
+				                      .map(this::<SatelliteDomainId,
+											  SatelliteDomainModelCreate,
+											  SatelliteDomainModelUpdatePatch>castMutationIntent)
+				                      .toList();
+		validateCardinality(relationshipDefinition.cardinality(), intents.size(), "update");
+		return intents;
+	}
+
+	<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+	List<SatelliteDomainId> currentLinkedSatelliteDomainIds(
+			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> relationshipDefinition,
+			final MasterDomainModel masterDomainModel)
+	{
+		List<SatelliteDomainId> currentSatelliteDomainIds =
+				relationshipDefinition.linkStrategy().currentLinkedSatelliteDomainIds(masterDomainModel).stream()
+				                      .toList();
+		if (relationshipDefinition.cardinality() == Cardinality.ONE && currentSatelliteDomainIds.size() > 1)
+		{
+			throw AggregateRelationshipExecutionNotSupportedException.withMessage(
+					"Cardinality.ONE relationship '" + relationshipDefinition.name() +
+							"' resolved more than one current satellite");
+		}
+		return currentSatelliteDomainIds;
+	}
+
+	<MasterDomainModel, SatelliteDomainId>
+	MasterDomainModel replaceLinkedSatelliteDomainIds(
+			final AggregateRelationshipDefinition<?, MasterDomainModel, ?, ?, SatelliteDomainId, ?, ?, ?> relationshipDefinition,
+			final MasterDomainModel masterDomainModel,
+			final Collection<SatelliteDomainId> satelliteDomainIds)
+	{
+		validateCardinality(relationshipDefinition.cardinality(), satelliteDomainIds.size(), "link");
+		return relationshipDefinition.linkStrategy().replaceLinkedSatelliteDomainIds(masterDomainModel,
+				new ArrayList<>(satelliteDomainIds));
+	}
+
+	private void validateCardinality(final Cardinality cardinality, final int elementCount, final String operation)
+	{
+		if (cardinality == Cardinality.ONE && elementCount > 1)
+		{
+			throw InvalidRequestException.withMessage(
+					"Only one satellite intent is allowed for a ONE relationship during " + operation);
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private <SatelliteDomainId, SatelliteDomainModelCreate>
+	SatelliteCreateIntent<SatelliteDomainId, SatelliteDomainModelCreate> castCreateIntent(
+			final SatelliteCreateIntent<?, ?> intent)
+	{
+		return (SatelliteCreateIntent<SatelliteDomainId, SatelliteDomainModelCreate>) intent;
+	}
+
+	@SuppressWarnings("unchecked")
+	private <SatelliteDomainId, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+	SatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+	castMutationIntent(final SatelliteMutationIntent<?, ?, ?> intent)
+	{
+		return (SatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>)
+				intent;
+	}
+}

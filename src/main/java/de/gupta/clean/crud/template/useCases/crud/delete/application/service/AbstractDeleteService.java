@@ -1,83 +1,41 @@
 package de.gupta.clean.crud.template.useCases.crud.delete.application.service;
 
-import de.gupta.clean.crud.template.domain.model.exceptions.DomainException;
-import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
-import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDeniedException;
-import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
-import de.gupta.clean.crud.template.domain.service.crud.policy.DeletionPolicy;
-import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateLifecycleEngine;
 import de.gupta.clean.crud.template.useCases.crud.common.BulkOperationMode;
-import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.FetchPersistenceService;
 
 import java.util.Collection;
 
-public abstract class AbstractDeleteService<DomainID, DomainModel>
-		implements DeleteService<DomainID>
+public abstract class AbstractDeleteService<
+		MasterDomainId,
+		MasterDomainModel,
+		MasterDomainModelCreate,
+		MasterDomainModelUpdatePatch,
+		MasterDomainModelResponse>
+		implements DeleteService<MasterDomainId>
 {
-	private final FetchPersistenceService<DomainID, DomainModel> fetchService;
-	private final DeletePersistenceService<DomainID> persistenceService;
-	private final DeletionPolicy<DomainModel> deletionPolicy;
-	private final DomainSecurityPolicy<DomainModel> domainSecurityPolicy;
+	private final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+			MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition;
+	private final AggregateLifecycleEngine engine;
 
 	@Override
-	public void deleteById(final DomainID id)
+	public void deleteById(final MasterDomainId id)
 	{
-		validateDeletion(id);
-		persistenceService.deleteById(id);
+		engine.deleteById(definition, id);
 	}
 
 	@Override
-	public void deleteAllById(final Collection<DomainID> ids, final BulkOperationMode mode)
+	public void deleteAllById(final Collection<MasterDomainId> ids, final BulkOperationMode mode)
 	{
-		Collection<DomainID> validIds = switch (mode)
-		{
-			case ALL_OR_NOTHING ->
-			{
-				ids.forEach(this::validateDeletion);
-				yield ids;
-			}
-			case BEST_EFFORT -> ids.stream()
-								   .filter(this::isDeletionAllowed)
-								   .toList();
-		};
-
-		persistenceService.deleteAllById(validIds);
-	}
-
-	private void validateDeletion(final DomainID id)
-	{
-		final var domainModel = fetchService.findById(id)
-											.map(IdentifiedModel::model)
-											.orElseThrow(() -> ResourceNotFoundException.withId(id));
-
-		if (!domainSecurityPolicy.isAccessAllowed(domainModel))
-			throw AccessDeniedException.withMessage("Access not allowed");
-
-		deletionPolicy.validateDeletion(domainModel);
-	}
-
-	private boolean isDeletionAllowed(final DomainID id)
-	{
-		try
-		{
-			validateDeletion(id);
-			return true;
-		}
-		catch (DomainException e)
-		{
-			return false;
-		}
+		engine.deleteAllById(definition, ids, mode);
 	}
 
 	protected AbstractDeleteService(
-			final FetchPersistenceService<DomainID, DomainModel> fetchService,
-			final DeletePersistenceService<DomainID> persistenceService,
-			final DeletionPolicy<DomainModel> deletionPolicy,
-			final DomainSecurityPolicy<DomainModel> domainSecurityPolicy)
+			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+			final AggregateLifecycleEngine engine)
 	{
-		this.fetchService = fetchService;
-		this.persistenceService = persistenceService;
-		this.deletionPolicy = deletionPolicy;
-		this.domainSecurityPolicy = domainSecurityPolicy;
+		this.definition = definition;
+		this.engine = engine;
 	}
 }

@@ -1,183 +1,579 @@
 # Clean CRUD Framework
 
-A robust Java library for implementing clean architecture-based CRUD operations with clear separation between API,
-domain, and infrastructure layers.
+`cleanCrud` is a Java framework for building CRUD modules in one consistent clean-architecture shape.
 
-## Overview
+From a consumer point of view, the promise is:
 
-The Clean CRUD Framework provides a comprehensive template for building CRUD (Create, Read, Update, Delete) endpoints
-following clean architecture principles. It enforces a clear separation of concerns between different layers of your
-application, making your code more maintainable, testable, and adaptable to change.
+- you keep one normal CRUD surface
+- you model each aggregate normally
+- if one aggregate owns others, you declare those relationships once
+- the framework orchestrates create, update, delete, and fetch hydration for you
 
-A key feature of this framework is the hiding of infrastructure IDs from the web layer, ensuring that your domain
-remains isolated from infrastructure concerns.
-
-## Key Features
-
-- **Clean Architecture Implementation**: Strict separation between API, domain, and infrastructure layers
-- **Complete CRUD Operations**: Ready-to-use templates for Create, Read, Update, and Delete operations
-- **Infrastructure ID Isolation**: Domain IDs are separated from persistence IDs
-- **Spring Boot Integration**: Seamlessly works with Spring Boot applications
-- **Flexible Adapters**: Customizable adapters between different layers
-- **Security Policies**: Built-in support for domain-level security policies
-- **Validation**: Comprehensive validation at all layers
-- **Error Handling**: Consistent error handling across the application
-
-## Architecture
-
-The framework is built on clean architecture principles with three main layers:
-
-### 1. API Layer
-
-The API layer is divided into two sub-layers:
-
-- **Web Layer**: Handles HTTP requests and responses using Spring REST controllers
-- **Application Layer**: Orchestrates use cases and transforms between web and domain models
-
-### 2. Domain Layer
-
-The domain layer contains:
-
-- **Domain Models**: Core business entities and value objects
-- **Domain Services**: Business logic and rules
-- **Domain Exceptions**: Business-specific exceptions
-- **Validation**: Domain-specific validation rules
-- **Security Policies**: Access control rules at the domain level
-
-### 3. Infrastructure Layer
-
-The infrastructure layer includes:
-
-- **Persistence Adapters**: Adapters between domain and persistence models
-- **Repositories**: Data access using Spring Data JPA
-- **ID Management**: Separation between domain IDs and persistence IDs
-
-## How It Works
-
-### ID Isolation
-
-One of the key features of this framework is the isolation of infrastructure IDs from the web layer:
-
-1. **Domain IDs**: Used within the domain layer and exposed to the web layer
-2. **Persistence IDs**: Used only within the infrastructure layer
-3. **ID Adapters**: Convert between domain IDs and persistence IDs
-
-This approach ensures that your domain remains clean and free from infrastructure concerns.
-
-### Layer Communication
-
-Communication between layers follows clean architecture principles:
-
-1. **Web → Application**: Web controllers call application services
-2. **Application → Domain**: Application services use domain services and models
-3. **Domain → Infrastructure**: Domain services use infrastructure adapters through interfaces
-4. **Infrastructure → Domain**: Infrastructure adapters convert persistence models to domain models
+Single-aggregate CRUD is still the default path. Aggregate relationships extend that same path rather than introducing a
+second “special orchestration mode”.
 
 ## Installation
 
-Add the following dependency to your Maven `pom.xml`:
+Add the library to your Maven `pom.xml`:
 
 ```xml
 
 <dependency>
     <groupId>io.github.de-gupta</groupId>
     <artifactId>cleanCrud</artifactId>
-    <version>0.2.2-SNAPSHOT</version>
+    <version>${cleanCrud.version}</version>
 </dependency>
 ```
 
-## Usage
+## Start Here
 
-### Basic Implementation Steps
+If you are new to `cleanCrud`, the most practical mental model is:
 
-1. **Define Domain Models**:
-    - Create domain models that implement `BaseDomainModel`
-    - Define domain-specific validation rules
+1. define each aggregate normally as if it were standalone
+2. wire one `AggregateCrudDefinition` for each aggregate
+3. if one aggregate owns others, add `AggregateRelationshipDefinition`s to the owning aggregate
 
-2. **Create Persistence Models**:
-    - Implement JPA entities
-    - Create adapters between domain and persistence models
+The companion sample repository demonstrates this with:
 
-3. **Implement ID Adapters**:
-    - Create adapters to convert between domain IDs and persistence IDs
+- `Version` as a normal standalone aggregate
+- `Note` as a normal standalone aggregate
+- `Task` as a normal standalone aggregate
+- `Task -> Version` as a `1:1` owned relationship
+- `Task -> Note` as a `1:N` owned relationship
 
-4. **Define Web Models**:
-    - Create DTOs for web requests and responses
-    - Implement adapters between web and domain models
+The owning aggregate usually comes last, because its relationship definitions point at the owned aggregates’
+definitions.
 
-5. **Configure Controllers**:
-    - Extend the appropriate controller templates for your CRUD operations
+## What A Real Consumer Module Contains
 
-### Historized Persistence
+There are two different things to keep separate:
 
-For historized persistence, `cleanCrud` now provides a single high-level repository base so consumers do not need
-separate save/delete/crud repository beans for the same aggregate.
+1. the **full module implementation surface**
+2. the **aggregate runtime wiring surface**
 
-Historized persistence now also supports a nullable `AuditActor` on every history row. `AuditActor` is a framework
-contract, not a persistence type consumers must instantiate. Consumers provide any implementation through an
-`AuditActorSupplier`, and the framework normalizes that into its built-in persisted audit core. If actor capture is
-not desired, pass `AuditActorSupplier.none()`. For convenience, the framework also provides `SampleAuditActor` with a
-nested builder for common cases.
+The runtime wiring is only a small part of a real `cleanCrud` module.
 
-Recommended mapping:
+### Full module implementation surface
 
-- `actorId`: stable subject or user ID
-- `displayName`: human-readable username or email
-- `tokenId`: safe token/session reference such as JWT `jti`
-- `issuer`: token issuer
-- `clientId`: calling client/application ID
+A real standalone aggregate module typically contains:
 
-Do not persist raw principal objects or raw JWT tokens. The framework is designed for stable, queryable audit
-metadata instead of secret-bearing authentication payloads.
+- base model
+- domain model
+- API model
+- persistence model
+- create, update patch, and response DTOs
+- API/domain adapters
+- domain/persistence adapters
+- builders
+- patchers
+- response builders
+- duplicate definition
+- insertion, patch, deletion, and security policies
+- repositories
+- persistence services
+- facades
+- controllers
+- module configuration
+- aggregate ports
+- aggregate definition
+- CRUD service beans
 
-Only `actorId` is required. All other audit fields are optional and exposed as `Optional` values on the `AuditActor`
-contract.
+So if you look only at the aggregate runtime wiring examples later in this README, remember that they show just the
+aggregate-specific layer, not the whole module.
 
-If a consumer needs richer audit storage, the recommended path is to keep the framework's canonical persisted audit
-core and add extra audit columns on the concrete history entity. Concrete history models can override the protected
-audit-application hook from the tri-temporal base class, call `super`, and then copy any extra subtype-specific audit
-data.
+This is also where `cleanCrud-generator` is useful: it removes most of the repetitive standalone module boilerplate so
+you can focus on your model and the few places where you want custom behavior.
 
-Typical consumer shape:
+## What You Provide For A Standalone Aggregate
 
-1. Define one live JPA entity
-2. Define one history JPA entity
-3. Define one live Spring Data repository
-4. Define one history Spring Data repository by extending `TriTemporalHistoryJpaRepository`
-5. Extend `AbstractHistorizedPersistenceModelJpaRepository`
-6. Implement a small history snapshot factory, typically by extending
-   `AbstractPersistenceHistorySnapshotFactory`
+For one normal standalone aggregate, you provide:
 
-Example shape:
+- domain model
+- create model
+- update patch model
+- response model
+- builder
+- patcher
+- response builder
+- insertion policy
+- patch policy
+- deletion policy
+- security policy
+- duplicate definition
+- fetch/save/update/delete persistence services
+- one aggregate mutation port bean
+- one aggregate fetch port bean
+- one aggregate definition bean
+- CRUD service beans built from that aggregate definition
+
+At application level, you also provide one shared:
+
+- `PersistenceTransactionRunner`
+- `AggregateLifecycleEngine`
+
+That is enough for normal single-aggregate CRUD.
+
+## What The Generator Gives You
+
+`cleanCrud-generator` is best thought of in two layers:
+
+1. it gets you to a valid standalone aggregate quickly
+2. it can then help you add relationship wiring on top of that
+
+In other words, the generator usually handles most of the repetitive standalone boilerplate, but the consumer still
+decides the important relationship semantics explicitly:
+
+- cardinality
+- reconciliation strategy
+- cascade create/update/delete
+- orphan delete
+- fetch hydration
+
+The generator should not guess those semantics from model types alone.
+
+## A Concrete Consumer Journey: `Version`, `Note`, Then `Task`
+
+Suppose you want:
+
+- `Version` as a normal standalone aggregate
+- `Note` as a normal standalone aggregate
+- `Task` as a normal standalone aggregate
+- `Task -> Version` as `1:1`
+- `Task -> Note` as `1:N`
+
+The usual order is:
+
+1. define and wire `Version`
+2. define and wire `Note`
+3. define and wire `Task`
+4. add relationship definitions from `Task` to `Version` and `Note`
+5. attach those relationship definitions to the `Task` aggregate definition
+
+That gives you one normal CRUD surface for all three aggregates, with `Task` additionally lifecycle-managing its owned
+aggregates.
+
+## Wiring A Standalone Aggregate
+
+The normal standalone runtime wiring shape is:
+
+1. shared persistence/runtime configuration
+2. aggregate ports configuration
+3. aggregate definition configuration
+4. CRUD services configuration
+
+### Shared runtime
 
 ```java
 
-@Repository
-interface TaskHistoryJpaRepository extends TriTemporalHistoryJpaRepository<UUID, TaskPersistenceModelHistory>
+@Configuration
+class CommonPersistenceConfiguration
 {
-}
-
-@Component
-final class TaskHistorizedJpaRepository extends AbstractHistorizedPersistenceModelJpaRepository<
-		TaskPersistenceModel, UUID, TaskPersistenceModelImpl, TaskPersistenceModelHistory>
-{
-	TaskHistorizedJpaRepository(
-			final TaskJpaRepository liveRepository,
-			final TaskHistoryJpaRepository historyRepository,
-			final TaskPersistenceHistorySnapshotFactory snapshotFactory,
-			final AuditActorSupplier auditActorSupplier)
+	@Bean
+	PersistenceTransactionRunner persistenceTransactionRunner(
+			final PlatformTransactionManager transactionManager)
 	{
-		super(liveRepository, historyRepository, snapshotFactory, auditActorSupplier);
+		return SpringPersistenceTransactionRunner.withTransactionManager(transactionManager);
+	}
+
+	@Bean
+	AggregateLifecycleEngine aggregateLifecycleEngine(
+			final PersistenceTransactionRunner persistenceTransactionRunner)
+	{
+		return DefaultAggregateLifecycleEngine.withTransactionRunner(persistenceTransactionRunner);
 	}
 }
 ```
 
-For domain-persistence ID mapping history, `AbstractDomainPersistenceIDManagement` now defaults missing current
-mappings on update to an upsert-create flow and records `CREATED` history automatically. Consumers can still override
-that behavior through the protected `handleMissingCurrentMappingOnUpdate(...)` hook when needed. The same
-`AuditActorSupplier` must be provided there as well so mapping-history rows receive the same actor metadata as
-aggregate-history rows.
+### Aggregate ports
 
-### Example Implementation
+```java
 
-A full-fledged example implementation is available in the companion repository cleanCrud-sampleImplementation.
+@Configuration
+class TaskCrudPortsConfiguration
+{
+	@Bean
+	@Qualifier("taskAggregateMutationPort")
+	AggregateMutationPort<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch>
+	taskAggregateMutationPort(
+			@Qualifier("taskSavePersistenceService") final SavePersistenceService<Long, TaskDomainModel> savePersistenceService,
+			@Qualifier("taskUpdatePersistenceService") final UpdatePersistenceService<Long, TaskDomainModel> updatePersistenceService,
+			@Qualifier("taskDeletePersistenceService") final DeletePersistenceService<Long> deletePersistenceService)
+	{
+		return AggregateMutationPortAdapter.withPersistenceServices(
+				savePersistenceService,
+				updatePersistenceService,
+				deletePersistenceService);
+	}
+
+	@Bean
+	@Qualifier("taskAggregateFetchPort")
+	AggregateFetchPort<Long, TaskDomainModel> taskAggregateFetchPort(
+			@Qualifier("taskFetchPersistenceService") final FetchPersistenceService<Long, TaskDomainModel> fetchPersistenceService)
+	{
+		return AggregateFetchPortAdapter.withPersistenceService(fetchPersistenceService);
+	}
+}
+```
+
+### Aggregate definition
+
+```java
+
+@Configuration
+class TaskCrudDefinitionConfiguration
+{
+	@Bean
+	@Qualifier("taskAggregateCrudDefinition")
+	AggregateCrudDefinition<
+			Long,
+			TaskDomainModel,
+			TaskDomainModelCreate,
+			TaskDomainModelUpdatePatch,
+			TaskDomainModelResponse> taskAggregateCrudDefinition(
+			@Qualifier("taskAggregateMutationPort") final AggregateMutationPort<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch> mutationPort,
+			@Qualifier("taskAggregateFetchPort") final AggregateFetchPort<Long, TaskDomainModel> fetchPort,
+			@Qualifier("taskDomainModelBuilder") final DomainModelBuilder<TaskDomainModelCreate, TaskDomainModel> createBuilder,
+			@Qualifier("taskDomainModelPatcher") final DomainModelPatcher<TaskDomainModel, TaskDomainModelUpdatePatch> patcher,
+			@Qualifier("taskDomainResponseBuilder") final DomainResponseBuilder<TaskDomainModel, TaskDomainModelResponse> responseBuilder,
+			@Qualifier("taskInsertionPolicy") final InsertionPolicy<TaskDomainModel> insertionPolicy,
+			@Qualifier("taskPatchPolicy") final PatchPolicy<TaskDomainModel> patchPolicy,
+			@Qualifier("taskDeletionPolicy") final DeletionPolicy<TaskDomainModel> deletionPolicy,
+			@Qualifier("taskDomainSecurityPolicy") final DomainSecurityPolicy<TaskDomainModel> securityPolicy,
+			@Qualifier("taskDuplicateDefinition") final DuplicateDefinition<TaskDomainModel> duplicateDefinition)
+	{
+		return AggregateCrudDefinitions
+				.<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch, TaskDomainModelResponse>
+						aggregateCrudDefinition()
+				.mutationPort(mutationPort)
+				.fetchPort(fetchPort)
+				.createBuilder(createBuilder)
+				.patcher(patcher)
+				.responseBuilder(responseBuilder)
+				.insertionPolicy(insertionPolicy)
+				.patchPolicy(patchPolicy)
+				.deletionPolicy(deletionPolicy)
+				.securityPolicy(securityPolicy)
+				.duplicateDefinition(duplicateDefinition)
+				.build();
+	}
+}
+```
+
+### CRUD services
+
+```java
+
+@Configuration
+class TaskCrudServicesConfiguration
+{
+	@Bean
+	SaveService<TaskDomainModelCreate, TaskDomainModelResponse, Long> taskSaveService(
+			@Qualifier("taskAggregateCrudDefinition") final AggregateCrudDefinition<
+					Long,
+					TaskDomainModel,
+					TaskDomainModelCreate,
+					TaskDomainModelUpdatePatch,
+					TaskDomainModelResponse> definition,
+			final AggregateLifecycleEngine aggregateLifecycleEngine)
+	{
+		return AggregateCrudServices.saveService(definition, aggregateLifecycleEngine);
+	}
+
+	@Bean
+	FetchService<TaskDomainModel, Long> taskFetchService(
+			@Qualifier("taskAggregateCrudDefinition") final AggregateCrudDefinition<
+					Long,
+					TaskDomainModel,
+					TaskDomainModelCreate,
+					TaskDomainModelUpdatePatch,
+					TaskDomainModelResponse> definition,
+			final AggregateLifecycleEngine aggregateLifecycleEngine)
+	{
+		return AggregateCrudServices.fetchService(definition, aggregateLifecycleEngine);
+	}
+
+	@Bean
+	UpdateService<TaskDomainModelCreate, TaskDomainModelUpdatePatch, TaskDomainModelResponse, Long> taskUpdateService(
+			@Qualifier("taskAggregateCrudDefinition") final AggregateCrudDefinition<
+					Long,
+					TaskDomainModel,
+					TaskDomainModelCreate,
+					TaskDomainModelUpdatePatch,
+					TaskDomainModelResponse> definition,
+			final AggregateLifecycleEngine aggregateLifecycleEngine)
+	{
+		return AggregateCrudServices.updateService(definition, aggregateLifecycleEngine);
+	}
+
+	@Bean
+	DeleteService<Long> taskDeleteService(
+			@Qualifier("taskAggregateCrudDefinition") final AggregateCrudDefinition<
+					Long,
+					TaskDomainModel,
+					TaskDomainModelCreate,
+					TaskDomainModelUpdatePatch,
+					TaskDomainModelResponse> definition,
+			final AggregateLifecycleEngine aggregateLifecycleEngine)
+	{
+		return AggregateCrudServices.deleteService(definition, aggregateLifecycleEngine);
+	}
+}
+```
+
+That is the default standalone `cleanCrud` runtime shape.
+
+## Extending `Task` With `Version` And `Note`
+
+Now suppose:
+
+- `Task -> Version` is `1:1`
+- `Task -> Note` is `1:N`
+- `Task` lifecycle-manages both
+
+The only additional responsibility for the owning aggregate is to define the relationships.
+
+For each owned relationship, you provide:
+
+- one relationship definition
+- one create input resolver
+- one patch input resolver
+- one identity resolver
+- one link strategy
+- one hydration strategy
+
+Everything else stays on the normal CRUD path.
+
+### `Task -> Version` (`1:1`)
+
+Typical semantics:
+
+- `Cardinality.ONE`
+- `ReconciliationStrategy.REPLACE`
+- `cascadeCreate`
+- `cascadeUpdate`
+- `cascadeDelete`
+- `orphanDelete`
+- `hydrateOnFetch`
+
+```java
+var versionRelationshipDefinition =
+		AggregateRelationshipDefinitions
+				.<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch,
+						Long, VersionDomainModel, VersionDomainModelCreate, VersionDomainModelUpdatePatch>
+						aggregateRelationshipDefinition()
+				.name("version")
+				.cardinality(Cardinality.ONE)
+				.lifecycleSemantics(
+						LifecycleSemanticsBuilder.lifecycleSemantics()
+						                         .cascadeCreate()
+						                         .cascadeUpdate()
+						                         .cascadeDelete()
+						                         .orphanDelete()
+						                         .hydrateOnFetch()
+						                         .build())
+				.satelliteDefinition(versionAggregateCrudDefinition)
+				.createInputResolver(versionCreateInputResolver)
+				.patchInputResolver(versionPatchInputResolver)
+				.identityResolver(versionIdentityResolver)
+				.reconciliationStrategy(ReconciliationStrategy.REPLACE)
+				.linkStrategy(versionLinkStrategy)
+				.hydrationStrategy(versionHydrationStrategy)
+				.build();
+```
+
+### `Task -> Note` (`1:N`)
+
+Typical semantics:
+
+- `Cardinality.MANY`
+- `ReconciliationStrategy.MERGE_BY_ID`
+- `cascadeCreate`
+- `cascadeUpdate`
+- `cascadeDelete`
+- `orphanDelete`
+- `hydrateOnFetch`
+
+```java
+var noteRelationshipDefinition =
+		AggregateRelationshipDefinitions
+				.<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch,
+						Long, NoteDomainModel, NoteDomainModelCreate, NoteDomainModelUpdatePatch>
+						aggregateRelationshipDefinition()
+				.name("note")
+				.cardinality(Cardinality.MANY)
+				.lifecycleSemantics(
+						LifecycleSemanticsBuilder.lifecycleSemantics()
+						                         .cascadeCreate()
+						                         .cascadeUpdate()
+						                         .cascadeDelete()
+						                         .orphanDelete()
+						                         .hydrateOnFetch()
+						                         .build())
+				.satelliteDefinition(noteAggregateCrudDefinition)
+				.createInputResolver(noteCreateInputResolver)
+				.patchInputResolver(notePatchInputResolver)
+				.identityResolver(noteIdentityResolver)
+				.reconciliationStrategy(ReconciliationStrategy.MERGE_BY_ID)
+				.linkStrategy(noteLinkStrategy)
+				.hydrationStrategy(noteHydrationStrategy)
+				.build();
+```
+
+### Attach the relationships to `Task`
+
+```java
+return AggregateCrudDefinitions
+		.
+
+<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch, TaskDomainModelResponse>
+aggregateCrudDefinition()
+		.
+
+mutationPort(mutationPort)
+		.
+
+fetchPort(fetchPort)
+		.
+
+createBuilder(createBuilder)
+		.
+
+patcher(patcher)
+		.
+
+responseBuilder(responseBuilder)
+		.
+
+insertionPolicy(insertionPolicy)
+		.
+
+patchPolicy(patchPolicy)
+		.
+
+deletionPolicy(deletionPolicy)
+		.
+
+securityPolicy(securityPolicy)
+		.
+
+duplicateDefinition(duplicateDefinition)
+		.
+
+relationshipDefinition(versionRelationshipDefinition)
+		.
+
+relationshipDefinition(noteRelationshipDefinition)
+		.
+
+build();
+```
+
+After that, `Task` still uses the same save, fetch, update, and delete services. There is no second consumer-facing API.
+
+## What The Framework Takes Care Of
+
+Once relationships are declared, `cleanCrud` takes care of:
+
+- creating owned satellites during master create
+- linking referenced satellites
+- updating owned satellites during master update
+- replacing or removing owned satellites according to reconciliation strategy
+- orphan deletion when configured
+- cascade deletion when the master is deleted
+- fetch hydration when enabled
+- preserving relationship identity through the link strategy
+- keeping orchestration inside the framework runtime rather than leaking it into controllers or persistence adapters
+
+## Consumer DSL
+
+The main consumer-facing DSL types are:
+
+- `AggregateCrudDefinitions`
+- `AggregateRelationshipDefinitions`
+- `LifecycleSemanticsBuilder`
+
+The raw interfaces are also available, but the DSL is the recommended path for normal usage.
+
+## Supported Relationship Semantics
+
+Single-aggregate CRUD remains the default usage model.
+
+Current relationship runtime support includes:
+
+- zero-relationship CRUD
+- one-to-one satellite save, fetch hydration, delete, update, and put flows
+- one-to-many satellite save, fetch hydration, delete, update, and put flows
+- collection reconciliation for `REPLACE` and `MERGE_BY_ID`
+
+### Supported vs deferred
+
+| Area                                               | Status    |
+|----------------------------------------------------|-----------|
+| `Cardinality.ONE + REPLACE`                        | Supported |
+| `Cardinality.MANY + REPLACE`                       | Supported |
+| `Cardinality.MANY + MERGE_BY_ID`                   | Supported |
+| Business-key reconciliation                        | Deferred  |
+| Arbitrary graph cycles                             | Deferred  |
+| Multi-level recursive orchestration                | Deferred  |
+| Cross-datasource compensation                      | Deferred  |
+| Distributed workflows / sagas                      | Deferred  |
+| Bulk graph orchestration beyond one root aggregate | Deferred  |
+
+## Historized Persistence
+
+For historized persistence, `cleanCrud` provides a single high-level repository base so consumers do not need separate
+save/delete/crud repository beans for the same aggregate.
+
+Historized persistence also supports a nullable `AuditActor` on every history row. Consumers provide any implementation
+through an `AuditActorSupplier`, and the framework normalizes that into its built-in persisted audit core. If actor
+capture is not desired, pass `AuditActorSupplier.none()`.
+
+Typical historized shape:
+
+1. define one live JPA entity
+2. define one history JPA entity
+3. define one live Spring Data repository
+4. define one history Spring Data repository by extending `TriTemporalHistoryJpaRepository`
+5. extend `AbstractHistorizedPersistenceModelJpaRepository`
+6. implement a small history snapshot factory, typically by extending `AbstractPersistenceHistorySnapshotFactory`
+
+## Architecture
+
+`cleanCrud` keeps the same three main layers:
+
+### API layer
+
+- web controllers
+- application controllers
+- facades
+- API/domain adapters
+
+### Domain layer
+
+- domain models
+- create/update/response models
+- builders
+- patchers
+- response builders
+- policies
+- security
+- validation
+
+### Infrastructure layer
+
+- persistence models
+- repositories
+- persistence adapters
+- domain/persistence ID management
+
+The aggregate runtime sits above the persistence services and orchestrates CRUD consistently across these layers.
+
+## Example Implementation
+
+A full example is available in the companion repository `cleanCrud-sampleImplementation`.
+
+That sample demonstrates:
+
+- normal standalone aggregates
+- `Task -> Version` as a `1:1` owned relationship
+- `Task -> Note` as a `1:N` owned relationship

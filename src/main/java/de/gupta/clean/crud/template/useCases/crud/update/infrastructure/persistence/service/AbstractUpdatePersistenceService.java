@@ -7,7 +7,6 @@ import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persisten
 import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.id.adapter.DomainPersistenceIDManagement;
 import de.gupta.clean.crud.template.infrastructure.persistence.adapter.persistence.domain.model.DomainPersistenceModelAdapter;
 import de.gupta.clean.crud.template.infrastructure.persistence.model.properties.WithID;
-import de.gupta.clean.crud.template.infrastructure.persistence.transaction.PersistenceTransactionRunner;
 import de.gupta.clean.crud.template.useCases.crud.fetch.infrastructure.persistence.service.FetchPersistenceModelRepository;
 import de.gupta.clean.crud.template.useCases.crud.save.infrastructure.persistence.service.SavePersistenceModelRepository;
 import de.gupta.clean.crud.template.useCases.crud.update.application.service.UpdatePersistenceService;
@@ -26,34 +25,29 @@ public abstract class AbstractUpdatePersistenceService<DomainID, DomainModel,
 	private final DomainPersistenceModelAdapter<DomainModel, PersistenceModel> modelAdapter;
 	private final DomainPersistenceIDAdapter<DomainID, PersistenceID> idAdapter;
 	private final DomainPersistenceIDManagement<DomainID, PersistenceID> idAdapterService;
-	private final PersistenceTransactionRunner transactionRunner;
 
 	@Override
 	public void putAtId(final DomainID id, final DomainModel model)
 	{
-		transactionRunner.inTransaction(() ->
-		{
-			final Optional<PersistenceID> originalID = idAdapter.toPersistenceID(id);
+		final Optional<PersistenceID> originalID = idAdapter.toPersistenceID(id);
 
-			originalID.ifPresentOrElse(persistenceId ->
+		originalID.ifPresentOrElse(persistenceId ->
+		{
+			final PersistenceModel updatedModel = updateRepository.update(
+					preparePersistenceModelForUpdate(id, model));
+			if (!persistenceId.equals(updatedModel.id()))
 			{
-				final PersistenceModel updatedModel = updateRepository.update(
-						preparePersistenceModelForUpdate(id, model));
-				if (!persistenceId.equals(updatedModel.id()))
-				{
-					throw UnexpectedResourceException.withMessage(
-							"Persistence ID changed during PUT for domain ID " + id +
-									": expected " + persistenceId + " but got " + updatedModel.id());
-				}
-			}, () -> save(id, model));
-		});
+				throw UnexpectedResourceException.withMessage(
+						"Persistence ID changed during PUT for domain ID " + id +
+								": expected " + persistenceId + " but got " + updatedModel.id());
+			}
+		}, () -> save(id, model));
 	}
 
 	@Override
 	public IdentifiedModel<DomainID, DomainModel> updateById(final DomainID id, final DomainModel model)
 	{
-		return transactionRunner.inTransaction(
-				() -> identifiedModel(updateRepository.update(preparePersistenceModelForUpdate(id, model))));
+		return identifiedModel(updateRepository.update(preparePersistenceModelForUpdate(id, model)));
 	}
 
 	@Override
@@ -65,14 +59,13 @@ public abstract class AbstractUpdatePersistenceService<DomainID, DomainModel,
 			return List.of();
 		}
 
-		return transactionRunner.inTransaction(() ->
-				updateRepository.updateAll(models.stream()
-				                                 .map(model -> preparePersistenceModelForUpdate(model.id(),
-														 model.model()))
-				                                 .toList())
-				                .stream()
-				                .map(this::identifiedModel)
-				                .toList());
+		return updateRepository.updateAll(models.stream()
+		                                        .map(model -> preparePersistenceModelForUpdate(model.id(),
+														model.model()))
+		                                        .toList())
+		                       .stream()
+		                       .map(this::identifiedModel)
+		                       .toList();
 	}
 
 	private void save(final DomainID domainID, final DomainModel entity)
@@ -118,8 +111,7 @@ public abstract class AbstractUpdatePersistenceService<DomainID, DomainModel,
 			final UpdatePersistenceModelRepository<PersistenceModel> updateRepository,
 			final DomainPersistenceModelAdapter<DomainModel, PersistenceModel> modelAdapter,
 			final DomainPersistenceIDAdapter<DomainID, PersistenceID> idAdapter,
-			final DomainPersistenceIDManagement<DomainID, PersistenceID> idAdapterService,
-			final PersistenceTransactionRunner transactionRunner)
+			final DomainPersistenceIDManagement<DomainID, PersistenceID> idAdapterService)
 	{
 		this.fetchRepository = fetchRepository;
 		this.saveRepository = saveRepository;
@@ -127,6 +119,5 @@ public abstract class AbstractUpdatePersistenceService<DomainID, DomainModel,
 		this.modelAdapter = modelAdapter;
 		this.idAdapter = idAdapter;
 		this.idAdapterService = idAdapterService;
-		this.transactionRunner = transactionRunner;
 	}
 }
