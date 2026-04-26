@@ -1,21 +1,17 @@
 package de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.standard;
 
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
-import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.SatelliteHydrationStrategy;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.SatelliteLinkStrategy;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.SatellitePersistenceOrder;
 
-import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-final class StandardSatelliteRelationshipSupport
+final class StandardSatelliteLinkStrategyFactory
 {
 	static <MasterDomainId, MasterDomainModel, SatelliteDomainId, SatelliteDomainModel, SatelliteAggregateResponse, SatellitePublicResponse>
 	SatelliteLinkStrategy<MasterDomainId, MasterDomainModel, SatelliteDomainId, SatelliteDomainModel> oneToOneLinkStrategy(
@@ -39,7 +35,7 @@ final class StandardSatelliteRelationshipSupport
 			public Optional<SatelliteDomainId> currentLinkedSatelliteDomainId(final MasterDomainModel masterDomainModel)
 			{
 				return currentSatellite.apply(masterDomainModel)
-				                       .map(StandardSatelliteRelationshipSupport::requiredId);
+				                       .map(StandardSatelliteResponseMapper::requiredId);
 			}
 
 			@Override
@@ -64,7 +60,7 @@ final class StandardSatelliteRelationshipSupport
 						masterDomainModel,
 						satelliteDomainIds.stream()
 						                  .findFirst()
-						                  .map(satelliteDomainId -> fetchPublicResponse(
+						                  .map(satelliteDomainId -> StandardSatelliteResponseMapper.fetchPublicResponse(
 												  satelliteDefinition,
 												  publicResponseMapper,
 												  satelliteDomainId)));
@@ -85,7 +81,7 @@ final class StandardSatelliteRelationshipSupport
 						masterDomainModel,
 						satellites.stream()
 						          .findFirst()
-						          .map(satellite -> toPublicResponse(
+						          .map(satellite -> StandardSatelliteResponseMapper.toPublicResponse(
 										  satelliteDefinition,
 										  publicResponseMapper,
 										  satellite)));
@@ -123,7 +119,7 @@ final class StandardSatelliteRelationshipSupport
 			{
 				return currentSatellites.apply(masterDomainModel)
 				                        .stream()
-				                        .<SatelliteDomainId>map(StandardSatelliteRelationshipSupport::requiredId)
+				                        .<SatelliteDomainId>map(StandardSatelliteResponseMapper::requiredId)
 				                        .toList();
 			}
 
@@ -135,7 +131,7 @@ final class StandardSatelliteRelationshipSupport
 				return replaceSatellites.apply(
 						masterDomainModel,
 						satelliteDomainIds.stream()
-						                  .map(satelliteDomainId -> fetchPublicResponse(
+						                  .map(satelliteDomainId -> StandardSatelliteResponseMapper.fetchPublicResponse(
 												  satelliteDefinition,
 												  publicResponseMapper,
 												  satelliteDomainId))
@@ -150,7 +146,7 @@ final class StandardSatelliteRelationshipSupport
 				return replaceSatellites.apply(
 						masterDomainModel,
 						satellites.stream()
-						          .map(satellite -> toPublicResponse(
+						          .map(satellite -> StandardSatelliteResponseMapper.toPublicResponse(
 										  satelliteDefinition,
 										  publicResponseMapper,
 										  satellite))
@@ -159,80 +155,7 @@ final class StandardSatelliteRelationshipSupport
 		};
 	}
 
-	static <MasterDomainId, MasterDomainModel, SatelliteDomainId, SatelliteDomainModel>
-	SatelliteHydrationStrategy<MasterDomainId, MasterDomainModel, SatelliteDomainId, SatelliteDomainModel>
-	defaultHydrationStrategy()
-	{
-		return (master, satelliteFetchPort, satelliteLinkStrategy) ->
-		{
-			var hydratedSatellites = new ArrayList<IdentifiedModel<SatelliteDomainId, SatelliteDomainModel>>();
-			for (var satelliteDomainId : satelliteLinkStrategy.currentLinkedSatelliteDomainIds(master.model()))
-			{
-				satelliteFetchPort.findById(satelliteDomainId).ifPresent(hydratedSatellites::add);
-			}
-			return satelliteLinkStrategy.attachHydratedSatellites(master.model(), hydratedSatellites);
-		};
-	}
-
-	static <SatelliteDomainId, SatelliteAggregateResponse, SatellitePublicResponse>
-	SatellitePublicResponse mapPublicResponse(
-			final Function<IdentifiedModel<SatelliteDomainId, SatelliteAggregateResponse>, SatellitePublicResponse>
-					publicResponseMapper,
-			final SatelliteDomainId satelliteDomainId,
-			final SatelliteAggregateResponse satelliteAggregateResponse)
-	{
-		return publicResponseMapper.apply(IdentifiedModel.of(satelliteDomainId, satelliteAggregateResponse));
-	}
-
-	@SuppressWarnings("unchecked")
-	static <SatelliteDomainId, SatellitePublicResponse> SatelliteDomainId requiredId(
-			final SatellitePublicResponse satellitePublicResponse)
-	{
-		try
-		{
-			var idMethod = satellitePublicResponse.getClass().getDeclaredMethod("id");
-			idMethod.setAccessible(true);
-			return (SatelliteDomainId) idMethod.invoke(
-					satellitePublicResponse);
-		}
-		catch (final NoSuchMethodException | IllegalAccessException | InvocationTargetException e)
-		{
-			throw InvalidRequestException.withMessage(
-					"Standard satellite relationships require public response type '%s' to expose an id() accessor".formatted(
-							satellitePublicResponse.getClass().getName()));
-		}
-	}
-
-	private static <SatelliteDomainId, SatelliteDomainModel, SatelliteAggregateResponse, SatellitePublicResponse>
-	SatellitePublicResponse fetchPublicResponse(
-			final AggregateCrudDefinition<SatelliteDomainId, SatelliteDomainModel, ?, ?, SatelliteAggregateResponse>
-					satelliteDefinition,
-			final Function<IdentifiedModel<SatelliteDomainId, SatelliteAggregateResponse>, SatellitePublicResponse>
-					publicResponseMapper,
-			final SatelliteDomainId satelliteDomainId)
-	{
-		var satellite = satelliteDefinition.fetchPort()
-		                                   .findById(satelliteDomainId)
-		                                   .orElseThrow(
-												   () -> ResourceNotFoundException.withId(satelliteDomainId));
-		return toPublicResponse(satelliteDefinition, publicResponseMapper, satellite);
-	}
-
-	private static <SatelliteDomainId, SatelliteDomainModel, SatelliteAggregateResponse, SatellitePublicResponse>
-	SatellitePublicResponse toPublicResponse(
-			final AggregateCrudDefinition<SatelliteDomainId, SatelliteDomainModel, ?, ?, SatelliteAggregateResponse>
-					satelliteDefinition,
-			final Function<IdentifiedModel<SatelliteDomainId, SatelliteAggregateResponse>, SatellitePublicResponse>
-					publicResponseMapper,
-			final IdentifiedModel<SatelliteDomainId, SatelliteDomainModel> satellite)
-	{
-		return publicResponseMapper.apply(
-				IdentifiedModel.of(
-						satellite.id(),
-						satelliteDefinition.responseBuilder().toResponse(satellite.model())));
-	}
-
-	private StandardSatelliteRelationshipSupport()
+	private StandardSatelliteLinkStrategyFactory()
 	{
 	}
 }

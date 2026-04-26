@@ -214,14 +214,14 @@ public final class StandardOneToManySatelliteRelationshipBuilder<
 					return mutationIntents;
 				})
 				.identityResolver((masterDomainModel, _) -> required(currentSatellites, "currentSatellites").apply(
-						masterDomainModel).stream().findFirst().map(StandardSatelliteRelationshipSupport::requiredId))
+						masterDomainModel).stream().findFirst().map(StandardSatelliteResponseMapper::requiredId))
 				.reconciliationStrategy(required(reconciliationStrategy, "reconciliationStrategy"))
-				.linkStrategy(StandardSatelliteRelationshipSupport.oneToManyLinkStrategy(
+				.linkStrategy(StandardSatelliteLinkStrategyFactory.oneToManyLinkStrategy(
 						satelliteDefinition,
 						required(publicResponseMapper, "publicResponseMapper"),
 						required(currentSatellites, "currentSatellites"),
 						required(replaceSatellites, "replaceSatellites")))
-				.hydrationStrategy(StandardSatelliteRelationshipSupport.defaultHydrationStrategy())
+				.hydrationStrategy(StandardSatelliteHydrationStrategyFactory.defaultHydrationStrategy())
 				.build();
 	}
 

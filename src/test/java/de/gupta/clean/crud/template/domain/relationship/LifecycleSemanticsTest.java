@@ -1,6 +1,5 @@
-package de.gupta.clean.crud.template.useCases.crud.aggregate.lifecycle;
+package de.gupta.clean.crud.template.domain.relationship;
 
-import de.gupta.clean.crud.template.domain.relationship.LifecycleSemantics;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;

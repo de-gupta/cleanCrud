@@ -31,6 +31,7 @@ module de.gupta.clean.crud
 	exports de.gupta.clean.crud.template.domain.model.exceptions.validation;
 	exports de.gupta.clean.crud.template.domain.model.identified;
 	exports de.gupta.clean.crud.template.domain.model.validation;
+	exports de.gupta.clean.crud.template.domain.relationship;
 	exports de.gupta.clean.crud.template.domain.service.constraints;
 	exports de.gupta.clean.crud.template.domain.service.crud.policy;
 	exports de.gupta.clean.crud.template.domain.service.equality;
@@ -62,7 +63,6 @@ module de.gupta.clean.crud
 	exports de.gupta.clean.crud.template.useCases.crud.aggregate.port;
 	exports de.gupta.clean.crud.template.useCases.crud.aggregate.relationship;
 	exports de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.standard;
-	exports de.gupta.clean.crud.template.domain.relationship;
 	exports de.gupta.clean.crud.template.useCases.crud.aggregate.service;
 	exports de.gupta.clean.crud.template.useCases.crud.delete.api.application;
 	exports de.gupta.clean.crud.template.useCases.crud.delete.api.web;

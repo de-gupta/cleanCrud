@@ -165,15 +165,15 @@ public final class StandardOneToOneReferencedSatelliteRelationshipBuilder<
 					return mutationIntents;
 				})
 				.identityResolver((masterDomainModel, _) -> required(currentSatellite, "currentSatellite").apply(
-						masterDomainModel).map(StandardSatelliteRelationshipSupport::requiredId))
+						masterDomainModel).map(StandardSatelliteResponseMapper::requiredId))
 				.reconciliationStrategy(ReconciliationStrategy.REPLACE)
-				.linkStrategy(StandardSatelliteRelationshipSupport.oneToOneLinkStrategy(
+				.linkStrategy(StandardSatelliteLinkStrategyFactory.oneToOneLinkStrategy(
 						name,
 						satelliteDefinition,
 						required(publicResponseMapper, "publicResponseMapper"),
 						required(currentSatellite, "currentSatellite"),
 						required(replaceSatellite, "replaceSatellite")))
-				.hydrationStrategy(StandardSatelliteRelationshipSupport.defaultHydrationStrategy())
+				.hydrationStrategy(StandardSatelliteHydrationStrategyFactory.defaultHydrationStrategy())
 				.build();
 	}
 
