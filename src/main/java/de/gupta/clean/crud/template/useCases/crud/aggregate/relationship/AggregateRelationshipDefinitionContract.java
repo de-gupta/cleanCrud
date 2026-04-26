@@ -1,8 +1,9 @@
 package de.gupta.clean.crud.template.useCases.crud.aggregate.relationship;
 
+import de.gupta.clean.crud.template.domain.relationship.LifecycleSemantics;
+import de.gupta.clean.crud.template.domain.relationship.ReconciliationStrategy;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteCreateIntent;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMutationIntent;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.lifecycle.LifecycleSemantics;
 
 import java.util.Collection;
 

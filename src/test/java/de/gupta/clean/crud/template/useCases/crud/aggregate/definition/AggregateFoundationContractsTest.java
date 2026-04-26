@@ -4,6 +4,8 @@ import de.gupta.clean.crud.template.domain.mapping.fetch.DomainResponseBuilder;
 import de.gupta.clean.crud.template.domain.mapping.save.DomainModelBuilder;
 import de.gupta.clean.crud.template.domain.mapping.update.DomainModelPatcher;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
+import de.gupta.clean.crud.template.domain.relationship.LifecycleSemantics;
+import de.gupta.clean.crud.template.domain.relationship.ReconciliationStrategy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.DeletionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.InsertionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.PatchPolicy;
@@ -11,7 +13,6 @@ import de.gupta.clean.crud.template.domain.service.equality.DuplicateDefinition;
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteCreateIntent;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMutationIntent;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.lifecycle.LifecycleSemantics;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateFetchPort;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateMutationPort;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.*;
@@ -225,7 +226,7 @@ class AggregateFoundationContractsTest
 		private final SatelliteIdentityResolver<String, Long, Long> identityResolver = (_, _) -> Optional.empty();
 		private final SatelliteLinkStrategy<String, String, Long, Long> linkStrategy = new TestSatelliteLinkStrategy();
 		private final SatelliteHydrationStrategy<String, String, Long, Long> hydrationStrategy =
-				(master, satellitePort, strategy) -> master.model();
+				(master, _, _) -> master.model();
 
 		@Override
 		public String name()

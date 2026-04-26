@@ -1,6 +1,6 @@
 package de.gupta.clean.crud.template.useCases.crud.aggregate.builder;
 
-import de.gupta.clean.crud.template.useCases.crud.aggregate.lifecycle.LifecycleSemantics;
+import de.gupta.clean.crud.template.domain.relationship.LifecycleSemantics;
 
 public final class LifecycleSemanticsBuilder
 {

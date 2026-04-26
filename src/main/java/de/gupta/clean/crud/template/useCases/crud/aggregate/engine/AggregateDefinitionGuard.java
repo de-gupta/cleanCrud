@@ -1,10 +1,10 @@
 package de.gupta.clean.crud.template.useCases.crud.aggregate.engine;
 
+import de.gupta.clean.crud.template.domain.relationship.ReconciliationStrategy;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinitionContract;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.Cardinality;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.ReconciliationStrategy;
 
 import java.util.ArrayList;
 import java.util.List;
