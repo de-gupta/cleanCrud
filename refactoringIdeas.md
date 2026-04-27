@@ -21,37 +21,33 @@ SpringRestController
         → AggregateLifecycleEngine ← where work actually happens
 ```
 
-The `ApplicationController` layer has zero logic. Every concrete class is:
+The concrete `ApplicationController` classes contain no logic: every method delegates
+to the service verbatim. The `SpringRestController` and `ApplicationController` differ
+only by whether the return type is wrapped in `ResponseEntity`. Between them sits an
+`Abstract*Service` layer that is an equally empty one-liner: it delegates to the
+engine with no added value. The result is **~48 files** of scaffolding, each 10–30
+lines, that exist purely as structural ceremony.
 
-```java
-public WebModelResponse save(WebModelCreate model)
-{
-	return service.save(model);   // verbatim delegation
-}
-```
-
-The `SpringRestController` and `ApplicationController` differ only by whether the
-return type is wrapped in `ResponseEntity`. That does not justify a parallel class
-hierarchy. Result: **~48 files** of scaffolding that wrap the engine, each file
-containing 10–30 lines and no real decisions.
-
-**Fix:** Collapse to three layers — `SpringRestController` (HTTP concerns only),
-`ServiceFacade` (API ↔ domain mapping), `AggregateLifecycleEngine` (all logic).
-Delete the `Application Controller` layer entirely. The `Abstract*Service` classes
-(`AbstractSaveService`, `AbstractFetchService`, etc.) are also pure one-liners that
-delegate directly to the engine — delete those too and wire the facade directly to
-the engine via `AggregateCrudServices`.
+**Fix:** The `ApplicationController` layer has a legitimate purpose: it provides the
+non-HTTP entry point for callers such as service-to-service messaging, scheduled jobs,
+or internal orchestration that drives CRUD operations without going through HTTP. It is
+a valid boundary and should not be deleted. The real redundancy is the
+`Abstract*Service` layer (`AbstractSaveService`, `AbstractFetchService`,
+`AbstractUpdateService`, `AbstractDeleteService`) — each is a one-liner that does
+nothing but call the engine, has no logic, and carries dead type parameters (see 1.7).
+These service classes sit between the facade and the engine and add no value.
 
 **Files to delete (representative):**
 
-- `useCases/crud/save/api/application/` (entire package)
-- `useCases/crud/fetch/api/application/` (entire package)
-- `useCases/crud/update/api/application/` (entire package)
-- `useCases/crud/delete/api/application/` (entire package)
 - `useCases/crud/save/application/service/AbstractSaveService.java`
 - `useCases/crud/fetch/application/service/AbstractFetchService.java`
 - `useCases/crud/update/application/service/AbstractUpdateService.java`
 - `useCases/crud/delete/application/service/AbstractDeleteService.java`
+
+Wire both the `ApplicationController` and the `ServiceFacade` directly to the engine
+via `AggregateCrudServices`. The `SpringRestController` → `ApplicationController` →
+`ServiceFacade` → engine path becomes `SpringRestController` → `ServiceFacade` →
+engine, and the non-HTTP path becomes `ApplicationController` → engine directly.
 
 ---
 
@@ -249,21 +245,17 @@ plug in their event bus, audit log, cache invalidation, etc. without touching th
 
 ---
 
-### 2.2 No Many-to-Many Relationship Support
+### 2.2 Many-to-Many Relationship Support (Not a Current Gap)
 
-The standard builder library covers:
+The standard builder library covers all cardinalities that the current use cases
+require: one-to-one owned, one-to-many owned, one-to-one referenced, and one-to-many
+referenced. The cardinality enum (`ONE_TO_ONE`, `ONE_TO_MANY`) reflects the actual
+domain modelling choices made by the framework's consumers — many-to-many relationships
+are typically resolved at the domain level into two one-to-many relationships via an
+explicit join aggregate.
 
-- One-to-one owned satellite
-- One-to-many owned satellite
-- One-to-one referenced satellite
-- One-to-many referenced satellite
-
-There is no builder for many-to-many relationships (e.g., a resource linked to
-multiple tags where a tag also belongs to multiple resources). The cardinality enum
-has `ONE_TO_ONE` and `ONE_TO_MANY` — `MANY_TO_MANY` is absent.
-
-**Missing:** `StandardManyToManySatelliteRelationshipBuilder` with a join-table or
-intermediate entity strategy. Reconciliation would need a join-level identity resolver.
+This is noted here for completeness only; it is not an active gap in the current use
+cases and adding it prematurely would be speculative generality.
 
 ---
 
@@ -354,23 +346,49 @@ live in the infrastructure adapter.
 
 ---
 
-### 2.9 `Relationship` Domain Model Is Disconnected from the Runtime Engine
+### 2.9 `domain.relationship` Package Serves an Undocumented Dual Role
 
-`Relationship`, `Relationships`, and `RelationshipBuilder` in `domain.relationship`
-use raw `Class<?>` references for type information (e.g., `satelliteDomainIdType`,
-`satellitePersistenceIdType`). The actual runtime engine uses `AggregateRelationshipDefinition`
-with full generics.
+**Status: the declaration/runtime gap is now closed.** The addition of
+`StandardRelationshipLoweringSupport`, `RelationshipDrivenAggregateRelationshipBuilder`,
+and the `AggregateRelationshipDefinitions.fromRelationship()` entry point provides a
+full bridge from the declaration model to the typed runtime definition. A consumer
+supplies a `Relationship` object and a satellite `AggregateCrudDefinition`, provides
+two lambdas (`current`/`replace` or `currentMany`/`replaceMany`), and the lowering
+support derives everything else — cardinality, lifecycle semantics, reconciliation
+strategy, create/patch input resolvers, identity resolver, link strategy, and hydration
+strategy — from the `Relationship` declaration. `LifecycleSemantics` and
+`ReconciliationStrategy` from `domain.relationship` are shared directly by both the
+declaration model and the runtime contract (`AggregateRelationshipDefinitionContract`),
+so no translation is needed across the boundary.
 
-These appear to be two separate representations of the same concept with no bridge:
-one is a schema/metadata model (erased types), the other is the live runtime contract
-(typed generics). It is unclear what currently consumes the `Relationships` interface
-or how the two representations stay consistent.
+**What remains:** The `domain.relationship` package (`Relationship`, `Relationships`,
+`RelationshipBuilder`, `LifecycleSemantics`, `ReconciliationStrategy`, `RelationshipKind`)
+now plays two distinct roles simultaneously:
 
-**Missing (or to clarify):** Either a registry that maps `Relationship` metadata
-entries to their corresponding `AggregateRelationshipDefinition` at startup, or —
-if `Relationship` is purely for documentation/reflection-based tools — explicit
-documentation of that purpose and a clear boundary preventing the schema model from
-being confused with the runtime definition.
+1. **Generator input vocabulary** — the code generator reads `Relationships`
+   implementations to produce all CRUD boilerplate. These types are the generator's
+   primary API contract with the consumer project.
+
+2. **Runtime declaration vocabulary** — the same types feed the `fromRelationship()`
+   builder at runtime and their values flow unchanged into `AggregateRelationshipDefinitionContract`.
+
+Neither role is documented anywhere in the framework's public API. Framework consumers
+who do not use the generator see `Relationships`, `RelationshipBuilder`, and
+`LifecycleSemantics` exported in `module-info.java` with no explanation of when or why
+to implement them. Consumers who do use the generator must understand that their
+`Relationships` implementation is both a code-generation input (read at build time by
+the generator's `JavaGenerationSpecificationLoader`) and a runtime declaration (read at
+application startup by `fromRelationship()`).
+
+This dual role also means that `LifecycleSemantics` and `ReconciliationStrategy` are
+simultaneously part of the framework's semver public API surface and part of the
+generator's input contract. Any breaking change to these types breaks both existing
+runtime users and the generator.
+
+**Fix:** Document the `domain.relationship` package's dual role explicitly — either via
+package-level Javadoc or a dedicated section of the README. Clarify the lifecycle:
+"implement `Relationships` once; the generator reads it at build time, `fromRelationship()`
+reads it at runtime." This is the missing contract documentation, not a code change.
 
 ---
 
