@@ -1,23 +1,22 @@
-# Clean CRUD Framework
+# cleanCrud
 
 `cleanCrud` is a Java framework for building CRUD modules in one consistent clean-architecture shape.
 
-From a consumer point of view, the promise is:
+Its core promise is:
 
-- you keep one normal CRUD surface
-- you model each aggregate normally
-- if one aggregate owns others, you declare those relationships once
-- the framework orchestrates create, update, delete, and fetch hydration for you
+- one normal CRUD surface for each aggregate
+- one normal way to structure modules
+- explicit relationship declarations when one aggregate owns or references another
+- framework-managed orchestration for create, update, delete, and fetch hydration
 
-Single-aggregate CRUD is still the default path. Aggregate relationships extend that same path rather than introducing a
-second “special orchestration mode”.
+Single-aggregate CRUD is still the default path. Relationships extend that path; they do not introduce a second “special
+orchestration mode”.
 
 ## Installation
 
-Add the library to your Maven `pom.xml`:
+Add `cleanCrud` to your Maven build:
 
 ```xml
-
 <dependency>
     <groupId>io.github.de-gupta</groupId>
     <artifactId>cleanCrud</artifactId>
@@ -25,50 +24,29 @@ Add the library to your Maven `pom.xml`:
 </dependency>
 ```
 
-## Start Here
+## What Consumers Actually Provide
 
-If you are new to `cleanCrud`, the most practical mental model is:
-
-1. define each aggregate normally as if it were standalone
-2. wire one `AggregateCrudDefinition` for each aggregate
-3. if one aggregate owns others, add `AggregateRelationshipDefinition`s to the owning aggregate
-
-The companion sample repository demonstrates this with:
-
-- `Version` as a normal standalone aggregate
-- `Note` as a normal standalone aggregate
-- `Task` as a normal standalone aggregate
-- `Task -> Version` as a `1:1` owned relationship
-- `Task -> Note` as a `1:N` owned relationship
-
-The owning aggregate usually comes last, because its relationship definitions point at the owned aggregates’
-definitions.
-
-## What A Real Consumer Module Contains
-
-There are two different things to keep separate:
+There are two different scopes to keep separate:
 
 1. the **full module implementation surface**
-2. the **aggregate runtime wiring surface**
-
-The runtime wiring is only a small part of a real `cleanCrud` module.
+2. the **relationship/runtime declaration surface**
 
 ### Full module implementation surface
 
-A real standalone aggregate module typically contains:
+A real `cleanCrud` module still contains the usual pieces:
 
 - base model
 - domain model
 - API model
 - persistence model
-- create, update patch, and response DTOs
+- create / update patch / response DTOs
 - API/domain adapters
 - domain/persistence adapters
 - builders
 - patchers
 - response builders
 - duplicate definition
-- insertion, patch, deletion, and security policies
+- insertion / patch / deletion / security policies
 - repositories
 - persistence services
 - facades
@@ -78,514 +56,438 @@ A real standalone aggregate module typically contains:
 - aggregate definition
 - CRUD service beans
 
-So if you look only at the aggregate runtime wiring examples later in this README, remember that they show just the
-aggregate-specific layer, not the whole module.
+`cleanCrud-generator` exists because most of this is repetitive.
 
-This is also where `cleanCrud-generator` is useful: it removes most of the repetitive standalone module boilerplate so
-you can focus on your model and the few places where you want custom behavior.
+### Minimal conceptual inputs
 
-## What You Provide For A Standalone Aggregate
+From a consumer point of view, the important inputs are now:
 
-For one normal standalone aggregate, you provide:
+- a base model
+- optional relationship declarations next to that model
+- the normal aggregate-specific builders / patchers / policies / persistence services
 
-- domain model
-- create model
-- update patch model
-- response model
-- builder
-- patcher
-- response builder
-- insertion policy
-- patch policy
-- deletion policy
-- security policy
-- duplicate definition
-- fetch/save/update/delete persistence services
-- one aggregate mutation port bean
-- one aggregate fetch port bean
-- one aggregate definition bean
-- CRUD service beans built from that aggregate definition
+The generator can derive most of the repetitive structure from the first two.
 
-At application level, you also provide one shared:
+## Standalone Aggregate First
+
+For a normal standalone aggregate, the runtime wiring is still:
+
+1. shared runtime configuration
+2. aggregate fetch/mutation ports
+3. one `AggregateCrudDefinition`
+4. CRUD service beans from that definition
+
+At application level you still provide:
 
 - `PersistenceTransactionRunner`
 - `AggregateLifecycleEngine`
 
 That is enough for normal single-aggregate CRUD.
 
-## What The Generator Gives You
+## Relationship Declarations Are Now A Domain Concept
 
-`cleanCrud-generator` is best thought of in two layers:
+Relationships are no longer a generator-only idea.
 
-1. it gets you to a valid standalone aggregate quickly
-2. it can then help you add relationship wiring on top of that
+They live in `cleanCrud` as domain concepts under:
 
-In other words, the generator usually handles most of the repetitive standalone boilerplate, but the consumer still
-decides the important relationship semantics explicitly:
+- `de.gupta.clean.crud.template.domain.relationship`
 
-- cardinality
+The central types are:
+
+- `Relationship`
+- `RelationshipKind`
+- `Relationships`
+- `LifecycleSemantics`
+- `ReconciliationStrategy`
+
+This means:
+
+- consumers declare relationships once
+- the generator reads those declarations
+- runtime code can also use those same declarations
+
+So `Relationship` is the semantic source of truth.
+
+## Consumer Input Shape For Relationships
+
+The recommended consumer shape is:
+
+1. a generic base model
+2. a sibling `*Relationships` class implementing `Relationships`
+
+Example:
+
+```java
+public interface PersonModel<T, V, N>
+{
+    String firstName();
+
+    T tag();
+
+    V currentVersion();
+
+    Optional<V> lastKnownVersion();
+
+    Collection<N> notes();
+}
+```
+
+And next to it:
+
+```java
+public final class PersonRelationships implements Relationships
+{
+    @Override
+    public Class<?> baseModelClass()
+    {
+        return PersonModel.class;
+    }
+
+    @Override
+    public Collection<Relationship> relationships()
+    {
+        return List.of(
+                Relationship.referenced("tag", TagModel.class)
+                            .satelliteApiIdType(Long.class)
+                            .satelliteDomainIdType(Long.class)
+                            .satellitePersistenceIdType(UUID.class)
+                            .build(),
+                Relationship.referenced("currentVersion", VersionModel.class)
+                            .satelliteApiIdType(Long.class)
+                            .satelliteDomainIdType(Long.class)
+                            .satellitePersistenceIdType(UUID.class)
+                            .build(),
+                Relationship.referenced("lastKnownVersion", VersionModel.class)
+                            .satelliteApiIdType(Long.class)
+                            .satelliteDomainIdType(Long.class)
+                            .satellitePersistenceIdType(UUID.class)
+                            .build(),
+                Relationship.owned("notes", NoteModel.class)
+                            .satelliteApiIdType(Long.class)
+                            .satelliteDomainIdType(Long.class)
+                            .satellitePersistenceIdType(UUID.class)
+                            .reconciliationStrategy(ReconciliationStrategy.MERGE_BY_ID)
+                            .build());
+    }
+}
+```
+
+### What the consumer explicitly says
+
+Each `Relationship` declares:
+
+- property name
+- target aggregate base model
+- `OWNED` or `REFERENCED`
+- satellite API id type
+- satellite domain id type
+- satellite persistence id type
+- lifecycle semantics
+- reconciliation strategy where relevant
+
+### What the consumer does not have to say
+
+Cardinality is not declared explicitly.
+
+The generator infers it from the base-model property shape:
+
+- `U` -> required `ONE`
+- `Optional<U>` -> optional `ONE`
+- `Collection<U>` -> `MANY`
+
+So the semantic model is:
+
+- base model shape tells the framework **how many**
+- `Relationship` tells the framework **what kind**
+
+## Relationship Semantics
+
+### `RelationshipKind`
+
+There are two first-class relationship kinds:
+
+- `OWNED`
+- `REFERENCED`
+
+Use `OWNED` when the master aggregate lifecycle-manages the satellite.
+
+Use `REFERENCED` when the master only points at an already existing satellite.
+
+### Lifecycle semantics
+
+Lifecycle semantics are domain concepts too:
+
+- `cascadeCreate`
+- `cascadeUpdate`
+- `cascadeDelete`
+- `orphanDelete`
+- `hydrateOnFetch`
+
+Kind-based defaults are:
+
+#### `OWNED`
+
+- create: `true`
+- update: `true`
+- delete: `false`
+- orphan delete: `false`
+- hydrate on fetch: `true`
+
+#### `REFERENCED`
+
+- create: `false`
+- update: `true`
+- delete: `false`
+- orphan delete: `false`
+- hydrate on fetch: `true`
+
+For `REFERENCED`, “update” means:
+
+- the relationship may participate in master update
+- this is typically a relink / move operation
+- it does **not** mean mutating the referenced aggregate itself
+
+### Reconciliation strategy
+
+`ReconciliationStrategy` matters mainly for `MANY`.
+
+- `REPLACE`
+    - the incoming patch describes the new full target set
+- `MERGE_BY_ID`
+    - the incoming patch describes incremental add/update/remove operations
+
+Typical defaults:
+
+- `ONE` -> `REPLACE`
+- `MANY` -> usually `MERGE_BY_ID`
+
+## High-Level Runtime DSL
+
+`cleanCrud` now exposes a high-level runtime DSL that consumes `Relationship` directly.
+
+That means runtime code no longer needs to restate:
+
+- owned vs referenced
+- lifecycle semantics
 - reconciliation strategy
-- cascade create/update/delete
-- orphan delete
-- fetch hydration
 
-The generator should not guess those semantics from model types alone.
+Those come from `Relationship`.
 
-## A Concrete Consumer Journey: `Version`, `Note`, Then `Task`
+The public entrypoint is:
+
+- `AggregateRelationshipDefinitions.fromRelationship(...)`
+
+Conceptually:
+
+```java
+return AggregateRelationshipDefinitions
+        .fromRelationship(
+                new PersonRelationships().relationship("notes"),
+                noteAggregateCrudDefinition)
+        .currentMany(PersonDomainModel::notes)
+        .replaceMany((person, notes) -> rebuildPerson(person, notes))
+        .build();
+```
+
+For `ONE`:
+
+```java
+return AggregateRelationshipDefinitions
+        .fromRelationship(
+                new PersonRelationships().relationship("currentVersion"),
+                versionAggregateCrudDefinition)
+        .current(person -> Optional.ofNullable(person.currentVersion()))
+        .replace((person, currentVersion) -> rebuildPerson(person, currentVersion))
+        .build();
+```
+
+### Why this DSL exists
+
+It keeps the distinction clear:
+
+- `Relationship` = semantic declaration
+- `AggregateRelationshipDefinition` = executable runtime lowering
+
+So the DSL is the bridge from domain meaning to runtime behavior.
+
+## What The Framework Lowers Automatically
+
+For the standard relationship path, `cleanCrud` lowers from `Relationship` into:
+
+- lifecycle semantics
+- create input resolver
+- patch input resolver
+- identity resolver
+- link strategy
+- hydration strategy
+- final `AggregateRelationshipDefinition`
+
+This is the canonical lowering.
+
+That matters because both:
+
+- handwritten runtime wiring
+- generator-emitted runtime wiring
+
+now follow the same relationship meaning instead of reinterpreting it separately.
+
+## Current Lowering Conventions
+
+The first pass freezes the current conventions instead of redesigning them.
+
+### Referenced
+
+#### `REFERENCED + ONE`
+
+- create links the provided reference id
+- patch relinks to the provided reference id
+- remove unlinks when remove ids are present
+- no nested satellite mutation
+
+#### `REFERENCED + MANY + MERGE_BY_ID`
+
+- patch adds referenced ids
+- patch removes specified ids
+
+#### `REFERENCED + MANY + REPLACE`
+
+- patch replacement collection becomes the new target set
+
+### Owned
+
+#### `OWNED + ONE`
+
+- current generated upsert/remove convention is preserved
+
+#### `OWNED + MANY + MERGE_BY_ID`
+
+- `SatelliteUpdatePatchItem<Id, Patch>` plus remove ids
+
+#### `OWNED + MANY + REPLACE`
+
+- current generated replacement convention is preserved
+
+## What The Generator Now Does
+
+`cleanCrud-generator` now reads:
+
+- the base model
+- the sibling `*Relationships` class
+- root aggregate id types from generator config
+
+From that, it derives:
+
+- domain relationship fields as `IdentifiedModel<DomainId, DomainModel>` variants
+- persistence relationship fields as persistence-id variants using the same property names
+- API create / patch / response shapes
+- accessors / replacers
+- runtime relationship configuration using the new high-level DSL
+
+So the consumer provides:
+
+- the base model
+- the relationship declarations
+
+and the generator supplies the structural lowering.
+
+## Example Relationship Output Shape
+
+Generated relationship configuration is now intentionally shorter.
+
+Instead of emitting the full low-level resolver/link/hydration boilerplate, it emits:
+
+- `fromRelationship(...)`
+- generated `current(...)` / `currentMany(...)`
+- generated `replace(...)` / `replaceMany(...)`
+
+That removes structural duplication from generated code.
+
+## Example Consumer Journey
 
 Suppose you want:
 
-- `Version` as a normal standalone aggregate
-- `Note` as a normal standalone aggregate
-- `Task` as a normal standalone aggregate
-- `Task -> Version` as `1:1`
-- `Task -> Note` as `1:N`
-
-The usual order is:
-
-1. define and wire `Version`
-2. define and wire `Note`
-3. define and wire `Task`
-4. add relationship definitions from `Task` to `Version` and `Note`
-5. attach those relationship definitions to the `Task` aggregate definition
-
-That gives you one normal CRUD surface for all three aggregates, with `Task` additionally lifecycle-managing its owned
-aggregates.
-
-## Wiring A Standalone Aggregate
-
-The normal standalone runtime wiring shape is:
-
-1. shared persistence/runtime configuration
-2. aggregate ports configuration
-3. aggregate definition configuration
-4. CRUD services configuration
-
-### Shared runtime
-
-```java
-
-@Configuration
-class CommonPersistenceConfiguration
-{
-	@Bean
-	PersistenceTransactionRunner persistenceTransactionRunner(
-			final PlatformTransactionManager transactionManager)
-	{
-		return SpringPersistenceTransactionRunner.withTransactionManager(transactionManager);
-	}
-
-	@Bean
-	AggregateLifecycleEngine aggregateLifecycleEngine(
-			final PersistenceTransactionRunner persistenceTransactionRunner)
-	{
-		return DefaultAggregateLifecycleEngine.withTransactionRunner(persistenceTransactionRunner);
-	}
-}
-```
-
-### Aggregate ports
-
-```java
-
-@Configuration
-class TaskCrudPortsConfiguration
-{
-	@Bean
-	@Qualifier("taskAggregateMutationPort")
-	AggregateMutationPort<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch>
-	taskAggregateMutationPort(
-			@Qualifier("taskSavePersistenceService") final SavePersistenceService<Long, TaskDomainModel> savePersistenceService,
-			@Qualifier("taskUpdatePersistenceService") final UpdatePersistenceService<Long, TaskDomainModel> updatePersistenceService,
-			@Qualifier("taskDeletePersistenceService") final DeletePersistenceService<Long> deletePersistenceService)
-	{
-		return AggregateMutationPortAdapter.withPersistenceServices(
-				savePersistenceService,
-				updatePersistenceService,
-				deletePersistenceService);
-	}
-
-	@Bean
-	@Qualifier("taskAggregateFetchPort")
-	AggregateFetchPort<Long, TaskDomainModel> taskAggregateFetchPort(
-			@Qualifier("taskFetchPersistenceService") final FetchPersistenceService<Long, TaskDomainModel> fetchPersistenceService)
-	{
-		return AggregateFetchPortAdapter.withPersistenceService(fetchPersistenceService);
-	}
-}
-```
-
-### Aggregate definition
-
-```java
-
-@Configuration
-class TaskCrudDefinitionConfiguration
-{
-	@Bean
-	@Qualifier("taskAggregateCrudDefinition")
-	AggregateCrudDefinition<
-			Long,
-			TaskDomainModel,
-			TaskDomainModelCreate,
-			TaskDomainModelUpdatePatch,
-			TaskDomainModelResponse> taskAggregateCrudDefinition(
-			@Qualifier("taskAggregateMutationPort") final AggregateMutationPort<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch> mutationPort,
-			@Qualifier("taskAggregateFetchPort") final AggregateFetchPort<Long, TaskDomainModel> fetchPort,
-			@Qualifier("taskDomainModelBuilder") final DomainModelBuilder<TaskDomainModelCreate, TaskDomainModel> createBuilder,
-			@Qualifier("taskDomainModelPatcher") final DomainModelPatcher<TaskDomainModel, TaskDomainModelUpdatePatch> patcher,
-			@Qualifier("taskDomainResponseBuilder") final DomainResponseBuilder<TaskDomainModel, TaskDomainModelResponse> responseBuilder,
-			@Qualifier("taskInsertionPolicy") final InsertionPolicy<TaskDomainModel> insertionPolicy,
-			@Qualifier("taskPatchPolicy") final PatchPolicy<TaskDomainModel> patchPolicy,
-			@Qualifier("taskDeletionPolicy") final DeletionPolicy<TaskDomainModel> deletionPolicy,
-			@Qualifier("taskDomainSecurityPolicy") final DomainSecurityPolicy<TaskDomainModel> securityPolicy,
-			@Qualifier("taskDuplicateDefinition") final DuplicateDefinition<TaskDomainModel> duplicateDefinition)
-	{
-		return AggregateCrudDefinitions
-				.<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch, TaskDomainModelResponse>
-						aggregateCrudDefinition()
-				.mutationPort(mutationPort)
-				.fetchPort(fetchPort)
-				.createBuilder(createBuilder)
-				.patcher(patcher)
-				.responseBuilder(responseBuilder)
-				.insertionPolicy(insertionPolicy)
-				.patchPolicy(patchPolicy)
-				.deletionPolicy(deletionPolicy)
-				.securityPolicy(securityPolicy)
-				.duplicateDefinition(duplicateDefinition)
-				.build();
-	}
-}
-```
-
-### CRUD services
-
-```java
-
-@Configuration
-class TaskCrudServicesConfiguration
-{
-	@Bean
-	SaveService<TaskDomainModelCreate, TaskDomainModelResponse, Long> taskSaveService(
-			@Qualifier("taskAggregateCrudDefinition") final AggregateCrudDefinition<
-					Long,
-					TaskDomainModel,
-					TaskDomainModelCreate,
-					TaskDomainModelUpdatePatch,
-					TaskDomainModelResponse> definition,
-			final AggregateLifecycleEngine aggregateLifecycleEngine)
-	{
-		return AggregateCrudServices.saveService(definition, aggregateLifecycleEngine);
-	}
-
-	@Bean
-	FetchService<TaskDomainModel, Long> taskFetchService(
-			@Qualifier("taskAggregateCrudDefinition") final AggregateCrudDefinition<
-					Long,
-					TaskDomainModel,
-					TaskDomainModelCreate,
-					TaskDomainModelUpdatePatch,
-					TaskDomainModelResponse> definition,
-			final AggregateLifecycleEngine aggregateLifecycleEngine)
-	{
-		return AggregateCrudServices.fetchService(definition, aggregateLifecycleEngine);
-	}
-
-	@Bean
-	UpdateService<TaskDomainModelCreate, TaskDomainModelUpdatePatch, TaskDomainModelResponse, Long> taskUpdateService(
-			@Qualifier("taskAggregateCrudDefinition") final AggregateCrudDefinition<
-					Long,
-					TaskDomainModel,
-					TaskDomainModelCreate,
-					TaskDomainModelUpdatePatch,
-					TaskDomainModelResponse> definition,
-			final AggregateLifecycleEngine aggregateLifecycleEngine)
-	{
-		return AggregateCrudServices.updateService(definition, aggregateLifecycleEngine);
-	}
-
-	@Bean
-	DeleteService<Long> taskDeleteService(
-			@Qualifier("taskAggregateCrudDefinition") final AggregateCrudDefinition<
-					Long,
-					TaskDomainModel,
-					TaskDomainModelCreate,
-					TaskDomainModelUpdatePatch,
-					TaskDomainModelResponse> definition,
-			final AggregateLifecycleEngine aggregateLifecycleEngine)
-	{
-		return AggregateCrudServices.deleteService(definition, aggregateLifecycleEngine);
-	}
-}
-```
-
-That is the default standalone `cleanCrud` runtime shape.
-
-## Extending `Task` With `Version` And `Note`
-
-Now suppose:
-
-- `Task -> Version` is `1:1`
-- `Task -> Note` is `1:N`
-- `Task` lifecycle-manages both
-
-The current recommended path is the standard satellite DSL. It keeps the relationship definition small and centered on
-the few things that are actually domain-specific:
-
-- where nested create values come from
-- where nested patch values come from
-- how to rebuild the master with hydrated public contracts
-- optional lifecycle or reconciliation overrides
-
-The framework supplies the repetitive parts:
-
-- lifecycle defaults
-- create and patch intent resolution
-- identity resolution
-- link strategy
-- hydration strategy
-- satellite fetch plus response mapping pipeline
-
-### `Task -> Version` (`1:1` owned satellite)
-
-```java
-var versionRelationshipDefinition =
-		AggregateRelationshipDefinitions
-				.<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch,
-						Long, VersionDomainModel, VersionDomainModelCreate, VersionDomainModelUpdatePatch,
-						VersionAPIModelResponse, VersionAPIModelCreate, VersionAPIModelUpdatePatch,
-						VersionAPIModelResponse>
-						oneToOneSatellite("version", versionAggregateCrudDefinition)
-				.createExtractor(TaskDomainModelCreate::version)
-				.createMapper(version -> version)
-				.patchExtractor(TaskDomainModelUpdatePatch::version)
-				.patchMapper(VersionAPIToDomainUpdateAdapter::toDomainModelUpdatePatch)
-				.patchCreateMapper(VersionAPIToDomainCreateAdapter::toDomainModelCreate)
-				.removeIdExtractor(TaskDomainModelUpdatePatch::removeVersionIds)
-				.currentSatellite(task -> task.versions().stream().findFirst())
-				.replaceSatellite((task, version) -> task.withVersions(version.stream().toList()))
-				.publicResponseMapper(identifiedResponse -> identifiedResponse.model())
-				.build();
-```
-
-Default standard semantics here are:
-
-- `Cardinality.ONE`
-- `ReconciliationStrategy.REPLACE`
-- `cascadeCreate = true`
-- `cascadeUpdate = true`
-- `cascadeDelete = false`
-- `orphanDelete = false`
-- `hydrateOnFetch = true`
-
-If `Task` should fully own `Version`, you can override lifecycle semantics and turn delete/orphan delete on.
-
-### `Task -> Note` (`1:N` owned satellite)
-
-```java
-var noteRelationshipDefinition =
-		AggregateRelationshipDefinitions
-				.<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch,
-						Long, NoteDomainModel, NoteDomainModelCreate, NoteDomainModelUpdatePatch,
-						NoteAPIModelResponse, NoteAPIModelCreate, NoteAPIModelUpdatePatch,
-						NoteAPIModelResponse>
-						oneToManySatellite("note", noteAggregateCrudDefinition)
-				.createExtractor(TaskDomainModelCreate::notes)
-				.createMapper(note -> note)
-				.patchExtractor(TaskDomainModelUpdatePatch::notes)
-				.patchMapper(NoteAPIToDomainUpdateAdapter::toDomainModelUpdatePatch)
-				.patchCreateMapper(NoteAPIToDomainCreateAdapter::toDomainModelCreate)
-				.removeIdExtractor(TaskDomainModelUpdatePatch::removeNoteIds)
-				.currentSatellites(TaskDomainModel::notes)
-				.replaceSatellites(TaskDomainModel::withNotes)
-				.publicResponseMapper(identifiedResponse -> identifiedResponse.model())
-				.build();
-```
-
-Default standard semantics here are:
-
-- `Cardinality.MANY`
-- `ReconciliationStrategy.MERGE_BY_ID`
-- `cascadeCreate = true`
-- `cascadeUpdate = true`
-- `cascadeDelete = false`
-- `orphanDelete = false`
-- `hydrateOnFetch = true`
-
-### Reference-only relationships are also first-class
-
-Not every relationship is lifecycle-owned. Sometimes the master should only point at already existing satellites.
-
-For that case, use:
-
-- `oneToOneReferencedSatellite(...)`
-- `oneToManyReferencedSatellite(...)`
-
-Those standard builders are meant for the “reference existing aggregate only” use case:
-
-- `cascadeCreate = false`
-- `cascadeUpdate = true`
-- `cascadeDelete = false`
-- `orphanDelete = false`
-- `hydrateOnFetch = true`
-
-Example: `Task` only refers to existing `Note`s by id.
-
-```java
-var noteReferenceRelationshipDefinition =
-		AggregateRelationshipDefinitions
-				.<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch,
-						Long, NoteDomainModel, NoteDomainModelCreate, NoteDomainModelUpdatePatch,
-						NoteAPIModelResponse, NoteAPIModelResponse>
-						oneToManyReferencedSatellite("note", noteAggregateCrudDefinition)
-				.createReferenceIdsExtractor(TaskDomainModelCreate::noteIds)
-				.patchReferenceIdsExtractor(TaskDomainModelUpdatePatch::noteIds)
-				.removeIdExtractor(TaskDomainModelUpdatePatch::removeNoteIds)
-				.currentSatellites(TaskDomainModel::notes)
-				.replaceSatellites(TaskDomainModel::withNotes)
-				.publicResponseMapper(identifiedResponse -> identifiedResponse.model())
-				.build();
-```
-
-Effect of the reference-only DSL:
-
-- create does **not** create new satellites
-- patch does **not** create new satellites
-- referenced ids are validated through the satellite fetch port
-- missing ids fail with `ResourceNotFoundException`
-- the master still gets hydrated public satellite contracts on fetch
-
-### Attach the relationships to `Task`
-
-```java
-return AggregateCrudDefinitions
-		.<Long, TaskDomainModel, TaskDomainModelCreate, TaskDomainModelUpdatePatch, TaskDomainModelResponse>
-				aggregateCrudDefinition()
-		.mutationPort(mutationPort)
-		.fetchPort(fetchPort)
-		.createBuilder(createBuilder)
-		.patcher(patcher)
-		.responseBuilder(responseBuilder)
-		.insertionPolicy(insertionPolicy)
-		.patchPolicy(patchPolicy)
-		.deletionPolicy(deletionPolicy)
-		.securityPolicy(securityPolicy)
-		.duplicateDefinition(duplicateDefinition)
-		.relationshipDefinition(versionRelationshipDefinition)
-		.relationshipDefinition(noteRelationshipDefinition)
-		.build();
-```
-
-After that, `Task` still uses the same save, fetch, update, and delete services. There is no second consumer-facing API.
-
-## What The Framework Takes Care Of
-
-Once relationships are declared, `cleanCrud` takes care of:
-
-- creating owned satellites during master create when lifecycle semantics allow it
-- linking referenced satellites
-- validating referenced ids through the satellite fetch port
-- updating owned satellites during master update when lifecycle semantics allow it
-- replacing or removing owned satellites according to reconciliation strategy
-- orphan deletion when configured
-- cascade deletion when the master is deleted
-- fetch hydration when enabled
-- preserving relationship identity through the link strategy
-- keeping orchestration inside the framework runtime rather than leaking it into controllers or persistence adapters
-
-## Consumer DSL
-
-The main consumer-facing DSL types are:
-
-- `AggregateCrudDefinitions`
-- `AggregateRelationshipDefinitions`
-- `LifecycleSemanticsBuilder`
-
-The raw interfaces are also available, but the DSL is the recommended path for normal usage.
-
-## Supported Relationship Semantics
-
-Single-aggregate CRUD remains the default usage model.
-
-Current relationship runtime support includes:
-
-- zero-relationship CRUD
-- one-to-one satellite save, fetch hydration, delete, update, and put flows
-- one-to-many satellite save, fetch hydration, delete, update, and put flows
-- one-to-one referenced-satellite save, fetch hydration, update, and put flows
-- one-to-many referenced-satellite save, fetch hydration, update, and put flows
-- collection reconciliation for `REPLACE` and `MERGE_BY_ID`
-
-### Supported vs deferred
-
-| Area                                               | Status    |
-|----------------------------------------------------|-----------|
-| `Cardinality.ONE + REPLACE`                        | Supported |
-| `Cardinality.MANY + REPLACE`                       | Supported |
-| `Cardinality.MANY + MERGE_BY_ID`                   | Supported |
-| Business-key reconciliation                        | Deferred  |
-| Arbitrary graph cycles                             | Deferred  |
-| Multi-level recursive orchestration                | Deferred  |
-| Cross-datasource compensation                      | Deferred  |
-| Distributed workflows / sagas                      | Deferred  |
-| Bulk graph orchestration beyond one root aggregate | Deferred  |
-
-## Historized Persistence
-
-For historized persistence, `cleanCrud` provides a single high-level repository base so consumers do not need separate
-save/delete/crud repository beans for the same aggregate.
-
-Historized persistence also supports a nullable `AuditActor` on every history row. Consumers provide any implementation
-through an `AuditActorSupplier`, and the framework normalizes that into its built-in persisted audit core. If actor
-capture is not desired, pass `AuditActorSupplier.none()`.
-
-Typical historized shape:
-
-1. define one live JPA entity
-2. define one history JPA entity
-3. define one live Spring Data repository
-4. define one history Spring Data repository by extending `TriTemporalHistoryJpaRepository`
-5. extend `AbstractHistorizedPersistenceModelJpaRepository`
-6. implement a small history snapshot factory, typically by extending `AbstractPersistenceHistorySnapshotFactory`
+- `Tag` as a standalone aggregate
+- `Version` as a standalone aggregate
+- `Note` as a standalone aggregate
+- `Person` as a standalone aggregate with:
+    - `tag` referenced
+    - `currentVersion` referenced
+    - `lastKnownVersion` referenced
+    - `notes` owned
+
+The normal order is:
+
+1. define and wire `Tag`
+2. define and wire `Version`
+3. define and wire `Note`
+4. define `PersonModel<T, V, N>`
+5. define `PersonRelationships`
+6. generate or wire `Person`
+
+The owning aggregate usually comes last because it points at already existing satellite aggregates.
 
 ## Architecture
 
-`cleanCrud` keeps the same three main layers:
+`cleanCrud` still keeps the same broad layers:
 
-### API layer
+### API
 
-- web controllers
+- REST controllers
 - application controllers
 - facades
 - API/domain adapters
 
-### Domain layer
+### Domain
 
-- domain models
-- create/update/response models
+- models
+- DTOs
 - builders
 - patchers
 - response builders
 - policies
-- security
 - validation
+- relationship declarations
 
-### Infrastructure layer
+### Infrastructure
 
 - persistence models
 - repositories
 - persistence adapters
-- domain/persistence ID management
+- ID management
 
-The aggregate runtime sits above the persistence services and orchestrates CRUD consistently across these layers.
+The aggregate runtime sits above persistence services and orchestrates CRUD consistently across those layers.
 
-## Example Implementation
+## Historized Persistence
 
-A full example is available in the companion repository `cleanCrud-sampleImplementation`.
+Historized persistence still follows the same pattern:
 
-That sample demonstrates:
+1. one live JPA entity
+2. one history JPA entity
+3. one live repository
+4. one history repository
+5. one historized repository adapter
+6. one history snapshot factory
 
-- normal standalone aggregates
-- `Task -> Version` as a `1:1` owned relationship
-- `Task -> Note` as a `1:N` owned relationship
+`AuditActorSupplier` is still the extension point when history rows should capture an actor.
+
+## Example Repository
+
+The companion repository `cleanCrud-sampleImplementation` demonstrates:
+
+- standalone aggregates
+- relationship declarations via `*Relationships`
+- generated and handwritten runtime wiring
+- a real sample where `person` is generated from:
+    - `PersonModel`
+    - `PersonRelationships`
+
+## Summary
+
+The current `cleanCrud` model is:
+
+- **base model** describes aggregate shape
+- **`Relationship`** describes relationship meaning
+- **runtime DSL** lowers that meaning into executable aggregate relationship definitions
+- **generator** derives the repetitive structural code from those same declarations
+
+That keeps the semantic truth in one place and lets runtime and generation share it instead of drifting apart.
