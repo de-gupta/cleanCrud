@@ -2,16 +2,14 @@ package de.gupta.clean.crud.template.useCases.crud.aggregate.builder;
 
 import de.gupta.clean.crud.template.domain.relationship.LifecycleSemantics;
 import de.gupta.clean.crud.template.domain.relationship.ReconciliationStrategy;
+import de.gupta.clean.crud.template.domain.relationship.Relationship;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteCreateIntent;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMutationIntent;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateFetchPort;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateMutationPort;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.*;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.standard.StandardOneToManyReferencedSatelliteRelationshipBuilder;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.standard.StandardOneToManySatelliteRelationshipBuilder;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.standard.StandardOneToOneReferencedSatelliteRelationshipBuilder;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.standard.StandardOneToOneSatelliteRelationshipBuilder;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.standard.*;
 
 import java.util.Collection;
 import java.util.Objects;
@@ -25,6 +23,18 @@ public final class AggregateRelationshipDefinitions
 			SatelliteDomainModelUpdatePatch> aggregateRelationshipDefinition()
 	{
 		return new AggregateRelationshipDefinitionBuilder<>();
+	}
+
+	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+	RelationshipDrivenAggregateRelationshipBuilder<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+			MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+			SatelliteDomainModelUpdatePatch> fromRelationship(
+			final Relationship relationship,
+			final AggregateCrudDefinition<SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch, ?> satelliteDefinition)
+	{
+		return new RelationshipDrivenAggregateRelationshipBuilder<>(relationship, satelliteDefinition);
 	}
 
 	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
