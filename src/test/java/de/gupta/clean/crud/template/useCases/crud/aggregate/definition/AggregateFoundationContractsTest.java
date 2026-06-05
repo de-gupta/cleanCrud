@@ -58,6 +58,9 @@ class AggregateFoundationContractsTest
 		};
 		DomainSecurityPolicy<String> securityPolicy = DomainSecurityPolicy.allowing();
 		DuplicateDefinition<String> duplicateDefinition = String::equals;
+		PostCommitMutation<String, String> postCommitMutation = _ ->
+		{
+		};
 		AggregateRelationshipDefinition<String, String, String, String, Long, Long, Long, Long> relationshipDefinition =
 				new TestAggregateRelationshipDefinition();
 
@@ -125,6 +128,12 @@ class AggregateFoundationContractsTest
 					}
 
 					@Override
+					public PostCommitMutation<String, String> postCommitMutation()
+					{
+						return postCommitMutation;
+					}
+
+					@Override
 					public Collection<AggregateRelationshipDefinitionContract<String, String, String, String>>
 					relationshipDefinitions()
 					{
@@ -142,6 +151,7 @@ class AggregateFoundationContractsTest
 		assertSame(deletionPolicy, definition.deletionPolicy());
 		assertSame(securityPolicy, definition.securityPolicy());
 		assertSame(duplicateDefinition, definition.duplicateDefinition());
+		assertSame(postCommitMutation, definition.postCommitMutation());
 		assertEquals(List.of(relationshipDefinition), definition.relationshipDefinitions());
 	}
 
@@ -397,6 +407,12 @@ class AggregateFoundationContractsTest
 		public DuplicateDefinition<Long> duplicateDefinition()
 		{
 			return Long::equals;
+		}
+
+		@Override
+		public PostCommitMutation<Long, Long> postCommitMutation()
+		{
+			return PostCommitMutation.noop();
 		}
 
 		@Override

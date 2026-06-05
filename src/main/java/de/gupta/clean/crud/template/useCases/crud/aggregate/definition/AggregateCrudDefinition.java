@@ -36,5 +36,7 @@ public interface AggregateCrudDefinition<MasterDomainId, MasterDomainModel, Mast
 
 	DuplicateDefinition<MasterDomainModel> duplicateDefinition();
 
+	PostCommitMutation<MasterDomainId, MasterDomainModel> postCommitMutation();
+
 	Collection<AggregateRelationshipDefinitionContract<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch>> relationshipDefinitions();
 }

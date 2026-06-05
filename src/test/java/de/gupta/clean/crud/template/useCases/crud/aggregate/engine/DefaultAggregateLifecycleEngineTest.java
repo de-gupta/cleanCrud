@@ -16,6 +16,9 @@ import de.gupta.clean.crud.template.domain.service.equality.KeyBasedDuplicateDef
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
 import de.gupta.clean.crud.template.infrastructure.persistence.transaction.PersistenceTransactionRunner;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutation;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationContext;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationKind;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteCreateIntent;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMutationIntent;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateFetchPort;
@@ -459,6 +462,68 @@ class DefaultAggregateLifecycleEngineTest
 		assertEquals(1, scenario.transactionRunner.transactionCount());
 	}
 
+	@Test
+	void postCommitMutationContextsAreProducedForAllMutationKinds()
+	{
+		var dispatcher = new RecordingDispatcher();
+		var scenario = new TestScenario(List.of(), dispatcher);
+
+		var created = scenario.engine.save(scenario.masterDefinition, new MasterCreate("created", List.of()));
+		scenario.engine.putAtId(scenario.masterDefinition, created.id(), new MasterCreate("put", List.of()));
+		var patched = scenario.engine.updateById(
+				scenario.masterDefinition,
+				created.id(),
+				new MasterPatch("patched", List.of()));
+		scenario.engine.deleteById(scenario.masterDefinition, created.id());
+
+		assertEquals(
+				List.of(
+						new PostCommitMutationContext<>(PostCommitMutationKind.CREATE, created.id(),
+								Optional.of(created.model()), Optional.empty()),
+						new PostCommitMutationContext<>(PostCommitMutationKind.PUT, created.id(),
+								Optional.of(new MasterModel("put", List.of(), List.of())),
+								Optional.of(new MasterModel("created", List.of(), List.of()))),
+						new PostCommitMutationContext<>(PostCommitMutationKind.PATCH, patched.id(),
+								Optional.of(patched.model()),
+								Optional.of(new MasterModel("put", List.of(), List.of()))),
+						new PostCommitMutationContext<>(PostCommitMutationKind.DELETE, created.id(),
+								Optional.empty(),
+								Optional.of(new MasterModel("patched", List.of(), List.of())))),
+				dispatcher.contexts);
+	}
+
+	@Test
+	void postCommitMutationIsNotDispatchedWhenMutationFailsBeforeCommit()
+	{
+		var dispatcher = new RecordingDispatcher();
+		var scenario = new TestScenario(List.of(), dispatcher);
+		scenario.masterDefinition.deletionPolicy = model ->
+		{
+			throw ResourceCannotBeDeletedException.withMessage(model.value());
+		};
+		scenario.masterStore.put("blocked", new MasterModel("blocked", List.of(), List.of()));
+
+		assertThrows(ResourceCannotBeDeletedException.class,
+				() -> scenario.engine.deleteById(scenario.masterDefinition, "blocked"));
+		assertTrue(dispatcher.contexts.isEmpty());
+	}
+
+	@Test
+	void postCommitMutationFailureDoesNotChangeCommittedMutationResult()
+	{
+		var dispatcher = new SwallowingRecordingDispatcher();
+		var scenario = new TestScenario(List.of(), dispatcher);
+		scenario.masterDefinition.postCommitMutation = _ ->
+		{
+			throw new RuntimeException("hook failed");
+		};
+
+		var saved = scenario.engine.save(scenario.masterDefinition, new MasterCreate("created", List.of()));
+
+		assertEquals("master-1", saved.id());
+		assertEquals("created", scenario.masterStore.get(saved.id()).value());
+	}
+
 	private record MasterCreate(String value,
 	                            Collection<SatelliteCreateIntent<Long, SatelliteCreate>> satelliteCreateIntents)
 	{
@@ -497,8 +562,7 @@ class DefaultAggregateLifecycleEngineTest
 	private static final class TestScenario
 	{
 		private final TestTransactionRunner transactionRunner = new TestTransactionRunner();
-		private final DefaultAggregateLifecycleEngine engine =
-				DefaultAggregateLifecycleEngine.withTransactionRunner(transactionRunner);
+		private final DefaultAggregateLifecycleEngine engine;
 		private final Map<String, MasterModel> masterStore = new LinkedHashMap<>();
 		private final Map<Long, SatelliteModel> satelliteStore = new LinkedHashMap<>();
 		private final List<String> operationLog = new ArrayList<>();
@@ -519,8 +583,17 @@ class DefaultAggregateLifecycleEngineTest
 		private TestScenario(
 				final List<AggregateRelationshipDefinitionContract<String, MasterModel, MasterCreate, MasterPatch>> relationshipDefinitions)
 		{
+			this(relationshipDefinitions, PostCommitMutationDispatcher.async());
+		}
+
+		private TestScenario(
+				final List<AggregateRelationshipDefinitionContract<String, MasterModel, MasterCreate, MasterPatch>> relationshipDefinitions,
+				final PostCommitMutationDispatcher postCommitMutationDispatcher)
+		{
 			this.satelliteDefinition = new TestSatelliteAggregateDefinition();
 			this.masterDefinition = new TestMasterAggregateDefinition(relationshipDefinitions);
+			this.engine = DefaultAggregateLifecycleEngine.withTransactionRunnerAndDispatcher(transactionRunner,
+					postCommitMutationDispatcher);
 		}
 
 		private final class TestMasterAggregateDefinition
@@ -535,6 +608,7 @@ class DefaultAggregateLifecycleEngineTest
 			private DeletionPolicy<MasterModel> deletionPolicy = _ ->
 			{
 			};
+			private PostCommitMutation<String, MasterModel> postCommitMutation = PostCommitMutation.noop();
 
 			@Override
 			public AggregateMutationPort<String, MasterModel, MasterCreate, MasterPatch> mutationPort()
@@ -601,6 +675,12 @@ class DefaultAggregateLifecycleEngineTest
 			public DuplicateDefinition<MasterModel> duplicateDefinition()
 			{
 				return (KeyBasedDuplicateDefinition<MasterModel, String>) MasterModel::value;
+			}
+
+			@Override
+			public PostCommitMutation<String, MasterModel> postCommitMutation()
+			{
+				return postCommitMutation;
 			}
 
 			@Override
@@ -754,6 +834,12 @@ class DefaultAggregateLifecycleEngineTest
 			public DuplicateDefinition<SatelliteModel> duplicateDefinition()
 			{
 				return (left, right) -> left.value().equals(right.value());
+			}
+
+			@Override
+			public PostCommitMutation<Long, SatelliteModel> postCommitMutation()
+			{
+				return PostCommitMutation.noop();
 			}
 
 			@Override
@@ -985,6 +1071,38 @@ class DefaultAggregateLifecycleEngineTest
 		int transactionCount()
 		{
 			return transactionCount;
+		}
+	}
+
+	private static class RecordingDispatcher implements PostCommitMutationDispatcher
+	{
+		private final List<PostCommitMutationContext<String, MasterModel>> contexts = new ArrayList<>();
+
+		@Override
+		@SuppressWarnings("unchecked")
+		public <DomainId, DomainModel> void dispatch(
+				final PostCommitMutation<DomainId, DomainModel> postCommitMutation,
+				final PostCommitMutationContext<DomainId, DomainModel> context)
+		{
+			contexts.add((PostCommitMutationContext<String, MasterModel>) context);
+			postCommitMutation.accept(context);
+		}
+	}
+
+	private static final class SwallowingRecordingDispatcher extends RecordingDispatcher
+	{
+		@Override
+		public <DomainId, DomainModel> void dispatch(
+				final PostCommitMutation<DomainId, DomainModel> postCommitMutation,
+				final PostCommitMutationContext<DomainId, DomainModel> context)
+		{
+			try
+			{
+				super.dispatch(postCommitMutation, context);
+			}
+			catch (RuntimeException ignored)
+			{
+			}
 		}
 	}
 }

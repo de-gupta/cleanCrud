@@ -11,6 +11,9 @@ import de.gupta.clean.crud.template.domain.service.equality.DuplicateDefinition;
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
 import de.gupta.clean.crud.template.infrastructure.persistence.transaction.PersistenceTransactionRunner;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutation;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationContext;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationKind;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateFetchPort;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateMutationPort;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinitionContract;
@@ -27,9 +30,12 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AbstractCrudServicesEngineBackedTest
 {
@@ -62,6 +68,37 @@ class AbstractCrudServicesEngineBackedTest
 		assertEquals("value", fetchService.findById("id").model());
 		deleteService.deleteById("id");
 		assertEquals(List.of("id"), definition.deletedIds);
+	}
+
+	@Test
+	void servicesDispatchPostCommitMutationsAsynchronously()
+			throws InterruptedException
+	{
+		TestAggregateDefinition definition = new TestAggregateDefinition();
+		CountDownLatch latch = new CountDownLatch(3);
+		java.util.List<PostCommitMutationContext<String, String>> contexts =
+				java.util.Collections.synchronizedList(new java.util.ArrayList<>());
+		definition.postCommitMutation = context ->
+		{
+			contexts.add(context);
+			latch.countDown();
+		};
+		DefaultAggregateLifecycleEngine engine =
+				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
+
+		TestSaveService saveService = new TestSaveService(definition, engine);
+		TestUpdateService updateService = new TestUpdateService(definition, engine);
+		TestDeleteService deleteService = new TestDeleteService(definition, engine);
+
+		saveService.save("saved");
+		definition.store.put("id", "before");
+		updateService.updateById("id", "patched");
+		deleteService.deleteById("id");
+
+		assertTrue(latch.await(2, TimeUnit.SECONDS));
+		assertEquals(
+				List.of(PostCommitMutationKind.CREATE, PostCommitMutationKind.PATCH, PostCommitMutationKind.DELETE),
+				contexts.stream().map(PostCommitMutationContext::kind).toList());
 	}
 
 	private static final class TestSaveService
@@ -113,6 +150,7 @@ class AbstractCrudServicesEngineBackedTest
 	{
 		private final java.util.Map<String, String> store = new java.util.HashMap<>();
 		private final java.util.List<String> deletedIds = new java.util.ArrayList<>();
+		private PostCommitMutation<String, String> postCommitMutation = PostCommitMutation.noop();
 
 		@Override
 		public AggregateMutationPort<String, String, String, String> mutationPort()
@@ -231,6 +269,12 @@ class AbstractCrudServicesEngineBackedTest
 		public DuplicateDefinition<String> duplicateDefinition()
 		{
 			return String::equals;
+		}
+
+		@Override
+		public PostCommitMutation<String, String> postCommitMutation()
+		{
+			return postCommitMutation;
 		}
 
 		@Override
