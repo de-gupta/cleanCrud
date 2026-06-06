@@ -8,6 +8,9 @@ import de.gupta.clean.crud.template.domain.service.equality.KeyBasedDuplicateDef
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
 import de.gupta.clean.crud.template.infrastructure.persistence.transaction.PersistenceTransactionRunner;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutation;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationContext;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationKind;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateLifecycleEngine;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.DefaultAggregateLifecycleEngine;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteCreateIntent;
@@ -275,6 +278,70 @@ final class AggregateBuilderDslTest
 				.as("Hydrating relationships should still require an explicit hydration strategy")
 				.isInstanceOf(NullPointerException.class)
 				.hasMessage("hydrationStrategy");
+	}
+
+	@org.junit.jupiter.api.Test
+	void aggregateBuilderDefaultsPostCommitMutationToNoOpAndAllowsOverride()
+	{
+		var scenario = new TestScenario();
+		PostCommitMutation<String, MasterModel> configuredMutation = _ ->
+		{
+		};
+
+		var defaultDefinition = AggregateCrudDefinitions
+				.<String, MasterModel, MasterCreate, MasterPatch, MasterResponse>aggregateCrudDefinition()
+				.mutationPort(scenario.masterMutationPort())
+				.fetchPort(scenario.masterFetchPort())
+				.createBuilder(create -> new MasterModel(create.value(), List.of(), List.of()))
+				.patcher((originalDomainModel, patch) -> new MasterModel(
+						patch.value() == null ? originalDomainModel.value() : patch.value(),
+						originalDomainModel.satelliteDomainIds(),
+						originalDomainModel.hydratedSatellites()))
+				.responseBuilder(MasterResponse::from)
+				.insertionPolicy(_ ->
+				{
+				})
+				.patchPolicy((_, _) ->
+				{
+				})
+				.deletionPolicy(_ ->
+				{
+				})
+				.securityPolicy(DomainSecurityPolicy.allowing())
+				.duplicateDefinition((KeyBasedDuplicateDefinition<MasterModel, String>) MasterModel::value)
+				.build();
+		var overriddenDefinition = AggregateCrudDefinitions
+				.<String, MasterModel, MasterCreate, MasterPatch, MasterResponse>aggregateCrudDefinition()
+				.mutationPort(scenario.masterMutationPort())
+				.fetchPort(scenario.masterFetchPort())
+				.createBuilder(create -> new MasterModel(create.value(), List.of(), List.of()))
+				.patcher((originalDomainModel, patch) -> new MasterModel(
+						patch.value() == null ? originalDomainModel.value() : patch.value(),
+						originalDomainModel.satelliteDomainIds(),
+						originalDomainModel.hydratedSatellites()))
+				.responseBuilder(MasterResponse::from)
+				.insertionPolicy(_ ->
+				{
+				})
+				.patchPolicy((_, _) ->
+				{
+				})
+				.deletionPolicy(_ ->
+				{
+				})
+				.securityPolicy(DomainSecurityPolicy.allowing())
+				.duplicateDefinition((KeyBasedDuplicateDefinition<MasterModel, String>) MasterModel::value)
+				.postCommitMutation(configuredMutation)
+				.build();
+
+		defaultDefinition.postCommitMutation().accept(new PostCommitMutationContext<>(
+				PostCommitMutationKind.CREATE,
+				"id",
+				Optional.of(new MasterModel("value", List.of(), List.of())),
+				Optional.empty()));
+		assertThat(overriddenDefinition.postCommitMutation())
+				.as("builder should preserve an explicitly configured post-commit mutation")
+				.isSameAs(configuredMutation);
 	}
 
 	private record MasterCreate(

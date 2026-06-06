@@ -9,6 +9,7 @@ import de.gupta.clean.crud.template.domain.service.crud.policy.PatchPolicy;
 import de.gupta.clean.crud.template.domain.service.equality.DuplicateDefinition;
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutation;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateFetchPort;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateMutationPort;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinitionContract;
@@ -57,6 +58,7 @@ public final class AggregateCrudDefinitions
 		private DeletionPolicy<MasterDomainModel> deletionPolicy;
 		private DomainSecurityPolicy<MasterDomainModel> securityPolicy;
 		private DuplicateDefinition<MasterDomainModel> duplicateDefinition;
+		private PostCommitMutation<MasterDomainId, MasterDomainModel> postCommitMutation = PostCommitMutation.noop();
 
 		public AggregateCrudDefinitionBuilder<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 				MasterDomainModelUpdatePatch, MasterDomainModelResponse> mutationPort(
@@ -140,6 +142,14 @@ public final class AggregateCrudDefinitions
 		}
 
 		public AggregateCrudDefinitionBuilder<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+				MasterDomainModelUpdatePatch, MasterDomainModelResponse> postCommitMutation(
+				final PostCommitMutation<MasterDomainId, MasterDomainModel> postCommitMutation)
+		{
+			this.postCommitMutation = required(postCommitMutation, "postCommitMutation");
+			return this;
+		}
+
+		public AggregateCrudDefinitionBuilder<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 				MasterDomainModelUpdatePatch, MasterDomainModelResponse> relationshipDefinition(
 				final AggregateRelationshipDefinitionContract<MasterDomainId, MasterDomainModel,
 						MasterDomainModelCreate, MasterDomainModelUpdatePatch> relationshipDefinition)
@@ -172,6 +182,7 @@ public final class AggregateCrudDefinitions
 					required(deletionPolicy, "deletionPolicy"),
 					required(securityPolicy, "securityPolicy"),
 					required(duplicateDefinition, "duplicateDefinition"),
+					postCommitMutation,
 					List.copyOf(relationshipDefinitions));
 		}
 
@@ -197,6 +208,7 @@ public final class AggregateCrudDefinitions
 			DeletionPolicy<MasterDomainModel> deletionPolicy,
 			DomainSecurityPolicy<MasterDomainModel> securityPolicy,
 			DuplicateDefinition<MasterDomainModel> duplicateDefinition,
+			PostCommitMutation<MasterDomainId, MasterDomainModel> postCommitMutation,
 			Collection<AggregateRelationshipDefinitionContract<MasterDomainId, MasterDomainModel,
 					MasterDomainModelCreate, MasterDomainModelUpdatePatch>> relationshipDefinitions)
 			implements AggregateCrudDefinition<MasterDomainId,

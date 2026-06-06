@@ -14,6 +14,7 @@ import de.gupta.clean.crud.template.domain.service.equality.KeyBasedDuplicateDef
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
 import de.gupta.clean.crud.template.infrastructure.persistence.transaction.PersistenceTransactionRunner;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutation;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteCreateIntent;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMutationIntent;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateFetchPort;
@@ -208,6 +209,12 @@ final class AggregateCrudServicesSatelliteEndToEndTest
 			}
 
 			@Override
+			public PostCommitMutation<String, MasterModel> postCommitMutation()
+			{
+				return PostCommitMutation.noop();
+			}
+
+			@Override
 			public Collection<AggregateRelationshipDefinitionContract<String, MasterModel, MasterCreate, MasterPatch>>
 			relationshipDefinitions()
 			{
@@ -354,6 +361,12 @@ final class AggregateCrudServicesSatelliteEndToEndTest
 			public DuplicateDefinition<SatelliteModel> duplicateDefinition()
 			{
 				return (left, right) -> left.value().equals(right.value());
+			}
+
+			@Override
+			public PostCommitMutation<Long, SatelliteModel> postCommitMutation()
+			{
+				return PostCommitMutation.noop();
 			}
 
 			@Override
