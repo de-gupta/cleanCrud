@@ -598,7 +598,9 @@ final class AggregateCrudServicesSatelliteEndToEndTest
 				final AggregateCrudDefinition<String, MasterModel, MasterCreate, MasterPatch, MasterResponse> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine);
+			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
+					AggregateServiceSupportFactory.validationSupport(),
+					AggregateServiceSupportFactory.saveCoordinator());
 		}
 	}
 
@@ -609,7 +611,9 @@ final class AggregateCrudServicesSatelliteEndToEndTest
 				final AggregateCrudDefinition<String, MasterModel, MasterCreate, MasterPatch, MasterResponse> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine);
+			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
+					AggregateServiceSupportFactory.validationSupport(),
+					AggregateServiceSupportFactory.updateCoordinator());
 		}
 	}
 
@@ -620,7 +624,8 @@ final class AggregateCrudServicesSatelliteEndToEndTest
 				final AggregateCrudDefinition<String, MasterModel, MasterCreate, MasterPatch, MasterResponse> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine);
+			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
+					AggregateServiceSupportFactory.fetchCoordinator());
 		}
 	}
 
@@ -631,7 +636,9 @@ final class AggregateCrudServicesSatelliteEndToEndTest
 				final AggregateCrudDefinition<String, MasterModel, MasterCreate, MasterPatch, MasterResponse> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine);
+			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
+					AggregateServiceSupportFactory.validationSupport(),
+					AggregateServiceSupportFactory.deleteCoordinator());
 		}
 	}
 

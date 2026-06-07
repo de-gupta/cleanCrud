@@ -108,7 +108,9 @@ class AbstractCrudServicesEngineBackedTest
 				final AggregateCrudDefinition<String, String, String, String, String> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine);
+			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
+					AggregateServiceSupportFactory.validationSupport(),
+					AggregateServiceSupportFactory.saveCoordinator());
 		}
 	}
 
@@ -119,7 +121,9 @@ class AbstractCrudServicesEngineBackedTest
 				final AggregateCrudDefinition<String, String, String, String, String> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine);
+			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
+					AggregateServiceSupportFactory.validationSupport(),
+					AggregateServiceSupportFactory.updateCoordinator());
 		}
 	}
 
@@ -130,7 +134,8 @@ class AbstractCrudServicesEngineBackedTest
 				final AggregateCrudDefinition<String, String, String, String, String> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine);
+			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
+					AggregateServiceSupportFactory.fetchCoordinator());
 		}
 	}
 
@@ -141,7 +146,9 @@ class AbstractCrudServicesEngineBackedTest
 				final AggregateCrudDefinition<String, String, String, String, String> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine);
+			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
+					AggregateServiceSupportFactory.validationSupport(),
+					AggregateServiceSupportFactory.deleteCoordinator());
 		}
 	}
 

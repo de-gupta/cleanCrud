@@ -19,6 +19,11 @@ interface PostCommitMutationDispatcher
 			PostCommitMutation<DomainId, DomainModel> postCommitMutation,
 			PostCommitMutationContext<DomainId, DomainModel> context);
 
+	default void dispatch(final Runnable action)
+	{
+		action.run();
+	}
+
 	final class AsyncPostCommitMutationDispatcher implements PostCommitMutationDispatcher
 	{
 		private static final Logger log = LoggerFactory.getLogger(AsyncPostCommitMutationDispatcher.class);
@@ -36,6 +41,29 @@ interface PostCommitMutationDispatcher
 			catch (RuntimeException e)
 			{
 				log.warn("Failed to schedule post-commit mutation {} for {}", context.kind(), context.domainId(), e);
+			}
+		}
+
+		@Override
+		public void dispatch(final Runnable action)
+		{
+			try
+			{
+				executor.execute(() ->
+				{
+					try
+					{
+						action.run();
+					}
+					catch (RuntimeException e)
+					{
+						log.warn("Post-transaction workflow hook failed", e);
+					}
+				});
+			}
+			catch (RuntimeException e)
+			{
+				log.warn("Failed to schedule post-transaction workflow hook", e);
 			}
 		}
 

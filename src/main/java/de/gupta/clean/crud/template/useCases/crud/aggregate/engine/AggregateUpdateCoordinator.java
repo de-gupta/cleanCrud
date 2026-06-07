@@ -4,10 +4,11 @@ import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidReq
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDeniedException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
+import de.gupta.clean.crud.template.domain.relationship.ReconciliationStrategy;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteCreateIntent;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMutationIntent;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinition;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.Cardinality;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.SatellitePersistenceOrder;
 
 import java.util.ArrayList;
@@ -15,12 +16,21 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 
-final class AggregateUpdateCoordinator
+public final class AggregateUpdateCoordinator
 {
 	private final SatelliteRelationshipPlanner relationshipPlanner;
 	private final SatelliteReferenceResolver referenceResolver;
+	private final SatelliteCreateIntentResolver createIntentResolver;
 
-	<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+	public static AggregateUpdateCoordinator with(
+			final SatelliteRelationshipPlanner relationshipPlanner,
+			final SatelliteReferenceResolver referenceResolver,
+			final SatelliteCreateIntentResolver createIntentResolver)
+	{
+		return new AggregateUpdateCoordinator(relationshipPlanner, referenceResolver, createIntentResolver);
+	}
+
+	public <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
 			MasterDomainModelResponse> void putAtId(
 			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
@@ -36,20 +46,16 @@ final class AggregateUpdateCoordinator
 			return;
 		}
 
-		MasterDomainModel replacementMasterDomainModel = definition.createBuilder().toModel(masterDomainModelCreate);
-		for (var relationship : relationships)
-		{
-			replacementMasterDomainModel = applyPutRelationship(
-					relationship,
-					current.get().model(),
-					replacementMasterDomainModel,
-					masterDomainModelCreate);
-		}
+		var replacementMasterDomainModel = replaceLinkedSatellitesForPut(
+				relationships,
+				current.get().model(),
+				definition.createBuilder().toModel(masterDomainModelCreate),
+				masterDomainModelCreate);
 		validatePatch(definition, current.get().model(), replacementMasterDomainModel);
 		definition.mutationPort().put(masterDomainId, replacementMasterDomainModel);
 	}
 
-	<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+	public <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
 			MasterDomainModelResponse> IdentifiedModel<MasterDomainId, MasterDomainModel> updateById(
 			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
@@ -58,20 +64,24 @@ final class AggregateUpdateCoordinator
 			final MasterDomainId masterDomainId,
 			final MasterDomainModelUpdatePatch masterDomainModelUpdatePatch)
 	{
-		var current = definition.fetchPort().findById(masterDomainId)
-		                        .orElseThrow(() -> ResourceNotFoundException.withId(masterDomainId));
-		MasterDomainModel updatedMasterDomainModel =
-				definition.patcher().patchModel(current.model(), masterDomainModelUpdatePatch);
-		for (var relationship : relationships)
-		{
-			updatedMasterDomainModel = applyUpdateRelationship(
-					relationship,
-					current.model(),
-					updatedMasterDomainModel,
-					masterDomainModelUpdatePatch);
-		}
+		var current = fetchRequiredMaster(definition, masterDomainId);
+		var updatedMasterDomainModel = applyRelationshipUpdates(
+				relationships,
+				current.model(),
+				definition.patcher().patchModel(current.model(), masterDomainModelUpdatePatch),
+				masterDomainModelUpdatePatch);
 		validatePatch(definition, current.model(), updatedMasterDomainModel);
 		return definition.mutationPort().update(masterDomainId, updatedMasterDomainModel);
+	}
+
+	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			MasterDomainModelResponse> IdentifiedModel<MasterDomainId, MasterDomainModel> fetchRequiredMaster(
+			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+			final MasterDomainId masterDomainId)
+	{
+		return definition.fetchPort().findById(masterDomainId)
+		                 .orElseThrow(() -> ResourceNotFoundException.withId(masterDomainId));
 	}
 
 	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
@@ -83,31 +93,99 @@ final class AggregateUpdateCoordinator
 			final MasterDomainId masterDomainId,
 			final MasterDomainModelCreate masterDomainModelCreate)
 	{
-		MasterDomainModel masterDomainModel = definition.createBuilder().toModel(masterDomainModelCreate);
-		for (var relationship : relationships)
-		{
-			if (relationship.linkStrategy().persistenceOrder() == SatellitePersistenceOrder.SATELLITE_BEFORE_MASTER)
-			{
-				masterDomainModel =
-						applyPutCreateRelationship(relationship, masterDomainModel, masterDomainModelCreate);
-			}
-		}
+		var masterDomainModel = applyCreateRelationshipsBeforeMasterPersistence(
+				relationships,
+				definition.createBuilder().toModel(masterDomainModelCreate),
+				masterDomainModelCreate);
 		validateInsertion(definition, masterDomainModel);
 		definition.mutationPort().put(masterDomainId, masterDomainModel);
 
-		MasterDomainModel linkedMasterDomainModel = masterDomainModel;
+		var linkedMasterDomainModel = applyCreateRelationshipsAfterMasterPersistence(
+				relationships,
+				masterDomainModel,
+				masterDomainModelCreate);
+		if (linkedMasterDomainModel != masterDomainModel)
+		{
+			definition.mutationPort().put(masterDomainId, linkedMasterDomainModel);
+		}
+	}
+
+	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch>
+	MasterDomainModel applyCreateRelationshipsBeforeMasterPersistence(
+			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships,
+			final MasterDomainModel masterDomainModel,
+			final MasterDomainModelCreate masterDomainModelCreate)
+	{
+		var linkedMasterDomainModel = masterDomainModel;
 		for (var relationship : relationships)
 		{
-			if (relationship.linkStrategy().persistenceOrder() != SatellitePersistenceOrder.SATELLITE_BEFORE_MASTER)
+			if (persistsSatellitesBeforeMaster(relationship))
 			{
 				linkedMasterDomainModel =
 						applyPutCreateRelationship(relationship, linkedMasterDomainModel, masterDomainModelCreate);
 			}
 		}
-		if (linkedMasterDomainModel != masterDomainModel)
+		return linkedMasterDomainModel;
+	}
+
+	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch>
+	MasterDomainModel applyCreateRelationshipsAfterMasterPersistence(
+			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships,
+			final MasterDomainModel masterDomainModel,
+			final MasterDomainModelCreate masterDomainModelCreate)
+	{
+		var linkedMasterDomainModel = masterDomainModel;
+		for (var relationship : relationships)
 		{
-			definition.mutationPort().put(masterDomainId, linkedMasterDomainModel);
+			if (persistsSatellitesAfterMaster(relationship))
+			{
+				linkedMasterDomainModel =
+						applyPutCreateRelationship(relationship, linkedMasterDomainModel, masterDomainModelCreate);
+			}
 		}
+		return linkedMasterDomainModel;
+	}
+
+	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch>
+	MasterDomainModel replaceLinkedSatellitesForPut(
+			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships,
+			final MasterDomainModel currentMasterDomainModel,
+			final MasterDomainModel replacementMasterDomainModel,
+			final MasterDomainModelCreate masterDomainModelCreate)
+	{
+		var linkedMasterDomainModel = replacementMasterDomainModel;
+		for (var relationship : relationships)
+		{
+			linkedMasterDomainModel = applyPutRelationship(
+					relationship,
+					currentMasterDomainModel,
+					linkedMasterDomainModel,
+					masterDomainModelCreate);
+		}
+		return linkedMasterDomainModel;
+	}
+
+	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch>
+	MasterDomainModel applyRelationshipUpdates(
+			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships,
+			final MasterDomainModel currentMasterDomainModel,
+			final MasterDomainModel updatedMasterDomainModel,
+			final MasterDomainModelUpdatePatch masterDomainModelUpdatePatch)
+	{
+		var linkedMasterDomainModel = updatedMasterDomainModel;
+		for (var relationship : relationships)
+		{
+			linkedMasterDomainModel = applyUpdateRelationship(
+					relationship,
+					currentMasterDomainModel,
+					linkedMasterDomainModel,
+					masterDomainModelUpdatePatch);
+		}
+		return linkedMasterDomainModel;
 	}
 
 	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
@@ -122,7 +200,7 @@ final class AggregateUpdateCoordinator
 		return relationshipPlanner.replaceLinkedSatelliteDomainIds(
 				relationship,
 				masterDomainModel,
-				resolveSatelliteDomainIdsForCreate(relationship, masterDomainModelCreate));
+				createIntentResolver.resolveSatelliteIdsForCreate(relationship, masterDomainModelCreate));
 	}
 
 	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
@@ -135,7 +213,8 @@ final class AggregateUpdateCoordinator
 			final MasterDomainModel replacementMasterDomainModel,
 			final MasterDomainModelCreate masterDomainModelCreate)
 	{
-		var targetSatelliteDomainIds = resolveSatelliteDomainIdsForCreate(relationship, masterDomainModelCreate);
+		var targetSatelliteDomainIds =
+				createIntentResolver.resolveSatelliteIdsForCreate(relationship, masterDomainModelCreate);
 		var currentSatelliteDomainIds =
 				relationshipPlanner.currentLinkedSatelliteDomainIds(relationship, currentMasterDomainModel);
 		deleteOrphanedSatellitesIfNeeded(
@@ -162,26 +241,36 @@ final class AggregateUpdateCoordinator
 		{
 			return updatedMasterDomainModel;
 		}
+
+		validateUpdateParticipation(relationship, mutationIntents);
+		return relationship.reconciliationStrategy() == ReconciliationStrategy.REPLACE
+				? applyReplaceUpdateRelationship(
+				relationship,
+				currentMasterDomainModel,
+				updatedMasterDomainModel,
+				mutationIntents)
+				: applyMergeByIdUpdateRelationship(
+				relationship,
+				currentMasterDomainModel,
+				updatedMasterDomainModel,
+				mutationIntents);
+	}
+
+	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+	void validateUpdateParticipation(
+			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> relationship,
+			final Collection<SatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch>> mutationIntents)
+	{
 		if (!relationship.lifecycleSemantics().cascadeUpdate())
 		{
 			throw AggregateRelationshipExecutionNotSupportedException.withMessage(
 					"Relationship '" + relationship.name() + "' does not allow satellite update participation");
 		}
 		validateCurrentMutationIntentSupport(relationship, mutationIntents);
-
-		return switch (relationship.reconciliationStrategy())
-		{
-			case REPLACE -> applyReplaceUpdateRelationship(
-					relationship,
-					currentMasterDomainModel,
-					updatedMasterDomainModel,
-					mutationIntents);
-			case MERGE_BY_ID -> applyMergeByIdUpdateRelationship(
-					relationship,
-					currentMasterDomainModel,
-					updatedMasterDomainModel,
-					mutationIntents);
-		};
 	}
 
 	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
@@ -195,83 +284,59 @@ final class AggregateUpdateCoordinator
 			final List<SatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>>
 					mutationIntents)
 	{
-		var currentSatelliteDomainIds =
-				relationshipPlanner.currentLinkedSatelliteDomainIds(relationship, currentMasterDomainModel);
-		var targetSatelliteDomainIds = new ArrayList<SatelliteDomainId>();
+		var state = ReplaceUpdateState.of(currentLinkedSatelliteDomainIds(relationship, currentMasterDomainModel));
 		for (var mutationIntent : mutationIntents)
 		{
-			switch (mutationIntent)
-			{
-				case SatelliteMutationIntent.ReferenceSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
-						SatelliteDomainModelUpdatePatch> referenceIntent ->
-				{
-					referenceResolver.requiredSatellite(relationship, referenceIntent.satelliteDomainId());
-					targetSatelliteDomainIds.add(referenceIntent.satelliteDomainId());
-				}
-				case SatelliteMutationIntent.CreateSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
-						SatelliteDomainModelUpdatePatch> createIntent -> targetSatelliteDomainIds.add(
-						createSatellite(relationship, createIntent.satelliteDomainModelCreate()));
-				case SatelliteMutationIntent.UpdateSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
-						SatelliteDomainModelUpdatePatch> updateIntent ->
-				{
-					requireCurrentlyLinkedSatelliteDomainId(
-							relationship,
-							currentSatelliteDomainIds,
-							updateIntent.satelliteDomainId(),
-							"update");
-					updateSatellite(relationship, updateIntent.satelliteDomainId(),
-							updateIntent.satelliteDomainModelUpdatePatch());
-					targetSatelliteDomainIds.add(updateIntent.satelliteDomainId());
-				}
-				case SatelliteMutationIntent.UpsertCurrentSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
-						SatelliteDomainModelUpdatePatch> upsertCurrentIntent ->
-				{
-					if (currentSatelliteDomainIds.isEmpty())
-					{
-						targetSatelliteDomainIds.add(createSatellite(
-								relationship,
-								upsertCurrentIntent.satelliteDomainModelCreate()));
-						break;
-					}
-					var currentSatelliteDomainId =
-							requiredCurrentLinkedSatelliteDomainId(relationship, currentSatelliteDomainIds, "update");
-					updateSatellite(relationship, currentSatelliteDomainId,
-							upsertCurrentIntent.satelliteDomainModelUpdatePatch());
-					targetSatelliteDomainIds.add(currentSatelliteDomainId);
-				}
-				case SatelliteMutationIntent.UpdateCurrentSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
-						SatelliteDomainModelUpdatePatch> updateCurrentIntent ->
-				{
-					var currentSatelliteDomainId =
-							requiredCurrentLinkedSatelliteDomainId(relationship, currentSatelliteDomainIds, "update");
-					updateSatellite(relationship, currentSatelliteDomainId,
-							updateCurrentIntent.satelliteDomainModelUpdatePatch());
-					targetSatelliteDomainIds.add(currentSatelliteDomainId);
-				}
-				case SatelliteMutationIntent.RemoveSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
-						SatelliteDomainModelUpdatePatch> _ ->
-				{
-				}
-				case SatelliteMutationIntent.RemoveCurrentSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
-						SatelliteDomainModelUpdatePatch> _ ->
-				{
-					if (!relationship.lifecycleSemantics().orphanDelete())
-					{
-						throw InvalidRequestException.withMessage(
-								"Relationship '" + relationship.name()
-										+ "' cannot remove the current satellite under REPLACE unless orphanDelete is enabled");
-					}
-					requiredCurrentLinkedSatelliteDomainId(relationship, currentSatelliteDomainIds, "remove");
-				}
-			}
+			handleReplaceMutationIntent(relationship, state, mutationIntent);
 		}
-		deleteOrphanedSatellitesIfNeeded(
-				relationship,
-				difference(currentSatelliteDomainIds, targetSatelliteDomainIds));
-		return relationshipPlanner.replaceLinkedSatelliteDomainIds(
-				relationship,
-				updatedMasterDomainModel,
-				targetSatelliteDomainIds);
+		deleteOrphanedSatellitesIfNeeded(relationship, difference(state.current(), state.target()));
+		return relationshipPlanner.replaceLinkedSatelliteDomainIds(relationship, updatedMasterDomainModel,
+				state.target());
+	}
+
+	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+	void handleReplaceMutationIntent(
+			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> relationship,
+			final ReplaceUpdateState<SatelliteDomainId> state,
+			final SatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+					mutationIntent)
+	{
+		switch (mutationIntent)
+		{
+			case SatelliteMutationIntent.ReferenceSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> referenceIntent ->
+					state.keep(referenceSatellite(relationship, referenceIntent.satelliteDomainId()));
+			case SatelliteMutationIntent.CreateSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> createIntent ->
+					state.keep(createSatellite(relationship, createIntent.satelliteDomainModelCreate()));
+			case SatelliteMutationIntent.UpdateSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> updateIntent -> state.keep(updateSatelliteAndKeepId(
+					relationship,
+					state.current(),
+					updateIntent.satelliteDomainId(),
+					updateIntent.satelliteDomainModelUpdatePatch()));
+			case SatelliteMutationIntent.UpsertCurrentSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> upsertCurrentIntent -> state.keep(upsertCurrentSatellite(
+					relationship,
+					state.current(),
+					upsertCurrentIntent.satelliteDomainModelCreate(),
+					upsertCurrentIntent.satelliteDomainModelUpdatePatch()));
+			case SatelliteMutationIntent.UpdateCurrentSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> updateCurrentIntent -> state.keep(updateCurrentSatellite(
+					relationship,
+					state.current(),
+					updateCurrentIntent.satelliteDomainModelUpdatePatch()));
+			case SatelliteMutationIntent.RemoveSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> _ ->
+			{
+			}
+			case SatelliteMutationIntent.RemoveCurrentSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> _ ->
+					requireOrphanDeletableCurrentSatellite(relationship, state.current());
+		}
 	}
 
 	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
@@ -285,86 +350,160 @@ final class AggregateUpdateCoordinator
 			final List<SatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>>
 					mutationIntents)
 	{
-		var currentSatelliteDomainIds =
-				relationshipPlanner.currentLinkedSatelliteDomainIds(relationship, currentMasterDomainModel);
-		var targetSatelliteDomainIds = new LinkedHashSet<>(currentSatelliteDomainIds);
-		var removedSatelliteDomainIds = new LinkedHashSet<SatelliteDomainId>();
+		var state = MergeByIdUpdateState.of(currentLinkedSatelliteDomainIds(relationship, currentMasterDomainModel));
 		for (var mutationIntent : mutationIntents)
 		{
-			switch (mutationIntent)
-			{
-				case SatelliteMutationIntent.ReferenceSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
-						SatelliteDomainModelUpdatePatch> referenceIntent ->
-				{
-					referenceResolver.requiredSatellite(relationship, referenceIntent.satelliteDomainId());
-					targetSatelliteDomainIds.add(referenceIntent.satelliteDomainId());
-				}
-				case SatelliteMutationIntent.CreateSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
-						SatelliteDomainModelUpdatePatch> createIntent -> targetSatelliteDomainIds.add(
-						createSatellite(relationship, createIntent.satelliteDomainModelCreate()));
-				case SatelliteMutationIntent.UpdateSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
-						SatelliteDomainModelUpdatePatch> updateIntent ->
-				{
-					requireCurrentlyLinkedSatelliteDomainId(
-							relationship,
-							currentSatelliteDomainIds,
-							updateIntent.satelliteDomainId(),
-							"update");
-					updateSatellite(relationship, updateIntent.satelliteDomainId(),
-							updateIntent.satelliteDomainModelUpdatePatch());
-					targetSatelliteDomainIds.add(updateIntent.satelliteDomainId());
-				}
-				case SatelliteMutationIntent.UpsertCurrentSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
-						SatelliteDomainModelUpdatePatch> upsertCurrentIntent ->
-				{
-					if (currentSatelliteDomainIds.isEmpty())
-					{
-						targetSatelliteDomainIds.add(createSatellite(
-								relationship,
-								upsertCurrentIntent.satelliteDomainModelCreate()));
-						break;
-					}
-					var currentSatelliteDomainId =
-							requiredCurrentLinkedSatelliteDomainId(relationship, currentSatelliteDomainIds, "update");
-					updateSatellite(relationship, currentSatelliteDomainId,
-							upsertCurrentIntent.satelliteDomainModelUpdatePatch());
-					targetSatelliteDomainIds.add(currentSatelliteDomainId);
-				}
-				case SatelliteMutationIntent.UpdateCurrentSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
-						SatelliteDomainModelUpdatePatch> updateCurrentIntent ->
-				{
-					var currentSatelliteDomainId =
-							requiredCurrentLinkedSatelliteDomainId(relationship, currentSatelliteDomainIds, "update");
-					updateSatellite(relationship, currentSatelliteDomainId,
-							updateCurrentIntent.satelliteDomainModelUpdatePatch());
-					targetSatelliteDomainIds.add(currentSatelliteDomainId);
-				}
-				case SatelliteMutationIntent.RemoveSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
-						SatelliteDomainModelUpdatePatch> removeIntent ->
-				{
-					requireCurrentlyLinkedSatelliteDomainId(
-							relationship,
-							currentSatelliteDomainIds,
-							removeIntent.satelliteDomainId(),
-							"remove");
-					targetSatelliteDomainIds.remove(removeIntent.satelliteDomainId());
-					removedSatelliteDomainIds.add(removeIntent.satelliteDomainId());
-				}
-				case SatelliteMutationIntent.RemoveCurrentSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
-						SatelliteDomainModelUpdatePatch> ignored ->
-				{
-					var currentSatelliteDomainId =
-							requiredCurrentLinkedSatelliteDomainId(relationship, currentSatelliteDomainIds, "remove");
-					targetSatelliteDomainIds.remove(currentSatelliteDomainId);
-					removedSatelliteDomainIds.add(currentSatelliteDomainId);
-				}
-			}
+			handleMergeByIdMutationIntent(relationship, state, mutationIntent);
 		}
-		deleteOrphanedSatellitesIfNeeded(relationship, removedSatelliteDomainIds);
+		deleteOrphanedSatellitesIfNeeded(relationship, state.removed());
 		return relationshipPlanner.replaceLinkedSatelliteDomainIds(
 				relationship,
 				updatedMasterDomainModel,
-				new ArrayList<>(targetSatelliteDomainIds));
+				new ArrayList<>(state.target()));
+	}
+
+	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+	void handleMergeByIdMutationIntent(
+			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> relationship,
+			final MergeByIdUpdateState<SatelliteDomainId> state,
+			final SatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+					mutationIntent)
+	{
+		switch (mutationIntent)
+		{
+			case SatelliteMutationIntent.ReferenceSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> referenceIntent ->
+					state.keep(referenceSatellite(relationship, referenceIntent.satelliteDomainId()));
+			case SatelliteMutationIntent.CreateSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> createIntent ->
+					state.keep(createSatellite(relationship, createIntent.satelliteDomainModelCreate()));
+			case SatelliteMutationIntent.UpdateSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> updateIntent -> state.keep(updateSatelliteAndKeepId(
+					relationship,
+					state.current(),
+					updateIntent.satelliteDomainId(),
+					updateIntent.satelliteDomainModelUpdatePatch()));
+			case SatelliteMutationIntent.UpsertCurrentSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> upsertCurrentIntent -> state.keep(upsertCurrentSatellite(
+					relationship,
+					state.current(),
+					upsertCurrentIntent.satelliteDomainModelCreate(),
+					upsertCurrentIntent.satelliteDomainModelUpdatePatch()));
+			case SatelliteMutationIntent.UpdateCurrentSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> updateCurrentIntent -> state.keep(updateCurrentSatellite(
+					relationship,
+					state.current(),
+					updateCurrentIntent.satelliteDomainModelUpdatePatch()));
+			case SatelliteMutationIntent.RemoveSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> removeIntent -> state.remove(
+					removeLinkedSatellite(relationship, state.current(), removeIntent.satelliteDomainId()));
+			case SatelliteMutationIntent.RemoveCurrentSatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> _ ->
+					state.remove(requiredCurrentLinkedSatelliteDomainId(relationship, state.current(), "remove"));
+		}
+	}
+
+	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+	List<SatelliteDomainId> currentLinkedSatelliteDomainIds(
+			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> relationship,
+			final MasterDomainModel currentMasterDomainModel)
+	{
+		return relationshipPlanner.currentLinkedSatelliteDomainIds(relationship, currentMasterDomainModel);
+	}
+
+	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+	void requireOrphanDeletableCurrentSatellite(
+			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> relationship,
+			final Collection<SatelliteDomainId> currentSatelliteDomainIds)
+	{
+		if (!relationship.lifecycleSemantics().orphanDelete())
+		{
+			throw InvalidRequestException.withMessage(
+					"Relationship '" + relationship.name()
+							+ "' cannot remove the current satellite under REPLACE unless orphanDelete is enabled");
+		}
+		requiredCurrentLinkedSatelliteDomainId(relationship, currentSatelliteDomainIds, "remove");
+	}
+
+	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+	SatelliteDomainId referenceSatellite(
+			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> relationship,
+			final SatelliteDomainId satelliteDomainId)
+	{
+		referenceResolver.requiredSatellite(relationship, satelliteDomainId);
+		return satelliteDomainId;
+	}
+
+	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+	SatelliteDomainId updateSatelliteAndKeepId(
+			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> relationship,
+			final Collection<SatelliteDomainId> currentSatelliteDomainIds,
+			final SatelliteDomainId satelliteDomainId,
+			final SatelliteDomainModelUpdatePatch satelliteDomainModelUpdatePatch)
+	{
+		requireCurrentlyLinkedSatelliteDomainId(relationship, currentSatelliteDomainIds, satelliteDomainId, "update");
+		updateSatellite(relationship, satelliteDomainId, satelliteDomainModelUpdatePatch);
+		return satelliteDomainId;
+	}
+
+	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+	SatelliteDomainId upsertCurrentSatellite(
+			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> relationship,
+			final Collection<SatelliteDomainId> currentSatelliteDomainIds,
+			final SatelliteDomainModelCreate satelliteDomainModelCreate,
+			final SatelliteDomainModelUpdatePatch satelliteDomainModelUpdatePatch)
+	{
+		if (currentSatelliteDomainIds.isEmpty())
+		{
+			return createSatellite(relationship, satelliteDomainModelCreate);
+		}
+		return updateCurrentSatellite(relationship, currentSatelliteDomainIds, satelliteDomainModelUpdatePatch);
+	}
+
+	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+	SatelliteDomainId updateCurrentSatellite(
+			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> relationship,
+			final Collection<SatelliteDomainId> currentSatelliteDomainIds,
+			final SatelliteDomainModelUpdatePatch satelliteDomainModelUpdatePatch)
+	{
+		var currentSatelliteDomainId =
+				requiredCurrentLinkedSatelliteDomainId(relationship, currentSatelliteDomainIds, "update");
+		updateSatellite(relationship, currentSatelliteDomainId, satelliteDomainModelUpdatePatch);
+		return currentSatelliteDomainId;
+	}
+
+	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+	SatelliteDomainId removeLinkedSatellite(
+			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> relationship,
+			final Collection<SatelliteDomainId> currentSatelliteDomainIds,
+			final SatelliteDomainId satelliteDomainId)
+	{
+		requireCurrentlyLinkedSatelliteDomainId(relationship, currentSatelliteDomainIds, satelliteDomainId, "remove");
+		return satelliteDomainId;
 	}
 
 	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
@@ -376,7 +515,7 @@ final class AggregateUpdateCoordinator
 			final Collection<SatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate,
 					SatelliteDomainModelUpdatePatch>> mutationIntents)
 	{
-		if (relationship.cardinality() != de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.Cardinality.MANY)
+		if (relationship.cardinality() != Cardinality.MANY)
 		{
 			return;
 		}
@@ -389,41 +528,6 @@ final class AggregateUpdateCoordinator
 					"Relationship '" + relationship.name()
 							+ "' cannot use implicit current satellite mutations for MANY cardinality; use explicit satellite ids instead");
 		}
-	}
-
-	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
-			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
-	List<SatelliteDomainId> resolveSatelliteDomainIdsForCreate(
-			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
-					MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
-					SatelliteDomainModelUpdatePatch> relationship,
-			final MasterDomainModelCreate masterDomainModelCreate)
-	{
-		var satelliteDomainIds = new ArrayList<SatelliteDomainId>();
-		for (var createIntent : relationshipPlanner.createIntents(relationship, masterDomainModelCreate))
-		{
-			switch (createIntent)
-			{
-				case SatelliteCreateIntent.ReferenceSatelliteCreateIntent<SatelliteDomainId, SatelliteDomainModelCreate> referenceIntent ->
-				{
-					referenceResolver.requiredSatellite(relationship, referenceIntent.satelliteDomainId());
-					satelliteDomainIds.add(referenceIntent.satelliteDomainId());
-				}
-				case SatelliteCreateIntent.InlineSatelliteCreateIntent<SatelliteDomainId, SatelliteDomainModelCreate> inlineIntent ->
-				{
-					if (!relationship.lifecycleSemantics().cascadeCreate())
-					{
-						throw AggregateRelationshipExecutionNotSupportedException.withMessage(
-								"Relationship '" + relationship.name() + "' does not allow satellite create participation");
-					}
-					satelliteDomainIds.add(createSatellite(relationship, inlineIntent.satelliteDomainModelCreate()));
-				}
-				case SatelliteCreateIntent.NoSatelliteCreateIntent<SatelliteDomainId, SatelliteDomainModelCreate> ignored ->
-				{
-				}
-			}
-		}
-		return satelliteDomainIds;
 	}
 
 	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
@@ -471,10 +575,21 @@ final class AggregateUpdateCoordinator
 		}
 		for (var satelliteDomainId : removedSatelliteDomainIds)
 		{
-			var currentSatellite = referenceResolver.requiredSatellite(relationship, satelliteDomainId);
-			relationship.satelliteDefinition().deletionPolicy().validateDeletion(currentSatellite.model());
-			relationship.satelliteDefinition().mutationPort().delete(satelliteDomainId);
+			deleteSatellite(relationship, satelliteDomainId);
 		}
+	}
+
+	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+	void deleteSatellite(
+			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> relationship,
+			final SatelliteDomainId satelliteDomainId)
+	{
+		var currentSatellite = referenceResolver.requiredSatellite(relationship, satelliteDomainId);
+		relationship.satelliteDefinition().deletionPolicy().validateDeletion(currentSatellite.model());
+		relationship.satelliteDefinition().mutationPort().delete(satelliteDomainId);
 	}
 
 	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
@@ -590,11 +705,68 @@ final class AggregateUpdateCoordinator
 		return currentSatelliteDomainIds.iterator().next();
 	}
 
-	AggregateUpdateCoordinator(
+	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch>
+	boolean persistsSatellitesBeforeMaster(
+			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, ?, ?, ?, ?> relationship)
+	{
+		return relationship.linkStrategy().persistenceOrder() == SatellitePersistenceOrder.SATELLITE_BEFORE_MASTER;
+	}
+
+	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch>
+	boolean persistsSatellitesAfterMaster(
+			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, ?, ?, ?, ?> relationship)
+	{
+		return !persistsSatellitesBeforeMaster(relationship);
+	}
+
+	private AggregateUpdateCoordinator(
 			final SatelliteRelationshipPlanner relationshipPlanner,
-			final SatelliteReferenceResolver referenceResolver)
+			final SatelliteReferenceResolver referenceResolver,
+			final SatelliteCreateIntentResolver createIntentResolver)
 	{
 		this.relationshipPlanner = relationshipPlanner;
 		this.referenceResolver = referenceResolver;
+		this.createIntentResolver = createIntentResolver;
+	}
+
+	private record ReplaceUpdateState<SatelliteDomainId>(
+			List<SatelliteDomainId> current,
+			List<SatelliteDomainId> target)
+	{
+		private static <SatelliteDomainId> ReplaceUpdateState<SatelliteDomainId> of(
+				final List<SatelliteDomainId> current)
+		{
+			return new ReplaceUpdateState<>(current, new ArrayList<>());
+		}
+
+		private void keep(final SatelliteDomainId satelliteDomainId)
+		{
+			target.add(satelliteDomainId);
+		}
+	}
+
+	private record MergeByIdUpdateState<SatelliteDomainId>(
+			List<SatelliteDomainId> current,
+			LinkedHashSet<SatelliteDomainId> target,
+			LinkedHashSet<SatelliteDomainId> removed)
+	{
+		private static <SatelliteDomainId> MergeByIdUpdateState<SatelliteDomainId> of(
+				final List<SatelliteDomainId> current)
+		{
+			return new MergeByIdUpdateState<>(current, new LinkedHashSet<>(current), new LinkedHashSet<>());
+		}
+
+		private void keep(final SatelliteDomainId satelliteDomainId)
+		{
+			target.add(satelliteDomainId);
+		}
+
+		private void remove(final SatelliteDomainId satelliteDomainId)
+		{
+			target.remove(satelliteDomainId);
+			removed.add(satelliteDomainId);
+		}
 	}
 }
