@@ -12,6 +12,7 @@ import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommi
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationKind;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateLifecycleEngine;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateServiceSupportFactory;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.DefaultAggregateLifecycleEngine;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteCreateIntent;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMutationIntent;
@@ -1243,7 +1244,9 @@ final class AggregateBuilderDslTest
 						StandardMasterResponse> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine);
+			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
+					AggregateServiceSupportFactory.validationSupport(),
+					AggregateServiceSupportFactory.saveCoordinator());
 		}
 	}
 
@@ -1256,7 +1259,9 @@ final class AggregateBuilderDslTest
 						StandardMasterResponse> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine);
+			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
+					AggregateServiceSupportFactory.validationSupport(),
+					AggregateServiceSupportFactory.updateCoordinator());
 		}
 	}
 
@@ -1269,7 +1274,8 @@ final class AggregateBuilderDslTest
 						StandardMasterResponse> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine);
+			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
+					AggregateServiceSupportFactory.fetchCoordinator());
 		}
 	}
 
@@ -1282,7 +1288,9 @@ final class AggregateBuilderDslTest
 						StandardReferenceMasterPatch, StandardMasterResponse> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine);
+			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
+					AggregateServiceSupportFactory.validationSupport(),
+					AggregateServiceSupportFactory.saveCoordinator());
 		}
 	}
 
@@ -1295,7 +1303,9 @@ final class AggregateBuilderDslTest
 						StandardReferenceMasterPatch, StandardMasterResponse> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine);
+			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
+					AggregateServiceSupportFactory.validationSupport(),
+					AggregateServiceSupportFactory.updateCoordinator());
 		}
 	}
 
@@ -1306,7 +1316,9 @@ final class AggregateBuilderDslTest
 				final AggregateCrudDefinition<String, MasterModel, MasterCreate, MasterPatch, MasterResponse> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine);
+			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
+					AggregateServiceSupportFactory.validationSupport(),
+					AggregateServiceSupportFactory.saveCoordinator());
 		}
 	}
 
@@ -1317,7 +1329,9 @@ final class AggregateBuilderDslTest
 				final AggregateCrudDefinition<String, MasterModel, MasterCreate, MasterPatch, MasterResponse> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine);
+			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
+					AggregateServiceSupportFactory.validationSupport(),
+					AggregateServiceSupportFactory.updateCoordinator());
 		}
 	}
 
@@ -1328,7 +1342,8 @@ final class AggregateBuilderDslTest
 				final AggregateCrudDefinition<String, MasterModel, MasterCreate, MasterPatch, MasterResponse> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine);
+			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
+					AggregateServiceSupportFactory.fetchCoordinator());
 		}
 	}
 

@@ -10,9 +10,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-final class SatelliteRelationshipPlanner
+public final class SatelliteRelationshipPlanner
 {
-	<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+	public <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
 			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
 	List<SatelliteCreateIntent<SatelliteDomainId, SatelliteDomainModelCreate>> createIntents(
 			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
@@ -31,7 +31,7 @@ final class SatelliteRelationshipPlanner
 		return intents;
 	}
 
-	<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+	public <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
 			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
 	List<SatelliteMutationIntent<SatelliteDomainId, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>>
 	mutationIntents(
@@ -53,7 +53,7 @@ final class SatelliteRelationshipPlanner
 		return intents;
 	}
 
-	<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+	public <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
 			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
 	List<SatelliteDomainId> currentLinkedSatelliteDomainIds(
 			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
@@ -73,7 +73,7 @@ final class SatelliteRelationshipPlanner
 		return currentSatelliteDomainIds;
 	}
 
-	<MasterDomainModel, SatelliteDomainId>
+	public <MasterDomainModel, SatelliteDomainId>
 	MasterDomainModel replaceLinkedSatelliteDomainIds(
 			final AggregateRelationshipDefinition<?, MasterDomainModel, ?, ?, SatelliteDomainId, ?, ?, ?> relationshipDefinition,
 			final MasterDomainModel masterDomainModel,

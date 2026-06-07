@@ -9,17 +9,14 @@ import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.Cardina
 import java.util.ArrayList;
 import java.util.List;
 
-final class AggregateDefinitionGuard
+// private or package privat constructor?
+public final class AggregateDefinitionGuard
 {
-	<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
-			MasterDomainModelResponse>
-	List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
-			MasterDomainModelUpdatePatch, ?, ?, ?, ?>> satelliteRelationships(
-			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
-					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition)
+	public <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse> List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, ?, ?, ?, ?>> satelliteRelationships(
+			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition)
 	{
-		List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
-				MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships = new ArrayList<>();
+		List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, ?, ?, ?, ?>>
+				relationships = new ArrayList<>();
 		for (var contract : definition.relationshipDefinitions())
 		{
 			var relationship = typedRelationship(contract);
@@ -30,35 +27,32 @@ final class AggregateDefinitionGuard
 	}
 
 	@SuppressWarnings("unchecked")
-	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch>
-	AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
-			MasterDomainModelUpdatePatch, ?, ?, ?, ?> typedRelationship(
-			final AggregateRelationshipDefinitionContract<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
-					MasterDomainModelUpdatePatch> contract)
+	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch> AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, ?, ?, ?, ?> typedRelationship(
+			final AggregateRelationshipDefinitionContract<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch> contract)
 	{
 		if (!(contract instanceof AggregateRelationshipDefinition<?, ?, ?, ?, ?, ?, ?, ?> relationshipDefinition))
 		{
 			throw AggregateRelationshipExecutionNotSupportedException.withMessage(
 					"Only AggregateRelationshipDefinition instances are executable at runtime");
 		}
-		return (AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
-				MasterDomainModelUpdatePatch, ?, ?, ?, ?>) relationshipDefinition;
+		return (AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, ?, ?, ?, ?>) relationshipDefinition;
 	}
 
 	private void validateRelationship(final AggregateRelationshipDefinition<?, ?, ?, ?, ?, ?, ?, ?> relationship)
 	{
-		if (relationship.cardinality() == Cardinality.ONE
-				&& relationship.reconciliationStrategy() == ReconciliationStrategy.MERGE_BY_ID)
+		if (relationship.cardinality() == Cardinality.ONE && relationship.reconciliationStrategy() == ReconciliationStrategy.MERGE_BY_ID)
 		{
 			throw AggregateRelationshipExecutionNotSupportedException.withMessage(
 					"MERGE_BY_ID is only supported for MANY satellite relationships");
 		}
-		if (relationship.cardinality() == Cardinality.MANY
-				&& relationship.reconciliationStrategy() != ReconciliationStrategy.REPLACE
-				&& relationship.reconciliationStrategy() != ReconciliationStrategy.MERGE_BY_ID)
+		if (relationship.cardinality() == Cardinality.MANY && relationship.reconciliationStrategy() != ReconciliationStrategy.REPLACE && relationship.reconciliationStrategy() != ReconciliationStrategy.MERGE_BY_ID)
 		{
 			throw AggregateRelationshipExecutionNotSupportedException.withMessage(
 					"Only REPLACE and MERGE_BY_ID are supported for MANY satellite relationships");
 		}
+	}
+
+	AggregateDefinitionGuard()
+	{
 	}
 }

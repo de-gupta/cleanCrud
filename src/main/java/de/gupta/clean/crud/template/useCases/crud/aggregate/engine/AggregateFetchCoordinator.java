@@ -13,24 +13,24 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-final class AggregateFetchCoordinator
+public final class AggregateFetchCoordinator
 {
-	<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+	public static AggregateFetchCoordinator create()
+	{
+		return new AggregateFetchCoordinator();
+	}
+
+	public <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
 			MasterDomainModelResponse> Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> findAll(
 			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships)
 	{
-		return definition.fetchPort()
-		                 .findAll()
-		                 .stream()
-		                 .map(model -> visibleHydratedModel(definition, relationships, model))
-		                 .flatMap(Optional::stream)
-		                 .toList();
+		return visibleHydratedModels(definition, relationships, definition.fetchPort().findAll());
 	}
 
-	<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+	public <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
 			MasterDomainModelResponse> Slice<IdentifiedModel<MasterDomainId, MasterDomainModel>> findAll(
 			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
@@ -40,16 +40,12 @@ final class AggregateFetchCoordinator
 	{
 		var sourceSlice = definition.fetchPort().findAll(pageable);
 		return new SliceImpl<>(
-				sourceSlice.getContent()
-				           .stream()
-				           .map(model -> visibleHydratedModel(definition, relationships, model))
-				           .flatMap(Optional::stream)
-				           .toList(),
+				visibleHydratedModels(definition, relationships, sourceSlice.getContent()),
 				sourceSlice.getPageable(),
 				sourceSlice.hasNext());
 	}
 
-	<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+	public <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
 			MasterDomainModelResponse> IdentifiedModel<MasterDomainId, MasterDomainModel> findById(
 			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
@@ -63,7 +59,7 @@ final class AggregateFetchCoordinator
 		                 .orElseThrow(() -> ResourceNotFoundException.withId(masterDomainId));
 	}
 
-	<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+	public <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
 			MasterDomainModelResponse> Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> findByIds(
 			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
@@ -71,12 +67,21 @@ final class AggregateFetchCoordinator
 					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships,
 			final Set<MasterDomainId> masterDomainIds)
 	{
-		return definition.fetchPort()
-		                 .findByIds(masterDomainIds)
-		                 .stream()
-		                 .map(model -> visibleHydratedModel(definition, relationships, model))
-		                 .flatMap(Optional::stream)
-		                 .toList();
+		return visibleHydratedModels(definition, relationships, definition.fetchPort().findByIds(masterDomainIds));
+	}
+
+	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			MasterDomainModelResponse> List<IdentifiedModel<MasterDomainId, MasterDomainModel>> visibleHydratedModels(
+			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships,
+			final Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> identifiedModels)
+	{
+		return identifiedModels.stream()
+		                       .map(model -> visibleHydratedModel(definition, relationships, model))
+		                       .flatMap(Optional::stream)
+		                       .toList();
 	}
 
 	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
@@ -126,5 +131,9 @@ final class AggregateFetchCoordinator
 								   IdentifiedModel.of(masterDomainId, masterDomainModel),
 								   relationship.satelliteFetchPort(),
 								   relationship.linkStrategy());
+	}
+
+	private AggregateFetchCoordinator()
+	{
 	}
 }

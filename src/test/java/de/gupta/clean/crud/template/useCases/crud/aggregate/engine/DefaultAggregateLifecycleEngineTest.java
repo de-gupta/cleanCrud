@@ -5,6 +5,7 @@ import de.gupta.clean.crud.template.domain.mapping.save.DomainModelBuilder;
 import de.gupta.clean.crud.template.domain.mapping.update.DomainModelPatcher;
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceCannotBeDeletedException;
+import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.relationship.LifecycleSemantics;
 import de.gupta.clean.crud.template.domain.relationship.ReconciliationStrategy;
@@ -467,6 +468,7 @@ class DefaultAggregateLifecycleEngineTest
 	{
 		var dispatcher = new RecordingDispatcher();
 		var scenario = new TestScenario(List.of(), dispatcher);
+		scenario.masterDefinition.postCommitMutation = dispatcher.contexts::add;
 
 		var created = scenario.engine.save(scenario.masterDefinition, new MasterCreate("created", List.of()));
 		scenario.engine.putAtId(scenario.masterDefinition, created.id(), new MasterCreate("put", List.of()));
@@ -562,7 +564,8 @@ class DefaultAggregateLifecycleEngineTest
 	private static final class TestScenario
 	{
 		private final TestTransactionRunner transactionRunner = new TestTransactionRunner();
-		private final DefaultAggregateLifecycleEngine engine;
+		private final DefaultAggregateLifecycleEngine workflowEngine;
+		private final TestEngineFacade engine;
 		private final Map<String, MasterModel> masterStore = new LinkedHashMap<>();
 		private final Map<Long, SatelliteModel> satelliteStore = new LinkedHashMap<>();
 		private final List<String> operationLog = new ArrayList<>();
@@ -592,8 +595,9 @@ class DefaultAggregateLifecycleEngineTest
 		{
 			this.satelliteDefinition = new TestSatelliteAggregateDefinition();
 			this.masterDefinition = new TestMasterAggregateDefinition(relationshipDefinitions);
-			this.engine = DefaultAggregateLifecycleEngine.withTransactionRunnerAndDispatcher(transactionRunner,
+			this.workflowEngine = DefaultAggregateLifecycleEngine.withTransactionRunnerAndDispatcher(transactionRunner,
 					postCommitMutationDispatcher);
+			this.engine = new TestEngineFacade(workflowEngine);
 		}
 
 		private final class TestMasterAggregateDefinition
@@ -1057,6 +1061,509 @@ class DefaultAggregateLifecycleEngineTest
 		}
 	}
 
+	private static final class TestEngineFacade
+	{
+		private final AggregateLifecycleEngine engine;
+		private final AggregateDefinitionGuard definitionGuard;
+		private final AggregateMutationValidationSupport validationSupport;
+		private final AggregateSaveCoordinator saveCoordinator;
+		private final AggregateFetchCoordinator fetchCoordinator;
+		private final AggregateDeleteCoordinator deleteCoordinator;
+		private final AggregateUpdateCoordinator updateCoordinator;
+
+		private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+				MasterDomainModelResponse>
+		IdentifiedModel<MasterDomainId, MasterDomainModel> save(
+				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+				final MasterDomainModelCreate model)
+		{
+			return saveAll(definition, List.of(model)).stream().findFirst().orElseThrow();
+		}
+
+		private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+				MasterDomainModelResponse>
+		Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> saveAll(
+				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+				final Collection<MasterDomainModelCreate> models)
+		{
+			return engine.execute(new CrudWorkflow<>()
+			{
+				@Override
+				public Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> inTransaction()
+				{
+					var relationships = satelliteRelationships(definition);
+					if (relationships.isEmpty())
+					{
+						var domainModels = models.stream().map(definition.createBuilder()::toModel).toList();
+						validationSupport.validateSaveModels(definition, domainModels);
+						return domainModels.stream().map(definition.mutationPort()::create).toList();
+					}
+					validationSupport.validateSaveModels(definition,
+							models.stream().map(definition.createBuilder()::toModel).toList());
+					return saveCoordinator.saveAll(definition, relationships, models);
+				}
+
+				@Override
+				public void afterTransaction(
+						final Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> result)
+				{
+					result.forEach(saved -> definition.postCommitMutation().accept(createContext(saved)));
+				}
+			});
+		}
+
+		private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+				MasterDomainModelResponse> void putAtId(
+				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+				final MasterDomainId id,
+				final MasterDomainModelCreate model)
+		{
+			engine.execute(new CrudWorkflow<PostCommitMutationContext<MasterDomainId, MasterDomainModel>>()
+			{
+				@Override
+				public PostCommitMutationContext<MasterDomainId, MasterDomainModel> inTransaction()
+				{
+					var relationships = satelliteRelationships(definition);
+					var previousModel = definition.fetchPort().findById(id).map(IdentifiedModel::model);
+					if (relationships.isEmpty())
+					{
+						var replacement = definition.createBuilder().toModel(model);
+						validationSupport.validateAccess(definition, replacement);
+						previousModel.ifPresentOrElse(
+								current -> validationSupport.validateAccessAndValidatePatch(definition, current,
+										replacement),
+								() -> definition.insertionPolicy().validateInsertion(replacement));
+						definition.mutationPort().put(id, replacement);
+					}
+					else
+					{
+						updateCoordinator.putAtId(definition, relationships, id, model);
+					}
+					var currentModel = definition.fetchPort().findById(id)
+					                             .map(IdentifiedModel::model)
+					                             .orElseThrow();
+					return putContext(id, previousModel, currentModel);
+				}
+
+				@Override
+				public void afterTransaction(final PostCommitMutationContext<MasterDomainId, MasterDomainModel> result)
+				{
+					definition.postCommitMutation().accept(result);
+				}
+			});
+		}
+
+		private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+				MasterDomainModelResponse>
+		IdentifiedModel<MasterDomainId, MasterDomainModel> updateById(
+				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+				final MasterDomainId id,
+				final MasterDomainModelUpdatePatch updatePatch)
+		{
+			return engine.execute(new CrudWorkflow<UpdateDispatch<MasterDomainId, MasterDomainModel>>()
+			{
+				@Override
+				public UpdateDispatch<MasterDomainId, MasterDomainModel> inTransaction()
+				{
+					var relationships = satelliteRelationships(definition);
+					var previousModel = definition.fetchPort().findById(id)
+					                              .map(IdentifiedModel::model)
+					                              .orElseThrow(() -> ResourceNotFoundException.withId(id));
+					var updated = relationships.isEmpty()
+							? updateByIdWithoutRelationships(definition, id, updatePatch)
+							: updateCoordinator.updateById(definition, relationships, id, updatePatch);
+					return new UpdateDispatch<>(updated, patchContext(updated.id(), Optional.of(previousModel),
+							updated.model()));
+				}
+
+				@Override
+				public void afterTransaction(final UpdateDispatch<MasterDomainId, MasterDomainModel> result)
+				{
+					definition.postCommitMutation().accept(result.context());
+				}
+			}).updated();
+		}
+
+		private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+				MasterDomainModelResponse>
+		Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> updateAllById(
+				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+				final Collection<IdentifiedModel<MasterDomainId, MasterDomainModelUpdatePatch>> models,
+				final BulkOperationMode mode)
+		{
+			return switch (mode)
+			{
+				case ALL_OR_NOTHING -> engine.execute(
+						new CrudWorkflow<Collection<UpdateDispatch<MasterDomainId, MasterDomainModel>>>()
+						{
+							@Override
+							public Collection<UpdateDispatch<MasterDomainId, MasterDomainModel>> inTransaction()
+							{
+								var relationships = satelliteRelationships(definition);
+								var updates = new ArrayList<UpdateDispatch<MasterDomainId, MasterDomainModel>>();
+								for (var model : models)
+								{
+									var previousModel = definition.fetchPort().findById(model.id())
+									                              .map(IdentifiedModel::model)
+									                              .orElseThrow(() -> ResourceNotFoundException.withId(
+																		  model.id()));
+									var updated = relationships.isEmpty()
+											? updateByIdWithoutRelationships(definition, model.id(), model.model())
+											: updateCoordinator.updateById(definition, relationships, model.id(),
+											model.model());
+									updates.add(new UpdateDispatch<>(updated,
+											patchContext(updated.id(), Optional.of(previousModel), updated.model())));
+								}
+								return updates;
+							}
+
+							@Override
+							public void afterTransaction(
+									final Collection<UpdateDispatch<MasterDomainId, MasterDomainModel>> result)
+							{
+								result.forEach(update -> definition.postCommitMutation().accept(update.context()));
+							}
+						}).stream().map(UpdateDispatch::updated).toList();
+				case BEST_EFFORT -> models.stream()
+				                          .map(model -> tryUpdateById(definition, model.id(), model.model()))
+				                          .flatMap(Optional::stream)
+				                          .toList();
+			};
+		}
+
+		private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+				MasterDomainModelResponse>
+		Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> findAll(
+				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition)
+		{
+			return engine.execute(new CrudWorkflow<>()
+			{
+				@Override
+				public Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> inTransaction()
+				{
+					var relationships = satelliteRelationships(definition);
+					if (relationships.isEmpty())
+					{
+						return definition.fetchPort().findAll().stream()
+						                 .filter(model -> definition.securityPolicy().isAccessAllowed(model.model()))
+						                 .toList();
+					}
+					return fetchCoordinator.findAll(definition, relationships);
+				}
+
+				@Override
+				public boolean readOnly()
+				{
+					return true;
+				}
+			});
+		}
+
+		private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+				MasterDomainModelResponse>
+		Slice<IdentifiedModel<MasterDomainId, MasterDomainModel>> findAll(
+				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+				final Pageable pageable)
+		{
+			return engine.execute(new CrudWorkflow<>()
+			{
+				@Override
+				public Slice<IdentifiedModel<MasterDomainId, MasterDomainModel>> inTransaction()
+				{
+					var relationships = satelliteRelationships(definition);
+					if (relationships.isEmpty())
+					{
+						return de.gupta.clean.crud.template.useCases.crud.common.utility.PageUtility.filterSlice(
+								definition.fetchPort().findAll(pageable),
+								model -> definition.securityPolicy().isAccessAllowed(model.model()));
+					}
+					return fetchCoordinator.findAll(definition, relationships, pageable);
+				}
+
+				@Override
+				public boolean readOnly()
+				{
+					return true;
+				}
+			});
+		}
+
+		private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+				MasterDomainModelResponse>
+		IdentifiedModel<MasterDomainId, MasterDomainModel> findById(
+				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+				final MasterDomainId id)
+		{
+			return engine.execute(new CrudWorkflow<>()
+			{
+				@Override
+				public IdentifiedModel<MasterDomainId, MasterDomainModel> inTransaction()
+				{
+					var relationships = satelliteRelationships(definition);
+					if (relationships.isEmpty())
+					{
+						return definition.fetchPort().findById(id)
+						                 .filter(model -> definition.securityPolicy().isAccessAllowed(model.model()))
+						                 .orElseThrow(() -> ResourceNotFoundException.withId(id));
+					}
+					return fetchCoordinator.findById(definition, relationships, id);
+				}
+
+				@Override
+				public boolean readOnly()
+				{
+					return true;
+				}
+			});
+		}
+
+		private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+				MasterDomainModelResponse>
+		Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> findByIds(
+				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+				final Set<MasterDomainId> ids)
+		{
+			return engine.execute(new CrudWorkflow<>()
+			{
+				@Override
+				public Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> inTransaction()
+				{
+					var relationships = satelliteRelationships(definition);
+					if (relationships.isEmpty())
+					{
+						return definition.fetchPort().findByIds(ids).stream()
+						                 .filter(model -> definition.securityPolicy().isAccessAllowed(model.model()))
+						                 .toList();
+					}
+					return fetchCoordinator.findByIds(definition, relationships, ids);
+				}
+
+				@Override
+				public boolean readOnly()
+				{
+					return true;
+				}
+			});
+		}
+
+		private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+				MasterDomainModelResponse> void deleteById(
+				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+				final MasterDomainId id)
+		{
+			engine.execute(new CrudWorkflow<PostCommitMutationContext<MasterDomainId, MasterDomainModel>>()
+			{
+				@Override
+				public PostCommitMutationContext<MasterDomainId, MasterDomainModel> inTransaction()
+				{
+					var relationships = satelliteRelationships(definition);
+					var previousModel = definition.fetchPort().findById(id)
+					                              .map(IdentifiedModel::model)
+					                              .orElseThrow(() -> ResourceNotFoundException.withId(id));
+					if (relationships.isEmpty())
+					{
+						validationSupport.validateDeletion(definition, previousModel);
+						definition.mutationPort().delete(id);
+					}
+					else
+					{
+						deleteCoordinator.deleteById(definition, relationships, id);
+					}
+					return deleteContext(id, previousModel);
+				}
+
+				@Override
+				public void afterTransaction(final PostCommitMutationContext<MasterDomainId, MasterDomainModel> result)
+				{
+					definition.postCommitMutation().accept(result);
+				}
+			});
+		}
+
+		private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+				MasterDomainModelResponse> void deleteAllById(
+				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+				final Collection<MasterDomainId> ids,
+				final BulkOperationMode mode)
+		{
+			switch (mode)
+			{
+				case ALL_OR_NOTHING -> engine.execute(
+						new CrudWorkflow<Collection<PostCommitMutationContext<MasterDomainId, MasterDomainModel>>>()
+						{
+							@Override
+							public Collection<PostCommitMutationContext<MasterDomainId, MasterDomainModel>> inTransaction()
+							{
+								var relationships = satelliteRelationships(definition);
+								var deleted =
+										new ArrayList<PostCommitMutationContext<MasterDomainId, MasterDomainModel>>();
+								for (var id : ids)
+								{
+									var previousModel = definition.fetchPort().findById(id)
+									                              .map(IdentifiedModel::model)
+									                              .orElseThrow(() -> ResourceNotFoundException.withId(
+																		  id));
+									if (relationships.isEmpty())
+									{
+										validationSupport.validateDeletion(definition, previousModel);
+										definition.mutationPort().delete(id);
+									}
+									else
+									{
+										deleteCoordinator.deleteById(definition, relationships, id);
+									}
+									deleted.add(deleteContext(id, previousModel));
+								}
+								return deleted;
+							}
+
+							@Override
+							public void afterTransaction(
+									final Collection<PostCommitMutationContext<MasterDomainId, MasterDomainModel>> result)
+							{
+								result.forEach(definition.postCommitMutation());
+							}
+						});
+				case BEST_EFFORT -> ids.forEach(id -> tryDeleteById(definition, id));
+			}
+		}
+
+		private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+				MasterDomainModelResponse>
+		Optional<IdentifiedModel<MasterDomainId, MasterDomainModel>> tryUpdateById(
+				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+				final MasterDomainId id,
+				final MasterDomainModelUpdatePatch updatePatch)
+		{
+			try
+			{
+				return Optional.of(updateById(definition, id, updatePatch));
+			}
+			catch (de.gupta.clean.crud.template.domain.model.exceptions.DomainException e)
+			{
+				return Optional.empty();
+			}
+		}
+
+		private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+				MasterDomainModelResponse> void tryDeleteById(
+				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+				final MasterDomainId id)
+		{
+			try
+			{
+				deleteById(definition, id);
+			}
+			catch (de.gupta.clean.crud.template.domain.model.exceptions.DomainException ignored)
+			{
+			}
+		}
+
+		private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+				MasterDomainModelResponse>
+		IdentifiedModel<MasterDomainId, MasterDomainModel> updateByIdWithoutRelationships(
+				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+				final MasterDomainId id,
+				final MasterDomainModelUpdatePatch updatePatch)
+		{
+			var current = definition.fetchPort().findById(id).orElseThrow(() -> ResourceNotFoundException.withId(id));
+			validationSupport.validateAccess(definition, current.model());
+			var updatedModel = definition.patcher().patchModel(current.model(), updatePatch);
+			validationSupport.validateAccessAndValidatePatch(definition, current.model(), updatedModel);
+			return definition.mutationPort().update(id, updatedModel);
+		}
+
+		private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+				MasterDomainModelResponse>
+		List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+				MasterDomainModelUpdatePatch, ?, ?, ?, ?>> satelliteRelationships(
+				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition)
+		{
+			return definitionGuard.satelliteRelationships(definition);
+		}
+
+		private <MasterDomainId, MasterDomainModel> PostCommitMutationContext<MasterDomainId, MasterDomainModel> createContext(
+				final IdentifiedModel<MasterDomainId, MasterDomainModel> saved)
+		{
+			return new PostCommitMutationContext<>(
+					PostCommitMutationKind.CREATE,
+					saved.id(),
+					Optional.of(saved.model()),
+					Optional.empty());
+		}
+
+		private <MasterDomainId, MasterDomainModel> PostCommitMutationContext<MasterDomainId, MasterDomainModel> putContext(
+				final MasterDomainId id,
+				final Optional<MasterDomainModel> previousModel,
+				final MasterDomainModel currentModel)
+		{
+			return new PostCommitMutationContext<>(
+					PostCommitMutationKind.PUT,
+					id,
+					Optional.of(currentModel),
+					previousModel);
+		}
+
+		private <MasterDomainId, MasterDomainModel> PostCommitMutationContext<MasterDomainId, MasterDomainModel> patchContext(
+				final MasterDomainId id,
+				final Optional<MasterDomainModel> previousModel,
+				final MasterDomainModel currentModel)
+		{
+			return new PostCommitMutationContext<>(
+					PostCommitMutationKind.PATCH,
+					id,
+					Optional.of(currentModel),
+					previousModel);
+		}
+
+		private <MasterDomainId, MasterDomainModel> PostCommitMutationContext<MasterDomainId, MasterDomainModel> deleteContext(
+				final MasterDomainId id,
+				final MasterDomainModel previousModel)
+		{
+			return new PostCommitMutationContext<>(
+					PostCommitMutationKind.DELETE,
+					id,
+					Optional.empty(),
+					Optional.of(previousModel));
+		}
+
+		private TestEngineFacade(final AggregateLifecycleEngine engine)
+		{
+			this.engine = engine;
+			this.definitionGuard = new AggregateDefinitionGuard();
+			this.validationSupport = new AggregateMutationValidationSupport();
+			var relationshipPlanner = new SatelliteRelationshipPlanner();
+			var referenceResolver = new SatelliteReferenceResolver();
+			var createIntentResolver = SatelliteCreateIntentResolver.with(relationshipPlanner, referenceResolver);
+			this.saveCoordinator = AggregateSaveCoordinator.with(relationshipPlanner, createIntentResolver);
+			this.fetchCoordinator = AggregateFetchCoordinator.create();
+			this.deleteCoordinator = AggregateDeleteCoordinator.with(relationshipPlanner, referenceResolver);
+			this.updateCoordinator =
+					AggregateUpdateCoordinator.with(relationshipPlanner, referenceResolver, createIntentResolver);
+		}
+
+		private record UpdateDispatch<DomainId, DomainModel>(
+				IdentifiedModel<DomainId, DomainModel> updated,
+				PostCommitMutationContext<DomainId, DomainModel> context)
+		{
+		}
+	}
+
 	private static final class TestTransactionRunner implements PersistenceTransactionRunner
 	{
 		private int transactionCount;
@@ -1087,6 +1594,7 @@ class DefaultAggregateLifecycleEngineTest
 			contexts.add((PostCommitMutationContext<String, MasterModel>) context);
 			postCommitMutation.accept(context);
 		}
+
 	}
 
 	private static final class SwallowingRecordingDispatcher extends RecordingDispatcher
@@ -1099,6 +1607,18 @@ class DefaultAggregateLifecycleEngineTest
 			try
 			{
 				super.dispatch(postCommitMutation, context);
+			}
+			catch (RuntimeException ignored)
+			{
+			}
+		}
+
+		@Override
+		public void dispatch(final Runnable action)
+		{
+			try
+			{
+				action.run();
 			}
 			catch (RuntimeException ignored)
 			{

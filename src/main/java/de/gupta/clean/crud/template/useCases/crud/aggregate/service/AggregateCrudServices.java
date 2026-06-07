@@ -1,7 +1,7 @@
 package de.gupta.clean.crud.template.useCases.crud.aggregate.service;
 
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateLifecycleEngine;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.*;
 import de.gupta.clean.crud.template.useCases.crud.delete.application.service.AbstractDeleteService;
 import de.gupta.clean.crud.template.useCases.crud.delete.application.service.DeleteService;
 import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.AbstractFetchService;
@@ -20,7 +20,25 @@ public final class AggregateCrudServices
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final AggregateLifecycleEngine engine)
 	{
-		return new SaveAggregateCrudService<>(definition, engine);
+		return saveService(
+				definition,
+				engine,
+				AggregateServiceSupportFactory.definitionGuard(),
+				AggregateServiceSupportFactory.validationSupport(),
+				AggregateServiceSupportFactory.saveCoordinator());
+	}
+
+	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			MasterDomainModelResponse>
+	SaveService<MasterDomainModelCreate, MasterDomainModelResponse, MasterDomainId> saveService(
+			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+			final AggregateLifecycleEngine engine,
+			final AggregateDefinitionGuard definitionGuard,
+			final AggregateMutationValidationSupport validationSupport,
+			final AggregateSaveCoordinator saveCoordinator)
+	{
+		return new SaveAggregateCrudService<>(definition, engine, definitionGuard, validationSupport, saveCoordinator);
 	}
 
 	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
@@ -30,7 +48,23 @@ public final class AggregateCrudServices
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final AggregateLifecycleEngine engine)
 	{
-		return new FetchAggregateCrudService<>(definition, engine);
+		return fetchService(
+				definition,
+				engine,
+				AggregateServiceSupportFactory.definitionGuard(),
+				AggregateServiceSupportFactory.fetchCoordinator());
+	}
+
+	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			MasterDomainModelResponse>
+	FetchService<MasterDomainModel, MasterDomainId> fetchService(
+			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+			final AggregateLifecycleEngine engine,
+			final AggregateDefinitionGuard definitionGuard,
+			final AggregateFetchCoordinator fetchCoordinator)
+	{
+		return new FetchAggregateCrudService<>(definition, engine, definitionGuard, fetchCoordinator);
 	}
 
 	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
@@ -41,7 +75,27 @@ public final class AggregateCrudServices
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final AggregateLifecycleEngine engine)
 	{
-		return new UpdateAggregateCrudService<>(definition, engine);
+		return updateService(
+				definition,
+				engine,
+				AggregateServiceSupportFactory.definitionGuard(),
+				AggregateServiceSupportFactory.validationSupport(),
+				AggregateServiceSupportFactory.updateCoordinator());
+	}
+
+	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			MasterDomainModelResponse>
+	UpdateService<MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse, MasterDomainId>
+	updateService(
+			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+			final AggregateLifecycleEngine engine,
+			final AggregateDefinitionGuard definitionGuard,
+			final AggregateMutationValidationSupport validationSupport,
+			final AggregateUpdateCoordinator updateCoordinator)
+	{
+		return new UpdateAggregateCrudService<>(definition, engine, definitionGuard, validationSupport,
+				updateCoordinator);
 	}
 
 	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
@@ -51,7 +105,26 @@ public final class AggregateCrudServices
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final AggregateLifecycleEngine engine)
 	{
-		return new DeleteAggregateCrudService<>(definition, engine);
+		return deleteService(
+				definition,
+				engine,
+				AggregateServiceSupportFactory.definitionGuard(),
+				AggregateServiceSupportFactory.validationSupport(),
+				AggregateServiceSupportFactory.deleteCoordinator());
+	}
+
+	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			MasterDomainModelResponse>
+	DeleteService<MasterDomainId> deleteService(
+			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+			final AggregateLifecycleEngine engine,
+			final AggregateDefinitionGuard definitionGuard,
+			final AggregateMutationValidationSupport validationSupport,
+			final AggregateDeleteCoordinator deleteCoordinator)
+	{
+		return new DeleteAggregateCrudService<>(definition, engine, definitionGuard, validationSupport,
+				deleteCoordinator);
 	}
 
 	private AggregateCrudServices()
@@ -73,9 +146,12 @@ public final class AggregateCrudServices
 		private SaveAggregateCrudService(
 				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
-				final AggregateLifecycleEngine engine)
+				final AggregateLifecycleEngine engine,
+				final AggregateDefinitionGuard definitionGuard,
+				final AggregateMutationValidationSupport validationSupport,
+				final AggregateSaveCoordinator saveCoordinator)
 		{
-			super(definition, engine);
+			super(definition, engine, definitionGuard, validationSupport, saveCoordinator);
 		}
 	}
 
@@ -94,9 +170,11 @@ public final class AggregateCrudServices
 		private FetchAggregateCrudService(
 				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
-				final AggregateLifecycleEngine engine)
+				final AggregateLifecycleEngine engine,
+				final AggregateDefinitionGuard definitionGuard,
+				final AggregateFetchCoordinator fetchCoordinator)
 		{
-			super(definition, engine);
+			super(definition, engine, definitionGuard, fetchCoordinator);
 		}
 	}
 
@@ -115,9 +193,12 @@ public final class AggregateCrudServices
 		private UpdateAggregateCrudService(
 				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
-				final AggregateLifecycleEngine engine)
+				final AggregateLifecycleEngine engine,
+				final AggregateDefinitionGuard definitionGuard,
+				final AggregateMutationValidationSupport validationSupport,
+				final AggregateUpdateCoordinator updateCoordinator)
 		{
-			super(definition, engine);
+			super(definition, engine, definitionGuard, validationSupport, updateCoordinator);
 		}
 	}
 
@@ -136,9 +217,12 @@ public final class AggregateCrudServices
 		private DeleteAggregateCrudService(
 				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
-				final AggregateLifecycleEngine engine)
+				final AggregateLifecycleEngine engine,
+				final AggregateDefinitionGuard definitionGuard,
+				final AggregateMutationValidationSupport validationSupport,
+				final AggregateDeleteCoordinator deleteCoordinator)
 		{
-			super(definition, engine);
+			super(definition, engine, definitionGuard, validationSupport, deleteCoordinator);
 		}
 	}
 }

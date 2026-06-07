@@ -5,9 +5,9 @@ import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDenie
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinition;
 
-final class SatelliteReferenceResolver
+public final class SatelliteReferenceResolver
 {
-	<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+	public <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
 			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
 	IdentifiedModel<SatelliteDomainId, SatelliteDomainModel> requiredSatellite(
 			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
