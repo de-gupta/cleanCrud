@@ -3,6 +3,7 @@ package de.gupta.clean.crud.template.useCases.crud.aggregate.engine;
 import de.gupta.clean.crud.template.domain.mapping.fetch.DomainResponseBuilder;
 import de.gupta.clean.crud.template.domain.mapping.save.DomainModelBuilder;
 import de.gupta.clean.crud.template.domain.mapping.update.DomainModelPatcher;
+import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.service.crud.policy.DeletionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.InsertionPolicy;
@@ -34,8 +35,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class AbstractCrudServicesEngineBackedTest
 {
@@ -99,6 +99,30 @@ class AbstractCrudServicesEngineBackedTest
 		assertEquals(
 				List.of(PostCommitMutationKind.CREATE, PostCommitMutationKind.PATCH, PostCommitMutationKind.DELETE),
 				contexts.stream().map(PostCommitMutationContext::kind).toList());
+	}
+
+	@Test
+	void updateServiceThrowsResourceNotFoundWhenPatchingMissingModel()
+	{
+		TestAggregateDefinition definition = new TestAggregateDefinition();
+		DefaultAggregateLifecycleEngine engine =
+				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
+
+		TestUpdateService updateService = new TestUpdateService(definition, engine);
+
+		assertThrows(ResourceNotFoundException.class, () -> updateService.updateById("missing", "patched"));
+	}
+
+	@Test
+	void deleteServiceThrowsResourceNotFoundWhenDeletingMissingModel()
+	{
+		TestAggregateDefinition definition = new TestAggregateDefinition();
+		DefaultAggregateLifecycleEngine engine =
+				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
+
+		TestDeleteService deleteService = new TestDeleteService(definition, engine);
+
+		assertThrows(ResourceNotFoundException.class, () -> deleteService.deleteById("missing"));
 	}
 
 	private static final class TestSaveService

@@ -2,6 +2,7 @@ package de.gupta.clean.crud.template.useCases.crud.delete.application.service;
 
 import de.gupta.aletheia.functional.Unfolding;
 import de.gupta.clean.crud.template.domain.model.exceptions.DomainException;
+import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationContext;
@@ -59,7 +60,10 @@ public abstract class AbstractDeleteService<
 			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships)
 	{
-		var previousModel = definition.fetchPort().findById(id).map(IdentifiedModel::model).orElseThrow();
+		var previousModel = definition.fetchPort()
+		                              .findById(id)
+		                              .map(IdentifiedModel::model)
+		                              .orElseThrow(() -> ResourceNotFoundException.withId(id));
 		Unfolding.of(relationships)
 		         .coronate(List::isEmpty,
 						 ignored -> deleteModelWithoutRelationships(id, previousModel),

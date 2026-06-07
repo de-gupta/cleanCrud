@@ -2,6 +2,7 @@ package de.gupta.clean.crud.template.useCases.crud.update.application.service;
 
 import de.gupta.aletheia.functional.Unfolding;
 import de.gupta.clean.crud.template.domain.model.exceptions.DomainException;
+import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationContext;
@@ -137,7 +138,10 @@ public abstract class AbstractUpdateService<
 			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships)
 	{
-		var previousModel = definition.fetchPort().findById(id).map(IdentifiedModel::model).orElseThrow();
+		var previousModel = definition.fetchPort()
+		                              .findById(id)
+		                              .map(IdentifiedModel::model)
+		                              .orElseThrow(() -> ResourceNotFoundException.withId(id));
 		var updated = Unfolding.of(relationships)
 		                       .coronate(List::isEmpty,
 									   ignored -> patchModelWithoutRelationships(id, updatePatch),
@@ -162,7 +166,7 @@ public abstract class AbstractUpdateService<
 			final MasterDomainId id,
 			final MasterDomainModelUpdatePatch updatePatch)
 	{
-		var current = definition.fetchPort().findById(id).orElseThrow();
+		var current = definition.fetchPort().findById(id).orElseThrow(() -> ResourceNotFoundException.withId(id));
 		validationSupport.validateAccess(definition, current.model());
 		var updatedModel = definition.patcher().patchModel(current.model(), updatePatch);
 		validationSupport.validateAccessAndValidatePatch(definition, current.model(), updatedModel);
