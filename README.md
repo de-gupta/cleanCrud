@@ -84,6 +84,114 @@ At application level you still provide:
 
 That is enough for normal single-aggregate CRUD.
 
+## Post-Commit Hooks And Durable Processes
+
+`cleanCrud` now supports two different kinds of post-transaction behavior.
+
+### Lightweight post-commit hook
+
+`AggregateCrudDefinition.postCommitMutation(...)` remains the small,
+best-effort option.
+
+Use it for things like:
+
+- logging
+- metrics
+- notifications
+- fire-and-forget downstream publication
+
+Its current behavior is:
+
+- the aggregate mutation commits first
+- the hook runs after commit
+- execution is asynchronous and best effort
+- failures are logged and do not fail the main CRUD call
+
+That feature stays intentionally small.
+
+### Durable process
+
+For richer follow-up workflows, `cleanCrud` now has a separate durable process
+subsystem.
+
+This is for cases where the application needs to:
+
+- persist an aggregate
+- start a durable follow-up process in the same transaction
+- retry with policy
+- survive crashes and restarts
+- emit internal application commands or events
+- mutate domain state again based on the external outcome
+
+Conceptually, the runtime flow is:
+
+1. aggregate mutation commits
+2. durable process task is persisted atomically with that mutation
+3. after commit, the framework immediately nudges execution of the new task
+4. if execution succeeds, emitted internal application actions are dispatched
+5. if execution fails transiently, retry metadata is persisted
+6. a framework-owned poller later picks up due work
+
+This is intentionally separate from `postCommitMutation(...)`.
+
+### What the framework provides
+
+The durable process subsystem now includes:
+
+- durable process domain contracts
+- `DurableProcessStartRequest`
+- `DurableProcessRunner`
+- `RetryPolicy` and `BackoffPolicy`
+- immediate after-commit execution nudge
+- JPA-backed durable task persistence
+- framework-owned Spring polling scheduler
+- in-memory durable task store for dev/test use
+
+Consumers typically provide:
+
+- durable process definitions/executors
+- an `ApplicationActionDispatcher`
+- optional polling configuration overrides
+
+### Default infrastructure behavior
+
+The Spring infrastructure is provided by the framework itself.
+
+The current defaults are:
+
+- durable process infrastructure enabled
+- polling enabled
+- poll interval `PT1M`
+- batch size `100`
+
+Properties live under:
+
+- `clean-crud.process.enabled`
+- `clean-crud.process.polling-enabled`
+- `clean-crud.process.poll-interval`
+- `clean-crud.process.batch-size`
+
+### Current operational boundary
+
+This feature is in a good place for application-local durable workflows, but it
+should still be described accurately.
+
+Current strengths:
+
+- atomic process start with aggregate mutation
+- immediate after-commit execution
+- persisted retry metadata
+- framework-owned recovery polling
+- clean routing of follow-up actions through the application layer
+
+Current limit:
+
+- the first hardening pass is single-node friendly
+- multi-node claiming/locking is not implemented yet
+- this is not intended to be a DAG/workflow orchestrator
+
+The goal is durable application processes, not a general-purpose job platform.
+
 ## Relationship Declarations Are Now A Domain Concept
 
 Relationships are no longer a generator-only idea.
