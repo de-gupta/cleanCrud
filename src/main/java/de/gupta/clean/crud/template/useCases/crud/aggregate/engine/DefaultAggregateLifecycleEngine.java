@@ -1,13 +1,18 @@
 package de.gupta.clean.crud.template.useCases.crud.aggregate.engine;
 
 import de.gupta.clean.crud.template.infrastructure.persistence.transaction.PersistenceTransactionRunner;
+import de.gupta.clean.crud.template.useCases.process.application.execution.DurableProcessExecutionNudge;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStarter;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public final class DefaultAggregateLifecycleEngine implements AggregateLifecycleEngine
 {
 	private final PersistenceTransactionRunner transactionRunner;
 	private final PostCommitMutationDispatcher postCommitMutationDispatcher;
 	private final DurableProcessStarter durableProcessStarter;
+	private final DurableProcessExecutionNudge durableProcessExecutionNudge;
 
 	public static DefaultAggregateLifecycleEngine withTransactionRunner(
 			final PersistenceTransactionRunner transactionRunner)
@@ -15,17 +20,30 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 		return new DefaultAggregateLifecycleEngine(
 				transactionRunner,
 				PostCommitMutationDispatcher.async(),
-				unsupportedDurableProcessStarter());
+				unsupportedDurableProcessStarter(),
+				DurableProcessExecutionNudge.noop());
 	}
 
 	public static DefaultAggregateLifecycleEngine withTransactionRunnerAndDurableProcessStarter(
 			final PersistenceTransactionRunner transactionRunner,
 			final DurableProcessStarter durableProcessStarter)
 	{
+		return withTransactionRunnerAndDurableProcessStarterAndExecutionNudge(
+				transactionRunner,
+				durableProcessStarter,
+				DurableProcessExecutionNudge.noop());
+	}
+
+	public static DefaultAggregateLifecycleEngine withTransactionRunnerAndDurableProcessStarterAndExecutionNudge(
+			final PersistenceTransactionRunner transactionRunner,
+			final DurableProcessStarter durableProcessStarter,
+			final DurableProcessExecutionNudge durableProcessExecutionNudge)
+	{
 		return new DefaultAggregateLifecycleEngine(
 				transactionRunner,
 				PostCommitMutationDispatcher.async(),
-				durableProcessStarter);
+				durableProcessStarter,
+				durableProcessExecutionNudge);
 	}
 
 	static DefaultAggregateLifecycleEngine withTransactionRunnerAndDispatcher(
@@ -35,7 +53,8 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 		return new DefaultAggregateLifecycleEngine(
 				transactionRunner,
 				postCommitMutationDispatcher,
-				unsupportedDurableProcessStarter());
+				unsupportedDurableProcessStarter(),
+				DurableProcessExecutionNudge.noop());
 	}
 
 	static DefaultAggregateLifecycleEngine withTransactionRunnerDispatcherAndStarter(
@@ -43,20 +62,40 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 			final PostCommitMutationDispatcher postCommitMutationDispatcher,
 			final DurableProcessStarter durableProcessStarter)
 	{
+		return withTransactionRunnerDispatcherStarterAndExecutionNudge(
+				transactionRunner,
+				postCommitMutationDispatcher,
+				durableProcessStarter,
+				DurableProcessExecutionNudge.noop());
+	}
+
+	static DefaultAggregateLifecycleEngine withTransactionRunnerDispatcherStarterAndExecutionNudge(
+			final PersistenceTransactionRunner transactionRunner,
+			final PostCommitMutationDispatcher postCommitMutationDispatcher,
+			final DurableProcessStarter durableProcessStarter,
+			final DurableProcessExecutionNudge durableProcessExecutionNudge)
+	{
 		return new DefaultAggregateLifecycleEngine(transactionRunner, postCommitMutationDispatcher,
-				durableProcessStarter);
+				durableProcessStarter, durableProcessExecutionNudge);
 	}
 
 	@Override
 	public <Result> Result execute(final CrudWorkflow<Result> workflow)
 	{
+		var startedTaskIds =
+				new ArrayList<de.gupta.clean.crud.template.useCases.process.domain.model.id.DurableProcessTaskId>();
 		var result = transactionRunner.inTransaction(() ->
 		{
 			var transactionalResult = workflow.inTransaction();
-			workflow.durableProcessStartRequests(transactionalResult).forEach(durableProcessStarter::start);
+			workflow.durableProcessStartRequests(transactionalResult)
+			        .forEach(startRequest -> startedTaskIds.add(durableProcessStarter.start(startRequest)));
 			return transactionalResult;
 		});
-		postCommitMutationDispatcher.dispatch(() -> workflow.afterTransaction(result));
+		postCommitMutationDispatcher.dispatch(() ->
+		{
+			workflow.afterTransaction(result);
+			durableProcessExecutionNudge.afterCommit(List.copyOf(startedTaskIds));
+		});
 		return result;
 	}
 
@@ -71,10 +110,12 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 	private DefaultAggregateLifecycleEngine(
 			final PersistenceTransactionRunner transactionRunner,
 			final PostCommitMutationDispatcher postCommitMutationDispatcher,
-			final DurableProcessStarter durableProcessStarter)
+			final DurableProcessStarter durableProcessStarter,
+			final DurableProcessExecutionNudge durableProcessExecutionNudge)
 	{
 		this.transactionRunner = transactionRunner;
 		this.postCommitMutationDispatcher = postCommitMutationDispatcher;
 		this.durableProcessStarter = durableProcessStarter;
+		this.durableProcessExecutionNudge = durableProcessExecutionNudge;
 	}
 }

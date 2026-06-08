@@ -10,6 +10,7 @@ import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommi
 import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.*;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.useCases.crud.common.BulkOperationMode;
+import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -38,6 +39,7 @@ public abstract class AbstractUpdateService<
 		var relationships = definitionGuard.satelliteRelationships(definition);
 		engine.execute(
 				CrudWorkflowBuilder.writeFlow(() -> replaceModel(id, model, relationships))
+				                   .startDurableProcesses(this::durableProcessStartRequests)
 				                   .afterTransaction(definition.postCommitMutation())
 				                   .build());
 	}
@@ -50,6 +52,7 @@ public abstract class AbstractUpdateService<
 		var relationships = definitionGuard.satelliteRelationships(definition);
 		return identifiedModel(engine.execute(
 				CrudWorkflowBuilder.writeFlow(() -> patchModel(id, updatePatch, relationships))
+				                   .startDurableProcesses(result -> durableProcessStartRequests(result.context()))
 				                   .afterTransaction(this::dispatchUpdated)
 				                   .build()).updated());
 	}
@@ -64,6 +67,8 @@ public abstract class AbstractUpdateService<
 		{
 			case ALL_OR_NOTHING -> engine.execute(
 												 CrudWorkflowBuilder.writeFlow(() -> patchAllModels(models, relationships))
+					                                                .startDurableProcesses(
+																			this::durableProcessStartRequests)
 					                                                .afterTransaction(this::dispatchUpdated)
 					                                                .build()).stream().map(UpdateDispatch::updated).map(this::identifiedModel)
 			                             .toList();
@@ -75,6 +80,22 @@ public abstract class AbstractUpdateService<
 		};
 	}
 
+	protected Collection<DurableProcessStartRequest<?, ?>> durableProcessStartRequests(
+			final PostCommitMutationContext<MasterDomainId, MasterDomainModel> context)
+	{
+		return List.of();
+	}
+
+	protected Collection<DurableProcessStartRequest<?, ?>> durableProcessStartRequests(
+			final Collection<UpdateDispatch<MasterDomainId, MasterDomainModel>> results)
+	{
+		return results.stream()
+		              .map(UpdateDispatch::context)
+		              .map(this::durableProcessStartRequests)
+		              .flatMap(Collection::stream)
+		              .toList();
+	}
+
 	private Optional<IdentifiedModel<MasterDomainId, MasterDomainModel>> tryUpdateById(
 			final MasterDomainId id,
 			final MasterDomainModelUpdatePatch updatePatch)
@@ -84,6 +105,7 @@ public abstract class AbstractUpdateService<
 			var relationships = definitionGuard.satelliteRelationships(definition);
 			return Optional.of(engine.execute(
 					CrudWorkflowBuilder.writeFlow(() -> patchModel(id, updatePatch, relationships))
+					                   .startDurableProcesses(result -> durableProcessStartRequests(result.context()))
 					                   .afterTransaction(this::dispatchUpdated)
 					                   .build()).updated());
 		}
@@ -228,7 +250,7 @@ public abstract class AbstractUpdateService<
 		this.updateCoordinator = updateCoordinator;
 	}
 
-	private record UpdateDispatch<DomainId, DomainModel>(
+	protected record UpdateDispatch<DomainId, DomainModel>(
 			IdentifiedModel<DomainId, DomainModel> updated,
 			PostCommitMutationContext<DomainId, DomainModel> context)
 	{

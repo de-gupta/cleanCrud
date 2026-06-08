@@ -3,6 +3,7 @@ package de.gupta.clean.crud.template.useCases.crud.aggregate.engine;
 import de.gupta.clean.crud.template.infrastructure.persistence.transaction.PersistenceTransactionRunner;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutation;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationContext;
+import de.gupta.clean.crud.template.useCases.process.application.execution.DurableProcessExecutionNudge;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStarter;
 import de.gupta.clean.crud.template.useCases.process.domain.definition.DurableProcessDefinition;
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -30,10 +32,12 @@ class DurableProcessWorkflowIntegrationTest
 		var transactionRunner = new RecordingTransactionRunner();
 		var events = new ArrayList<String>();
 		var startedRequests = new ArrayList<DurableProcessStartRequest<?, ?>>();
-		var engine = DefaultAggregateLifecycleEngine.withTransactionRunnerDispatcherAndStarter(
+		var nudgedTaskIds = new ArrayList<DurableProcessTaskId>();
+		var engine = DefaultAggregateLifecycleEngine.withTransactionRunnerDispatcherStarterAndExecutionNudge(
 				transactionRunner,
 				new RecordingDispatcher(transactionRunner),
-				new RecordingDurableProcessStarter(startedRequests, transactionRunner, events));
+				new RecordingDurableProcessStarter(startedRequests, transactionRunner, events),
+				new RecordingDurableProcessExecutionNudge(transactionRunner, nudgedTaskIds, events));
 		var definition = DurableProcessDefinition.of("submit-order", OrderSubmitted.class, BrokerPayload.class);
 		var retryPolicy = new RetryPolicy(3, BackoffPolicy.fixed(Duration.ofSeconds(1)));
 
@@ -53,11 +57,30 @@ class DurableProcessWorkflowIntegrationTest
 				                   .build());
 
 		assertEquals("order-1", result);
-		assertEquals(List.of("business", "start:submit-order", "after:order-1"), events);
+		assertEquals(List.of("business", "start:submit-order", "after:order-1", "nudge:1"), events);
 		assertEquals(1, startedRequests.size());
+		assertEquals(1, nudgedTaskIds.size());
 		assertTrue(transactionRunner.startedInsideTransaction);
 		assertTrue(transactionRunner.afterTransactionOutsideTransaction);
 		assertEquals(1, transactionRunner.transactionCount);
+	}
+
+	private record RecordingDurableProcessExecutionNudge(
+			RecordingTransactionRunner transactionRunner,
+			List<DurableProcessTaskId> nudgedTaskIds,
+			List<String> events)
+			implements DurableProcessExecutionNudge
+	{
+		@Override
+		public void afterCommit(final Collection<DurableProcessTaskId> taskIds)
+		{
+			if (transactionRunner.inTransaction)
+			{
+				throw new AssertionError("Durable process nudge happened inside transaction");
+			}
+			nudgedTaskIds.addAll(taskIds);
+			events.add("nudge:" + taskIds.size());
+		}
 	}
 
 	private record OrderSubmitted(String orderId) implements DurableProcessTrigger
