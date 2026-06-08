@@ -1,6 +1,11 @@
 package de.gupta.clean.crud.template.useCases.crud.aggregate.engine;
 
+import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
+
+import java.util.Collection;
+import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 public final class CrudWorkflowBuilder<Result>
@@ -9,6 +14,7 @@ public final class CrudWorkflowBuilder<Result>
 	private Consumer<Result> afterTransaction = _ ->
 	{
 	};
+	private Function<Result, Collection<DurableProcessStartRequest<?, ?>>> durableProcessStartRequests = _ -> List.of();
 	private boolean readOnly;
 
 	public static <Result> CrudWorkflowBuilder<Result> writeFlow(final Supplier<Result> transactionalAction)
@@ -24,6 +30,13 @@ public final class CrudWorkflowBuilder<Result>
 	public CrudWorkflowBuilder<Result> afterTransaction(final Consumer<Result> afterTransaction)
 	{
 		this.afterTransaction = afterTransaction;
+		return this;
+	}
+
+	public CrudWorkflowBuilder<Result> startDurableProcesses(
+			final Function<Result, Collection<DurableProcessStartRequest<?, ?>>> durableProcessStartRequests)
+	{
+		this.durableProcessStartRequests = durableProcessStartRequests;
 		return this;
 	}
 
@@ -53,6 +66,12 @@ public final class CrudWorkflowBuilder<Result>
 			public boolean readOnly()
 			{
 				return readOnly;
+			}
+
+			@Override
+			public Collection<DurableProcessStartRequest<?, ?>> durableProcessStartRequests(final Result result)
+			{
+				return List.copyOf(CrudWorkflowBuilder.this.durableProcessStartRequests.apply(result));
 			}
 		};
 	}

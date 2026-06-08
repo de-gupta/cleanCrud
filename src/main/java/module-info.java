@@ -108,5 +108,16 @@ module de.gupta.clean.crud
 	exports de.gupta.clean.crud.template.useCases.query.suppliedProperty.collection.facade;
 	exports de.gupta.clean.crud.template.useCases.query.suppliedProperty.unique.api.web;
 	exports de.gupta.clean.crud.template.useCases.query.suppliedProperty.unique.facade;
+	exports de.gupta.clean.crud.template.useCases.process.application.dispatch;
+	exports de.gupta.clean.crud.template.useCases.process.application.execution;
+	exports de.gupta.clean.crud.template.useCases.process.application.registration;
+	exports de.gupta.clean.crud.template.useCases.process.domain.action;
+	exports de.gupta.clean.crud.template.useCases.process.domain.definition;
+	exports de.gupta.clean.crud.template.useCases.process.domain.model.id;
+	exports de.gupta.clean.crud.template.useCases.process.domain.model.outcome;
+	exports de.gupta.clean.crud.template.useCases.process.domain.model.policy;
+	exports de.gupta.clean.crud.template.useCases.process.domain.model.task;
+	exports de.gupta.clean.crud.template.useCases.process.port.persistence;
+	exports de.gupta.clean.crud.template.useCases.process.port.scheduling;
 	exports de.gupta.clean.crud.template.infrastructure.persistence.history.audit;
 }
