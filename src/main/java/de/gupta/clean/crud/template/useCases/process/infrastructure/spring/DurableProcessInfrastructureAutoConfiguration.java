@@ -13,6 +13,7 @@ import de.gupta.clean.crud.template.useCases.process.port.persistence.DurablePro
 import de.gupta.clean.crud.template.useCases.process.port.scheduling.DurableProcessTaskScheduler;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -65,7 +66,7 @@ public class DurableProcessInfrastructureAutoConfiguration
 	{
 		@Bean
 		@ConditionalOnMissingBean
-		JpaDurableProcessTaskStore jpaDurableProcessTaskStore(
+		DurableProcessTaskRepository durableProcessTaskRepository(
 				final EntityManager entityManager,
 				final ObjectMapper objectMapper)
 		{
@@ -74,22 +75,17 @@ public class DurableProcessInfrastructureAutoConfiguration
 
 		@Bean
 		@ConditionalOnMissingBean
-		DurableProcessTaskRepository durableProcessTaskRepository(final JpaDurableProcessTaskStore taskStore)
+		DurableProcessTaskScheduler durableProcessTaskScheduler(
+				final EntityManager entityManager,
+				final ObjectMapper objectMapper)
 		{
-			return taskStore;
-		}
-
-		@Bean
-		@ConditionalOnMissingBean
-		DurableProcessTaskScheduler durableProcessTaskScheduler(final JpaDurableProcessTaskStore taskStore)
-		{
-			return taskStore;
+			return JpaDurableProcessTaskStore.with(entityManager, objectMapper);
 		}
 
 		@Bean
 		@ConditionalOnMissingBean
 		DurableProcessStarter durableProcessStarter(
-				final DurableProcessTaskRepository taskRepository,
+				@Qualifier("durableProcessTaskRepository") final DurableProcessTaskRepository taskRepository,
 				final Clock durableProcessClock)
 		{
 			return DefaultDurableProcessStarter.with(taskRepository, durableProcessClock);
@@ -99,8 +95,8 @@ public class DurableProcessInfrastructureAutoConfiguration
 		@ConditionalOnMissingBean
 		DurableProcessRunner durableProcessRunner(
 				final DurableProcessDefinitionRegistry definitionRegistry,
-				final DurableProcessTaskRepository taskRepository,
-				final DurableProcessTaskScheduler taskScheduler,
+				@Qualifier("durableProcessTaskRepository") final DurableProcessTaskRepository taskRepository,
+				@Qualifier("durableProcessTaskScheduler") final DurableProcessTaskScheduler taskScheduler,
 				final ApplicationActionDispatcher applicationActionDispatcher,
 				final Clock durableProcessClock)
 		{

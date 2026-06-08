@@ -171,7 +171,7 @@ public class JpaDurableProcessTaskStore
 		}
 	}
 
-	private JpaDurableProcessTaskStore(
+	public JpaDurableProcessTaskStore(
 			final EntityManager entityManager,
 			final ObjectMapper objectMapper)
 	{
