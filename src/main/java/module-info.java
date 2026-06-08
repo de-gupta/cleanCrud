@@ -17,6 +17,9 @@ module de.gupta.clean.crud
 	requires transitive org.apache.tomcat.embed.core;
 	requires transitive org.aspectj.weaver;
 	requires transitive org.slf4j;
+	requires spring.boot;
+	requires spring.boot.autoconfigure;
+	requires com.fasterxml.jackson.databind;
 
 	exports de.gupta.clean.crud.template.domain.mapping;
 	exports de.gupta.clean.crud.template.domain.mapping.fetch;
@@ -117,7 +120,14 @@ module de.gupta.clean.crud
 	exports de.gupta.clean.crud.template.useCases.process.domain.model.outcome;
 	exports de.gupta.clean.crud.template.useCases.process.domain.model.policy;
 	exports de.gupta.clean.crud.template.useCases.process.domain.model.task;
+	exports de.gupta.clean.crud.template.useCases.process.infrastructure.persistence;
+	exports de.gupta.clean.crud.template.useCases.process.infrastructure.persistence.model;
+	exports de.gupta.clean.crud.template.useCases.process.infrastructure.spring;
 	exports de.gupta.clean.crud.template.useCases.process.port.persistence;
 	exports de.gupta.clean.crud.template.useCases.process.port.scheduling;
 	exports de.gupta.clean.crud.template.infrastructure.persistence.history.audit;
+
+	opens de.gupta.clean.crud.template.useCases.process.infrastructure.persistence.model;
+	opens de.gupta.clean.crud.template.useCases.process.infrastructure.persistence;
+	opens de.gupta.clean.crud.template.useCases.process.infrastructure.spring;
 }
