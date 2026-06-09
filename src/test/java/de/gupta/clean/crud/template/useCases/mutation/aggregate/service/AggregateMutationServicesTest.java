@@ -40,6 +40,11 @@ import de.gupta.clean.crud.template.useCases.mutation.domain.policy.profile.Muta
 import de.gupta.clean.crud.template.useCases.mutation.domain.policy.quarantine.QuarantinedMutationException;
 import de.gupta.clean.crud.template.useCases.mutation.domain.policy.violation.MutationViolationHandling;
 import de.gupta.clean.crud.template.useCases.mutation.domain.policy.violation.MutationViolationKind;
+import de.gupta.clean.crud.template.useCases.mutation.quarantine.application.MutationQuarantineReplayCommand;
+import de.gupta.clean.crud.template.useCases.mutation.quarantine.application.MutationQuarantineReplayGateway;
+import de.gupta.clean.crud.template.useCases.mutation.quarantine.application.recording.MutationQuarantineRecorder;
+import de.gupta.clean.crud.template.useCases.mutation.quarantine.application.recording.MutationQuarantineSubmission;
+import de.gupta.clean.crud.template.useCases.mutation.quarantine.domain.model.id.MutationQuarantineId;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStarter;
 import de.gupta.clean.crud.template.useCases.process.domain.definition.DurableProcessDefinition;
@@ -277,6 +282,51 @@ class AggregateMutationServicesTest
 		assertTrue(result.updated().isEmpty());
 		assertEquals(1, result.quarantineRequest().orElseThrow().violations().size());
 		assertEquals("SUBMITTED", definition.store.get("order-1").status());
+	}
+
+	@Test
+	void mutateWithResultPersistsQuarantineIdWhenRecorderConfigured()
+	{
+		var definition = new QuarantiningAggregateDefinition();
+		definition.store.put("order-1", new OrderModel("SUBMITTED"));
+		var recorder = new RecordingMutationQuarantineRecorder();
+		var engine = DefaultAggregateLifecycleEngine.withTransactionRunnerAndMutationQuarantineRecorder(
+				new InlineTransactionRunner(),
+				recorder);
+		var service = mutationService(definition, engine);
+
+		var result = service.mutateWithResult(new MutationRequest<>(
+				"order-1",
+				new AcknowledgeOrder(),
+				MutationSource.AUTHORITATIVE_EXTERNAL_EVENT));
+
+		assertTrue(result.quarantined());
+		assertTrue(result.quarantineRequest().orElseThrow().quarantineId().isPresent());
+		assertEquals(1, recorder.submissions.size());
+	}
+
+	@Test
+	void replayGatewayDoesNotCreateNestedQuarantineRecordsWhenReplayQuarantinesAgain()
+	{
+		var definition = new ReplayQuarantiningAggregateDefinition();
+		definition.store.put("order-1", new OrderModel("SUBMITTED"));
+		var recorder = new RecordingMutationQuarantineRecorder();
+		var engine = DefaultAggregateLifecycleEngine.withTransactionRunnerAndMutationQuarantineRecorder(
+				new InlineTransactionRunner(),
+				recorder);
+		var service = mutationService(definition, engine);
+		var replayGateway = (MutationQuarantineReplayGateway) service;
+
+		var result = replayGateway.replay(new MutationQuarantineReplayCommand(
+				new MutationQuarantineId("quarantine-1"),
+				"order-1",
+				new AcknowledgeOrder(),
+				MutationFamily.APPLICATION,
+				Optional.empty(),
+				Optional.empty()));
+
+		assertTrue(result.quarantined());
+		assertEquals(0, recorder.submissions.size());
 	}
 
 	@Test
@@ -550,7 +600,7 @@ class AggregateMutationServicesTest
 		}
 	}
 
-	private static final class QuarantiningAggregateDefinition extends TestAggregateDefinition
+	private static class QuarantiningAggregateDefinition extends TestAggregateDefinition
 	{
 		@Override
 		public DomainInvariantPolicy<OrderModel> domainInvariantPolicy()
@@ -573,7 +623,8 @@ class AggregateMutationServicesTest
 						MutationViolationHandling.ALLOW,
 						MutationViolationHandling.QUARANTINE);
 				case USER_INTENT -> MutationPolicyProfile.userIntent();
-				case INTERNAL_COMMAND, PROCESS_EMITTED_ACTION -> MutationPolicyProfile.internalCommand();
+				case INTERNAL_COMMAND, PROCESS_EMITTED_ACTION, ADMINISTRATIVE_REPLAY ->
+						MutationPolicyProfile.internalCommand();
 			};
 		}
 
@@ -853,6 +904,35 @@ class AggregateMutationServicesTest
 		{
 			startedRequests.add(startRequest);
 			return DurableProcessTaskId.random();
+		}
+	}
+
+	private static final class ReplayQuarantiningAggregateDefinition extends QuarantiningAggregateDefinition
+	{
+		@Override
+		public MutationPolicyProfileResolver mutationPolicyProfileResolver()
+		{
+			return source -> switch (source)
+			{
+				case AUTHORITATIVE_EXTERNAL_EVENT, ADMINISTRATIVE_REPLAY ->
+						MutationPolicyProfile.authoritativeExternalEvent();
+				case USER_INTENT -> MutationPolicyProfile.userIntent();
+				case INTERNAL_COMMAND, PROCESS_EMITTED_ACTION -> MutationPolicyProfile.internalCommand();
+			};
+		}
+	}
+
+	private static final class RecordingMutationQuarantineRecorder implements MutationQuarantineRecorder
+	{
+		private final List<MutationQuarantineSubmission> submissions = new ArrayList<>();
+
+		@Override
+		public de.gupta.clean.crud.template.useCases.mutation.domain.policy.quarantine.MutationQuarantineRequest record(
+				final MutationQuarantineSubmission submission)
+		{
+			submissions.add(submission);
+			return submission.quarantineRequest()
+			                 .persistedAs(new MutationQuarantineId("stored-" + submissions.size()));
 		}
 	}
 }

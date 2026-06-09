@@ -49,4 +49,13 @@ public record MutationPolicyDecision(
 	{
 		return quarantineRequest.isPresent();
 	}
+
+	public MutationPolicyDecision withQuarantineRequest(final MutationQuarantineRequest quarantineRequest)
+	{
+		if (allowed)
+		{
+			throw new IllegalStateException("Allowed mutation decisions cannot carry quarantine requests");
+		}
+		return new MutationPolicyDecision(false, toleratedViolations, Optional.of(quarantineRequest));
+	}
 }

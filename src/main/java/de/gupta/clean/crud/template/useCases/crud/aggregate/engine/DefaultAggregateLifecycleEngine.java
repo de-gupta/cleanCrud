@@ -1,6 +1,7 @@
 package de.gupta.clean.crud.template.useCases.crud.aggregate.engine;
 
 import de.gupta.clean.crud.template.infrastructure.persistence.transaction.PersistenceTransactionRunner;
+import de.gupta.clean.crud.template.useCases.mutation.quarantine.application.recording.MutationQuarantineRecorder;
 import de.gupta.clean.crud.template.useCases.process.application.execution.DurableProcessExecutionNudge;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStarter;
 
@@ -13,6 +14,7 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 	private final PostCommitMutationDispatcher postCommitMutationDispatcher;
 	private final DurableProcessStarter durableProcessStarter;
 	private final DurableProcessExecutionNudge durableProcessExecutionNudge;
+	private final MutationQuarantineRecorder mutationQuarantineRecorder;
 
 	public static DefaultAggregateLifecycleEngine withTransactionRunner(
 			final PersistenceTransactionRunner transactionRunner)
@@ -21,7 +23,20 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 				transactionRunner,
 				PostCommitMutationDispatcher.async(),
 				unsupportedDurableProcessStarter(),
-				DurableProcessExecutionNudge.noop());
+				DurableProcessExecutionNudge.noop(),
+				MutationQuarantineRecorder.noop());
+	}
+
+	public static DefaultAggregateLifecycleEngine withTransactionRunnerAndMutationQuarantineRecorder(
+			final PersistenceTransactionRunner transactionRunner,
+			final MutationQuarantineRecorder mutationQuarantineRecorder)
+	{
+		return new DefaultAggregateLifecycleEngine(
+				transactionRunner,
+				PostCommitMutationDispatcher.async(),
+				unsupportedDurableProcessStarter(),
+				DurableProcessExecutionNudge.noop(),
+				mutationQuarantineRecorder);
 	}
 
 	public static DefaultAggregateLifecycleEngine withTransactionRunnerAndDurableProcessStarter(
@@ -43,7 +58,22 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 				transactionRunner,
 				PostCommitMutationDispatcher.async(),
 				durableProcessStarter,
-				durableProcessExecutionNudge);
+				durableProcessExecutionNudge,
+				MutationQuarantineRecorder.noop());
+	}
+
+	public static DefaultAggregateLifecycleEngine withTransactionRunnerAndDurableProcessStarterExecutionNudgeAndMutationQuarantineRecorder(
+			final PersistenceTransactionRunner transactionRunner,
+			final DurableProcessStarter durableProcessStarter,
+			final DurableProcessExecutionNudge durableProcessExecutionNudge,
+			final MutationQuarantineRecorder mutationQuarantineRecorder)
+	{
+		return new DefaultAggregateLifecycleEngine(
+				transactionRunner,
+				PostCommitMutationDispatcher.async(),
+				durableProcessStarter,
+				durableProcessExecutionNudge,
+				mutationQuarantineRecorder);
 	}
 
 	static DefaultAggregateLifecycleEngine withTransactionRunnerAndDispatcher(
@@ -54,7 +84,8 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 				transactionRunner,
 				postCommitMutationDispatcher,
 				unsupportedDurableProcessStarter(),
-				DurableProcessExecutionNudge.noop());
+				DurableProcessExecutionNudge.noop(),
+				MutationQuarantineRecorder.noop());
 	}
 
 	static DefaultAggregateLifecycleEngine withTransactionRunnerDispatcherAndStarter(
@@ -76,7 +107,7 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 			final DurableProcessExecutionNudge durableProcessExecutionNudge)
 	{
 		return new DefaultAggregateLifecycleEngine(transactionRunner, postCommitMutationDispatcher,
-				durableProcessStarter, durableProcessExecutionNudge);
+				durableProcessStarter, durableProcessExecutionNudge, MutationQuarantineRecorder.noop());
 	}
 
 	@Override
@@ -99,6 +130,12 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 		return result;
 	}
 
+	@Override
+	public MutationQuarantineRecorder mutationQuarantineRecorder()
+	{
+		return mutationQuarantineRecorder;
+	}
+
 	private static DurableProcessStarter unsupportedDurableProcessStarter()
 	{
 		return _ ->
@@ -111,11 +148,13 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 			final PersistenceTransactionRunner transactionRunner,
 			final PostCommitMutationDispatcher postCommitMutationDispatcher,
 			final DurableProcessStarter durableProcessStarter,
-			final DurableProcessExecutionNudge durableProcessExecutionNudge)
+			final DurableProcessExecutionNudge durableProcessExecutionNudge,
+			final MutationQuarantineRecorder mutationQuarantineRecorder)
 	{
 		this.transactionRunner = transactionRunner;
 		this.postCommitMutationDispatcher = postCommitMutationDispatcher;
 		this.durableProcessStarter = durableProcessStarter;
 		this.durableProcessExecutionNudge = durableProcessExecutionNudge;
+		this.mutationQuarantineRecorder = mutationQuarantineRecorder;
 	}
 }

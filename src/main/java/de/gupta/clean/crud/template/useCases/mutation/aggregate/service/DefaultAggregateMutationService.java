@@ -13,15 +13,17 @@ import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.Aggrega
 import de.gupta.clean.crud.template.useCases.mutation.application.service.AbstractMutationService;
 import de.gupta.clean.crud.template.useCases.mutation.domain.handler.MutationHandlerRegistry;
 import de.gupta.clean.crud.template.useCases.mutation.domain.handler.RegisteredMutationHandler;
-import de.gupta.clean.crud.template.useCases.mutation.domain.model.ApplicationMutationPayload;
-import de.gupta.clean.crud.template.useCases.mutation.domain.model.MutationContext;
-import de.gupta.clean.crud.template.useCases.mutation.domain.model.MutationRequest;
-import de.gupta.clean.crud.template.useCases.mutation.domain.model.MutationResult;
+import de.gupta.clean.crud.template.useCases.mutation.domain.model.*;
 import de.gupta.clean.crud.template.useCases.mutation.domain.plan.AggregateMutationPlan;
 import de.gupta.clean.crud.template.useCases.mutation.domain.policy.evaluation.SourceAwareMutationPolicy;
+import de.gupta.clean.crud.template.useCases.mutation.quarantine.application.MutationQuarantineReplayCommand;
+import de.gupta.clean.crud.template.useCases.mutation.quarantine.application.MutationQuarantineReplayGateway;
+import de.gupta.clean.crud.template.useCases.mutation.quarantine.application.recording.MutationQuarantineSubmission;
+import de.gupta.clean.crud.template.useCases.mutation.quarantine.domain.model.id.MutationQuarantineId;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.util.ClassUtils;
 
 import java.util.Collection;
 import java.util.List;
@@ -35,6 +37,7 @@ public final class DefaultAggregateMutationService<
 		DomainModelUpdatePatch,
 		DomainModelResponse>
 		extends AbstractMutationService<DomainId, DomainModel>
+		implements MutationQuarantineReplayGateway
 {
 	private static final Logger log = LoggerFactory.getLogger(DefaultAggregateMutationService.class);
 
@@ -47,6 +50,7 @@ public final class DefaultAggregateMutationService<
 	private final AggregateDefinitionGuard definitionGuard;
 	private final SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy;
 	private final AggregateMutationCoordinator mutationCoordinator;
+	private final String aggregateType;
 
 	public DefaultAggregateMutationService(
 			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
@@ -68,13 +72,42 @@ public final class DefaultAggregateMutationService<
 				new de.gupta.clean.crud.template.useCases.crud.aggregate.engine.SatelliteRelationshipPlanner(),
 				new de.gupta.clean.crud.template.useCases.crud.aggregate.engine.SatelliteReferenceResolver(),
 				new AggregateMutationValidationSupport());
+		this.aggregateType = ClassUtils.getUserClass(definition).getName();
 	}
 
 	@Override
 	public MutationResult<DomainId, DomainModel> mutateWithResult(final MutationRequest<DomainId, ?> request)
 	{
+		return mutateWithResult(request, Optional.empty());
+	}
+
+	@Override
+	public String aggregateType()
+	{
+		return aggregateType;
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public MutationResult<?, ?> replay(final MutationQuarantineReplayCommand command)
+	{
+		return mutateWithResult(
+				new MutationRequest<>(
+						(DomainId) command.domainId(),
+						command.payload(),
+						MutationSource.ADMINISTRATIVE_REPLAY,
+						command.family(),
+						command.correlationId(),
+						command.causationId()),
+				Optional.of(command.quarantineId()));
+	}
+
+	private MutationResult<DomainId, DomainModel> mutateWithResult(
+			final MutationRequest<DomainId, ?> request,
+			final Optional<MutationQuarantineId> replayQuarantineId)
+	{
 		return engine.execute(
-				CrudWorkflowBuilder.writeFlow(() -> applyMutation(request))
+				CrudWorkflowBuilder.writeFlow(() -> applyMutation(request, replayQuarantineId))
 				                   .startDurableProcesses(result -> result.updated()
 				                                                          .map(_ -> durableProcessStartRequests.apply(
 																				  result.context()))
@@ -83,7 +116,9 @@ public final class DefaultAggregateMutationService<
 				                   .build());
 	}
 
-	private MutationResult<DomainId, DomainModel> applyMutation(final MutationRequest<DomainId, ?> request)
+	private MutationResult<DomainId, DomainModel> applyMutation(
+			final MutationRequest<DomainId, ?> request,
+			final Optional<MutationQuarantineId> replayQuarantineId)
 	{
 		var relationships = definitionGuard.satelliteRelationships(definition);
 		var current = definition.fetchPort()
@@ -103,6 +138,10 @@ public final class DefaultAggregateMutationService<
 				Optional.of(updatedModel));
 		if (policyDecision.quarantined())
 		{
+			if (replayQuarantineId.isEmpty())
+			{
+				policyDecision = persistQuarantine(request, policyDecision);
+			}
 			log.warn(
 					"Mutation quarantined for id {} from source {} with violations {}",
 					request.domainId(),
@@ -161,5 +200,16 @@ public final class DefaultAggregateMutationService<
 				result.context().domainId(),
 				result.context().afterModel(),
 				result.context().beforeModel()));
+	}
+
+	private de.gupta.clean.crud.template.useCases.mutation.domain.policy.evaluation.MutationPolicyDecision persistQuarantine(
+			final MutationRequest<DomainId, ?> request,
+			final de.gupta.clean.crud.template.useCases.mutation.domain.policy.evaluation.MutationPolicyDecision policyDecision)
+	{
+		var persistedRequest = engine.mutationQuarantineRecorder().record(new MutationQuarantineSubmission(
+				aggregateType,
+				request,
+				policyDecision.quarantineRequest().orElseThrow()));
+		return policyDecision.withQuarantineRequest(persistedRequest);
 	}
 }
