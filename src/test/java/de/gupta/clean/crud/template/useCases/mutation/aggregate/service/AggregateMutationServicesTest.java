@@ -9,6 +9,7 @@ import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDenie
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.relationship.LifecycleSemantics;
 import de.gupta.clean.crud.template.domain.relationship.ReconciliationStrategy;
+import de.gupta.clean.crud.template.domain.relationship.RelationshipKind;
 import de.gupta.clean.crud.template.domain.service.crud.policy.DeletionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.InsertionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.PatchPolicy;
@@ -20,7 +21,6 @@ import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommi
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationKind;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateLifecycleEngine;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateRelationshipExecutionNotSupportedException;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.DefaultAggregateLifecycleEngine;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteCreateIntent;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMutationIntent;
@@ -316,7 +316,7 @@ class AggregateMutationServicesTest
 	}
 
 	@Test
-	void mutationServiceRejectsRelationshipAggregatesForNow()
+	void rootOnlyMutationStillWorksForRelationshipAggregates()
 	{
 		var definition = new RelationshipAggregateDefinition();
 		definition.store.put("order-1", new OrderModel("SUBMITTED"));
@@ -324,15 +324,12 @@ class AggregateMutationServicesTest
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
 		var service = mutationService(definition, engine);
 
-		var exception = assertThrows(
-				AggregateRelationshipExecutionNotSupportedException.class,
-				() -> service.mutate(new MutationRequest<>(
-						"order-1",
-						new AcknowledgeOrder(),
-						MutationSource.INTERNAL_COMMAND)));
+		var updated = service.mutate(new MutationRequest<>(
+				"order-1",
+				new AcknowledgeOrder(),
+				MutationSource.INTERNAL_COMMAND));
 
-		assertEquals("Aggregate mutation service currently supports only aggregates without relationships",
-				exception.getMessage());
+		assertEquals("ACKNOWLEDGED", updated.model().status());
 	}
 
 	@Test
@@ -600,6 +597,12 @@ class AggregateMutationServicesTest
 		public Cardinality cardinality()
 		{
 			return Cardinality.ONE;
+		}
+
+		@Override
+		public RelationshipKind relationshipKind()
+		{
+			return RelationshipKind.OWNED;
 		}
 
 		@Override

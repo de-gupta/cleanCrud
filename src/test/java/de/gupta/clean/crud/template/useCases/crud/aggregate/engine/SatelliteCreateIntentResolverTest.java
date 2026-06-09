@@ -4,6 +4,7 @@ import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNot
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.relationship.LifecycleSemantics;
 import de.gupta.clean.crud.template.domain.relationship.ReconciliationStrategy;
+import de.gupta.clean.crud.template.domain.relationship.RelationshipKind;
 import de.gupta.clean.crud.template.domain.service.crud.policy.DeletionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.InsertionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.PatchPolicy;
@@ -284,6 +285,12 @@ class SatelliteCreateIntentResolverTest
 				public Cardinality cardinality()
 				{
 					return Cardinality.MANY;
+				}
+
+				@Override
+				public RelationshipKind relationshipKind()
+				{
+					return RelationshipKind.OWNED;
 				}
 
 				@Override

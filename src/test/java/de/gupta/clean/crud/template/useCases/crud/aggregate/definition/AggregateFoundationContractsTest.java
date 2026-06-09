@@ -6,6 +6,7 @@ import de.gupta.clean.crud.template.domain.mapping.update.DomainModelPatcher;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.relationship.LifecycleSemantics;
 import de.gupta.clean.crud.template.domain.relationship.ReconciliationStrategy;
+import de.gupta.clean.crud.template.domain.relationship.RelationshipKind;
 import de.gupta.clean.crud.template.domain.service.crud.policy.DeletionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.InsertionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.PatchPolicy;
@@ -248,6 +249,12 @@ class AggregateFoundationContractsTest
 		public Cardinality cardinality()
 		{
 			return Cardinality.ONE;
+		}
+
+		@Override
+		public RelationshipKind relationshipKind()
+		{
+			return RelationshipKind.OWNED;
 		}
 
 		@Override

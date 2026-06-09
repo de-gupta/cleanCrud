@@ -2,6 +2,7 @@ package de.gupta.clean.crud.template.useCases.crud.aggregate.relationship;
 
 import de.gupta.clean.crud.template.domain.relationship.LifecycleSemantics;
 import de.gupta.clean.crud.template.domain.relationship.ReconciliationStrategy;
+import de.gupta.clean.crud.template.domain.relationship.RelationshipKind;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteCreateIntent;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMutationIntent;
 
@@ -16,6 +17,8 @@ public interface AggregateRelationshipDefinitionContract<
 	String name();
 
 	Cardinality cardinality();
+
+	RelationshipKind relationshipKind();
 
 	LifecycleSemantics lifecycleSemantics();
 

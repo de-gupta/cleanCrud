@@ -3,6 +3,7 @@ package de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.standa
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.relationship.LifecycleSemantics;
 import de.gupta.clean.crud.template.domain.relationship.ReconciliationStrategy;
+import de.gupta.clean.crud.template.domain.relationship.RelationshipKind;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.builder.AggregateRelationshipDefinitions;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteCreateIntent;
@@ -142,6 +143,7 @@ public final class StandardOneToManyReferencedSatelliteRelationshipBuilder<
 						SatelliteDomainModelUpdatePatch>aggregateRelationshipDefinition()
 				.name(name)
 				.cardinality(Cardinality.MANY)
+				.relationshipKind(RelationshipKind.REFERENCED)
 				.lifecycleSemantics(required(lifecycleSemantics, "lifecycleSemantics"))
 				.satelliteDefinition(satelliteDefinition)
 				.createInputResolver(masterCreate -> required(

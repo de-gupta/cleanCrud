@@ -3,6 +3,7 @@ package de.gupta.clean.crud.template.useCases.crud.aggregate.builder;
 import de.gupta.clean.crud.template.domain.relationship.LifecycleSemantics;
 import de.gupta.clean.crud.template.domain.relationship.ReconciliationStrategy;
 import de.gupta.clean.crud.template.domain.relationship.Relationship;
+import de.gupta.clean.crud.template.domain.relationship.RelationshipKind;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteCreateIntent;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMutationIntent;
@@ -114,6 +115,7 @@ public final class AggregateRelationshipDefinitions
 	{
 		private String name;
 		private Cardinality cardinality;
+		private RelationshipKind relationshipKind = RelationshipKind.OWNED;
 		private LifecycleSemantics lifecycleSemantics = LifecycleSemantics.none();
 		private AggregateCrudDefinition<SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
 				SatelliteDomainModelUpdatePatch, ?> satelliteDefinition;
@@ -145,6 +147,14 @@ public final class AggregateRelationshipDefinitions
 				SatelliteDomainModelUpdatePatch> cardinality(final Cardinality cardinality)
 		{
 			this.cardinality = cardinality;
+			return this;
+		}
+
+		public AggregateRelationshipDefinitionBuilder<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+				MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+				SatelliteDomainModelUpdatePatch> relationshipKind(final RelationshipKind relationshipKind)
+		{
+			this.relationshipKind = relationshipKind;
 			return this;
 		}
 
@@ -258,6 +268,7 @@ public final class AggregateRelationshipDefinitions
 			return new BuiltAggregateRelationshipDefinition<>(
 					required(name, "name"),
 					required(cardinality, "cardinality"),
+					required(relationshipKind, "relationshipKind"),
 					required(lifecycleSemantics, "lifecycleSemantics"),
 					requiredSatelliteDefinition,
 					effectiveSatelliteMutationPort,
@@ -288,6 +299,7 @@ public final class AggregateRelationshipDefinitions
 			SatelliteDomainModelUpdatePatch>(
 			String name,
 			Cardinality cardinality,
+			RelationshipKind relationshipKind,
 			LifecycleSemantics lifecycleSemantics,
 			AggregateCrudDefinition<SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
 					SatelliteDomainModelUpdatePatch, ?> satelliteDefinition,

@@ -120,6 +120,7 @@ module de.gupta.clean.crud
 	exports de.gupta.clean.crud.template.useCases.mutation.domain.handler;
 	exports de.gupta.clean.crud.template.useCases.mutation.domain.model;
 	exports de.gupta.clean.crud.template.useCases.mutation.domain.model.id;
+	exports de.gupta.clean.crud.template.useCases.mutation.domain.plan;
 	exports de.gupta.clean.crud.template.useCases.mutation.domain.policy.access;
 	exports de.gupta.clean.crud.template.useCases.mutation.domain.policy.consistency;
 	exports de.gupta.clean.crud.template.useCases.mutation.domain.policy.evaluation;
