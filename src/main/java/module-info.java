@@ -35,6 +35,7 @@ module de.gupta.clean.crud
 	exports de.gupta.clean.crud.template.domain.model.identified;
 	exports de.gupta.clean.crud.template.domain.model.validation;
 	exports de.gupta.clean.crud.template.domain.relationship;
+	exports de.gupta.clean.crud.template.generation.specification;
 	exports de.gupta.clean.crud.template.domain.service.constraints;
 	exports de.gupta.clean.crud.template.domain.service.crud.policy;
 	exports de.gupta.clean.crud.template.domain.service.equality;
