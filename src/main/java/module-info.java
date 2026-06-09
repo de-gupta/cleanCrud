@@ -20,6 +20,8 @@ module de.gupta.clean.crud
 	requires spring.boot;
 	requires spring.boot.autoconfigure;
 	requires com.fasterxml.jackson.databind;
+	requires static org.springdoc.openapi.common;
+	requires static io.swagger.v3.oas.models;
 
 	exports de.gupta.clean.crud.template.domain.mapping;
 	exports de.gupta.clean.crud.template.domain.mapping.fetch;
@@ -131,4 +133,5 @@ module de.gupta.clean.crud
 	opens de.gupta.clean.crud.template.useCases.process.infrastructure.persistence.model;
 	opens de.gupta.clean.crud.template.useCases.process.infrastructure.persistence;
 	opens de.gupta.clean.crud.template.useCases.process.infrastructure.spring;
+	opens de.gupta.clean.crud.template.infrastructure.web.openapi;
 }
