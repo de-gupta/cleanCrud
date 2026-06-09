@@ -5,6 +5,7 @@ import de.gupta.clean.crud.template.domain.mapping.save.DomainModelBuilder;
 import de.gupta.clean.crud.template.domain.mapping.update.DomainModelPatcher;
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
+import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDeniedException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.relationship.LifecycleSemantics;
 import de.gupta.clean.crud.template.domain.relationship.ReconciliationStrategy;
@@ -147,6 +148,57 @@ class AggregateMutationServicesTest
 						MutationSource.AUTHORITATIVE_EXTERNAL_EVENT)));
 
 		assertTrue(exception.getMessage().contains(RejectOrder.class.getName()));
+	}
+
+	@Test
+	void userIntentMutationsStillRespectAccessPolicy()
+	{
+		var definition = new AccessDeniedAggregateDefinition();
+		definition.store.put("order-1", new OrderModel("SUBMITTED"));
+		AggregateLifecycleEngine engine =
+				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
+		var service = mutationService(definition, engine);
+
+		assertThrows(
+				AccessDeniedException.class,
+				() -> service.mutate(new MutationRequest<>(
+						"order-1",
+						new AcknowledgeOrder(),
+						MutationSource.USER_INTENT)));
+	}
+
+	@Test
+	void authoritativeExternalEventsBypassAccessPolicyButStillMutate()
+	{
+		var definition = new AccessDeniedAggregateDefinition();
+		definition.store.put("order-1", new OrderModel("SUBMITTED"));
+		AggregateLifecycleEngine engine =
+				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
+		var service = mutationService(definition, engine);
+
+		var updated = service.mutate(new MutationRequest<>(
+				"order-1",
+				new AcknowledgeOrder(),
+				MutationSource.AUTHORITATIVE_EXTERNAL_EVENT));
+
+		assertEquals("ACKNOWLEDGED", updated.model().status());
+	}
+
+	@Test
+	void authoritativeExternalEventsStillRespectInvariantPolicy()
+	{
+		var definition = new InvariantRejectingAggregateDefinition();
+		definition.store.put("order-1", new OrderModel("SUBMITTED"));
+		AggregateLifecycleEngine engine =
+				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
+		var service = mutationService(definition, engine);
+
+		assertThrows(
+				InvalidRequestException.class,
+				() -> service.mutate(new MutationRequest<>(
+						"order-1",
+						new AcknowledgeOrder(),
+						MutationSource.AUTHORITATIVE_EXTERNAL_EVENT)));
 	}
 
 	@Test
@@ -379,6 +431,27 @@ class AggregateMutationServicesTest
 		relationshipDefinitions()
 		{
 			return List.of(new TestRelationshipDefinition());
+		}
+	}
+
+	private static final class AccessDeniedAggregateDefinition extends TestAggregateDefinition
+	{
+		@Override
+		public DomainSecurityPolicy<OrderModel> securityPolicy()
+		{
+			return _ -> false;
+		}
+	}
+
+	private static final class InvariantRejectingAggregateDefinition extends TestAggregateDefinition
+	{
+		@Override
+		public PatchPolicy<OrderModel> patchPolicy()
+		{
+			return (_, _) ->
+			{
+				throw InvalidRequestException.withMessage("Invariant rejected mutation");
+			};
 		}
 	}
 

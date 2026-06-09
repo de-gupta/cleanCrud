@@ -14,6 +14,7 @@ import de.gupta.clean.crud.template.useCases.mutation.domain.handler.RegisteredM
 import de.gupta.clean.crud.template.useCases.mutation.domain.model.ApplicationMutationPayload;
 import de.gupta.clean.crud.template.useCases.mutation.domain.model.MutationContext;
 import de.gupta.clean.crud.template.useCases.mutation.domain.model.MutationRequest;
+import de.gupta.clean.crud.template.useCases.mutation.domain.policy.SourceAwareMutationPolicy;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 
 import java.util.Collection;
@@ -36,7 +37,7 @@ public final class AggregateMutationServices
 				handlerRegistry,
 				_ -> List.of(),
 				AggregateServiceSupportFactory.definitionGuard(),
-				AggregateServiceSupportFactory.validationSupport());
+				AggregateMutationPolicies.sourceAwarePolicy(definition));
 	}
 
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
@@ -54,7 +55,7 @@ public final class AggregateMutationServices
 				handlerRegistry,
 				durableProcessStartRequests,
 				AggregateServiceSupportFactory.definitionGuard(),
-				AggregateServiceSupportFactory.validationSupport());
+				AggregateMutationPolicies.sourceAwarePolicy(definition));
 	}
 
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
@@ -64,9 +65,10 @@ public final class AggregateMutationServices
 			final AggregateLifecycleEngine engine,
 			final MutationHandlerRegistry<DomainModel> handlerRegistry,
 			final AggregateDefinitionGuard definitionGuard,
-			final AggregateMutationValidationSupport validationSupport)
+			final SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy)
 	{
-		return mutationService(definition, engine, handlerRegistry, _ -> List.of(), definitionGuard, validationSupport);
+		return mutationService(definition, engine, handlerRegistry, _ -> List.of(), definitionGuard,
+				sourceAwareMutationPolicy);
 	}
 
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
@@ -78,10 +80,10 @@ public final class AggregateMutationServices
 			final Function<MutationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
 					durableProcessStartRequests,
 			final AggregateDefinitionGuard definitionGuard,
-			final AggregateMutationValidationSupport validationSupport)
+			final SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy)
 	{
 		return new AggregateMutationService<>(definition, engine, handlerRegistry, durableProcessStartRequests,
-				definitionGuard, validationSupport);
+				definitionGuard, sourceAwareMutationPolicy);
 	}
 
 	private AggregateMutationServices()
@@ -97,7 +99,8 @@ public final class AggregateMutationServices
 			AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse> definition,
 			AggregateLifecycleEngine engine, MutationHandlerRegistry<DomainModel> handlerRegistry,
 			Function<MutationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>> durableProcessStartRequests,
-			AggregateDefinitionGuard definitionGuard, AggregateMutationValidationSupport validationSupport)
+			AggregateDefinitionGuard definitionGuard,
+			SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy)
 			implements MutationService<DomainId, DomainModel>
 	{
 		@Override
@@ -117,9 +120,8 @@ public final class AggregateMutationServices
 			var current = definition.fetchPort()
 			                        .findById(request.domainId())
 			                        .orElseThrow(() -> ResourceNotFoundException.withId(request.domainId()));
-			validationSupport.validateAccess(definition, current.model());
 			var updatedModel = applyRegisteredHandler(current.model(), request.payload());
-			validationSupport.validateAccessAndValidatePatch(definition, current.model(), updatedModel);
+			sourceAwareMutationPolicy.validate(request.source(), current.model(), updatedModel);
 			var updated = definition.mutationPort().update(request.domainId(), updatedModel);
 			return new MutationDispatch<>(
 					updated,
