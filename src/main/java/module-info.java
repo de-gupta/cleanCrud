@@ -114,6 +114,10 @@ module de.gupta.clean.crud
 	exports de.gupta.clean.crud.template.useCases.query.suppliedProperty.collection.facade;
 	exports de.gupta.clean.crud.template.useCases.query.suppliedProperty.unique.api.web;
 	exports de.gupta.clean.crud.template.useCases.query.suppliedProperty.unique.facade;
+	exports de.gupta.clean.crud.template.useCases.mutation.aggregate.service;
+	exports de.gupta.clean.crud.template.useCases.mutation.application.service;
+	exports de.gupta.clean.crud.template.useCases.mutation.domain.handler;
+	exports de.gupta.clean.crud.template.useCases.mutation.domain.model;
 	exports de.gupta.clean.crud.template.useCases.process.application.dispatch;
 	exports de.gupta.clean.crud.template.useCases.process.application.execution;
 	exports de.gupta.clean.crud.template.useCases.process.application.registration;
