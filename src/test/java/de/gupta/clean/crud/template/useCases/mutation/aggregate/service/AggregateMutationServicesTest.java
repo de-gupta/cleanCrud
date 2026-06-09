@@ -40,6 +40,7 @@ import de.gupta.clean.crud.template.useCases.mutation.domain.policy.profile.Muta
 import de.gupta.clean.crud.template.useCases.mutation.domain.policy.quarantine.QuarantinedMutationException;
 import de.gupta.clean.crud.template.useCases.mutation.domain.policy.violation.MutationViolationHandling;
 import de.gupta.clean.crud.template.useCases.mutation.domain.policy.violation.MutationViolationKind;
+import de.gupta.clean.crud.template.useCases.mutation.quarantine.application.DefaultMutationQuarantineReplayRegistry;
 import de.gupta.clean.crud.template.useCases.mutation.quarantine.application.MutationQuarantineReplayCommand;
 import de.gupta.clean.crud.template.useCases.mutation.quarantine.application.MutationQuarantineReplayGateway;
 import de.gupta.clean.crud.template.useCases.mutation.quarantine.application.recording.MutationQuarantineRecorder;
@@ -330,6 +331,36 @@ class AggregateMutationServicesTest
 	}
 
 	@Test
+	void quarantineReplayRegistryAcceptsMultipleAggregateMutationServices()
+	{
+		var firstDefinition = new TestAggregateDefinition();
+		var secondDefinition = new AlternateAggregateDefinition();
+		AggregateLifecycleEngine engine =
+				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
+		var firstService = mutationService(firstDefinition, engine);
+		var secondService = AggregateMutationServices.mutationService(secondDefinition, engine, registry());
+
+		assertDoesNotThrow(() -> DefaultMutationQuarantineReplayRegistry.of(List.of(
+				(MutationQuarantineReplayGateway) firstService,
+				(MutationQuarantineReplayGateway) secondService)));
+	}
+
+	@Test
+	void quarantineReplayGatewayUsesBeanNameWhenAvailable()
+	{
+		var definition = new TestAggregateDefinition();
+		AggregateLifecycleEngine engine =
+				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
+		var service = (DefaultAggregateMutationService<String, OrderModel, String, String, String>) mutationService(
+				definition,
+				engine);
+
+		service.setBeanName("orderMutationService");
+
+		assertEquals("orderMutationService", service.aggregateType());
+	}
+
+	@Test
 	void softInvariantViolationsCanBeAllowedForAuthoritativeEventsAndBeExposedOnResult()
 	{
 		var definition = new SoftInvariantAggregateDefinition();
@@ -585,6 +616,15 @@ class AggregateMutationServicesTest
 		public DomainSecurityPolicy<OrderModel> securityPolicy()
 		{
 			return _ -> false;
+		}
+	}
+
+	private static final class AlternateAggregateDefinition extends TestAggregateDefinition
+	{
+		@Override
+		public AggregateFetchPort<String, OrderModel> fetchPort()
+		{
+			return new AlternateFetchPort(store);
 		}
 	}
 
@@ -857,6 +897,35 @@ class AggregateMutationServicesTest
 		@Override
 		public void delete(final Long domainId)
 		{
+		}
+	}
+
+	private record AlternateFetchPort(Map<String, OrderModel> store) implements AggregateFetchPort<String, OrderModel>
+	{
+		@Override
+		public Optional<IdentifiedModel<String, OrderModel>> findById(final String domainId)
+		{
+			return Optional.ofNullable(store.get(domainId)).map(model -> IdentifiedModel.of(domainId, model));
+		}
+
+		@Override
+		public Collection<IdentifiedModel<String, OrderModel>> findByIds(final Set<String> domainIds)
+		{
+			return domainIds.stream().flatMap(id -> findById(id).stream()).toList();
+		}
+
+		@Override
+		public Collection<IdentifiedModel<String, OrderModel>> findAll()
+		{
+			return store.entrySet().stream()
+			            .map(entry -> IdentifiedModel.of(entry.getKey(), entry.getValue()))
+			            .toList();
+		}
+
+		@Override
+		public Slice<IdentifiedModel<String, OrderModel>> findAll(final Pageable pageable)
+		{
+			return new SliceImpl<>(findAll().stream().toList());
 		}
 	}
 

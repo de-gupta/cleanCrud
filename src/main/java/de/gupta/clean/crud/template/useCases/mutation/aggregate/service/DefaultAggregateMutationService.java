@@ -23,6 +23,7 @@ import de.gupta.clean.crud.template.useCases.mutation.quarantine.domain.model.id
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.util.ClassUtils;
 
 import java.util.Collection;
@@ -37,7 +38,7 @@ public final class DefaultAggregateMutationService<
 		DomainModelUpdatePatch,
 		DomainModelResponse>
 		extends AbstractMutationService<DomainId, DomainModel>
-		implements MutationQuarantineReplayGateway
+		implements MutationQuarantineReplayGateway, BeanNameAware
 {
 	private static final Logger log = LoggerFactory.getLogger(DefaultAggregateMutationService.class);
 
@@ -50,7 +51,8 @@ public final class DefaultAggregateMutationService<
 	private final AggregateDefinitionGuard definitionGuard;
 	private final SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy;
 	private final AggregateMutationCoordinator mutationCoordinator;
-	private final String aggregateType;
+	private final String defaultAggregateType;
+	private String aggregateType;
 
 	public DefaultAggregateMutationService(
 			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
@@ -72,7 +74,8 @@ public final class DefaultAggregateMutationService<
 				new de.gupta.clean.crud.template.useCases.crud.aggregate.engine.SatelliteRelationshipPlanner(),
 				new de.gupta.clean.crud.template.useCases.crud.aggregate.engine.SatelliteReferenceResolver(),
 				new AggregateMutationValidationSupport());
-		this.aggregateType = ClassUtils.getUserClass(definition).getName();
+		this.defaultAggregateType = ClassUtils.getUserClass(definition.fetchPort()).getName();
+		this.aggregateType = defaultAggregateType;
 	}
 
 	@Override
@@ -85,6 +88,17 @@ public final class DefaultAggregateMutationService<
 	public String aggregateType()
 	{
 		return aggregateType;
+	}
+
+	@Override
+	public void setBeanName(final String name)
+	{
+		if (name != null && !name.isBlank())
+		{
+			this.aggregateType = name;
+			return;
+		}
+		this.aggregateType = defaultAggregateType;
 	}
 
 	@Override
