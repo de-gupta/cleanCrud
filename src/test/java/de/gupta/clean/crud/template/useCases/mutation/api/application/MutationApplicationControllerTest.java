@@ -4,9 +4,11 @@ import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.useCases.mutation.application.service.MutationService;
 import de.gupta.clean.crud.template.useCases.mutation.domain.model.ApplicationMutationPayload;
 import de.gupta.clean.crud.template.useCases.mutation.domain.model.MutationRequest;
+import de.gupta.clean.crud.template.useCases.mutation.domain.model.MutationResult;
 import de.gupta.clean.crud.template.useCases.mutation.domain.model.MutationSource;
 import de.gupta.clean.crud.template.useCases.mutation.domain.model.id.MutationCausationId;
 import de.gupta.clean.crud.template.useCases.mutation.domain.model.id.MutationCorrelationId;
+import de.gupta.clean.crud.template.useCases.mutation.domain.policy.evaluation.MutationPolicyDecision;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
@@ -56,6 +58,18 @@ class MutationApplicationControllerTest
 		assertEquals("cause-1", service.lastRequest.causationId().orElseThrow().value());
 	}
 
+	@Test
+	void controllerCanExposeRichMutationResults()
+	{
+		var service = new RecordingMutationService();
+		var controller = MutationApplicationControllers.controller(service);
+
+		var result = controller.applyInternalCommandWithResult("order-1", new AcknowledgeOrder());
+
+		assertEquals("order-1", result.updatedOrThrow().id());
+		assertEquals(MutationSource.INTERNAL_COMMAND, result.context().source());
+	}
+
 	private record AcknowledgeOrder() implements ApplicationMutationPayload
 	{
 	}
@@ -65,10 +79,21 @@ class MutationApplicationControllerTest
 		private MutationRequest<String, ?> lastRequest;
 
 		@Override
-		public IdentifiedModel<String, String> mutate(final MutationRequest<String, ?> request)
+		public MutationResult<String, String> mutateWithResult(final MutationRequest<String, ?> request)
 		{
 			lastRequest = request;
-			return IdentifiedModel.of(request.domainId(), "ok");
+			return MutationResult.applied(
+					new de.gupta.clean.crud.template.useCases.mutation.domain.model.MutationContext<>(
+							request.domainId(),
+							request.source(),
+							request.family(),
+							request.payloadType(),
+							request.correlationId(),
+							request.causationId(),
+							Optional.empty(),
+							Optional.of("ok")),
+					MutationPolicyDecision.allow(),
+					IdentifiedModel.of(request.domainId(), "ok"));
 		}
 	}
 }

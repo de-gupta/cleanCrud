@@ -57,18 +57,21 @@ public final class AggregateMutationPolicies
 				final DomainModel afterModel)
 		{
 			var profile = policyBundle.profileResolver().resolve(source);
+			var toleratedViolations = new ArrayList<MutationPolicyViolation>();
 			var quarantiningViolations = new ArrayList<MutationPolicyViolation>();
 			var rejectingViolations = new ArrayList<MutationPolicyViolation>();
 			collect(
 					policyBundle.accessPolicy().accessViolationFor(source, beforeModel, afterModel)
 					            .map(MutationPolicyViolation::access),
 					profile.accessViolationHandling(),
+					toleratedViolations,
 					quarantiningViolations,
 					rejectingViolations);
 			collect(
 					policyBundle.transitionPolicy().transitionViolationFor(source, beforeModel, afterModel)
 					            .map(MutationPolicyViolation::transition),
 					profile.transitionViolationHandling(),
+					toleratedViolations,
 					quarantiningViolations,
 					rejectingViolations);
 			for (var invariantViolation : policyBundle.invariantPolicy()
@@ -82,6 +85,7 @@ public final class AggregateMutationPolicies
 				collect(
 						Optional.of(MutationPolicyViolation.invariant(invariantViolation)),
 						handling,
+						toleratedViolations,
 						quarantiningViolations,
 						rejectingViolations);
 			}
@@ -90,19 +94,20 @@ public final class AggregateMutationPolicies
 					            .consistencyViolationFor(source, beforeModel, afterModel)
 					            .map(MutationPolicyViolation::externalConsistency),
 					profile.externalConsistencyViolationHandling(),
+					toleratedViolations,
 					quarantiningViolations,
 					rejectingViolations);
 			if (!quarantiningViolations.isEmpty())
 			{
 				return MutationPolicyDecision.quarantine(new MutationQuarantineRequest(
 						source,
-						quarantiningViolations));
+						quarantiningViolations), toleratedViolations);
 			}
 			if (!rejectingViolations.isEmpty())
 			{
 				throw rejectionFor(rejectingViolations.getFirst());
 			}
-			return MutationPolicyDecision.allow();
+			return MutationPolicyDecision.allow(toleratedViolations);
 		}
 
 		@Override
@@ -124,6 +129,7 @@ public final class AggregateMutationPolicies
 		private void collect(
 				final Optional<MutationPolicyViolation> violation,
 				final MutationViolationHandling handling,
+				final ArrayList<MutationPolicyViolation> toleratedViolations,
 				final ArrayList<MutationPolicyViolation> quarantiningViolations,
 				final ArrayList<MutationPolicyViolation> rejectingViolations)
 		{
@@ -131,9 +137,7 @@ public final class AggregateMutationPolicies
 			{
 				switch (handling)
 				{
-					case ALLOW ->
-					{
-					}
+					case ALLOW -> toleratedViolations.add(candidate);
 					case REJECT -> rejectingViolations.add(candidate);
 					case QUARANTINE -> quarantiningViolations.add(candidate);
 				}

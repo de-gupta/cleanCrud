@@ -2,7 +2,6 @@ package de.gupta.clean.crud.template.useCases.mutation.aggregate.service;
 
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
-import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationKind;
@@ -15,8 +14,11 @@ import de.gupta.clean.crud.template.useCases.mutation.domain.handler.RegisteredM
 import de.gupta.clean.crud.template.useCases.mutation.domain.model.ApplicationMutationPayload;
 import de.gupta.clean.crud.template.useCases.mutation.domain.model.MutationContext;
 import de.gupta.clean.crud.template.useCases.mutation.domain.model.MutationRequest;
+import de.gupta.clean.crud.template.useCases.mutation.domain.model.MutationResult;
 import de.gupta.clean.crud.template.useCases.mutation.domain.policy.evaluation.SourceAwareMutationPolicy;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.List;
@@ -104,37 +106,49 @@ public final class AggregateMutationServices
 			SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy)
 			implements MutationService<DomainId, DomainModel>
 	{
+		private static final Logger log = LoggerFactory.getLogger(AggregateMutationService.class);
+
 		@Override
-		public IdentifiedModel<DomainId, DomainModel> mutate(final MutationRequest<DomainId, ?> request)
+		public MutationResult<DomainId, DomainModel> mutateWithResult(final MutationRequest<DomainId, ?> request)
 		{
 			assertNoRelationships();
 			return engine.execute(
 					CrudWorkflowBuilder.writeFlow(() -> applyMutation(request))
-					                   .startDurableProcesses(result -> durableProcessStartRequests.apply(
-											   result.context()))
+					                   .startDurableProcesses(result -> result.updated()
+					                                                          .map(_ -> durableProcessStartRequests.apply(
+																					  result.context()))
+					                                                          .orElse(List.of()))
 					                   .afterTransaction(this::dispatchMutationCompleted)
-					                   .build()).updated();
+					                   .build());
 		}
 
-		private MutationDispatch<DomainId, DomainModel> applyMutation(final MutationRequest<DomainId, ?> request)
+		private MutationResult<DomainId, DomainModel> applyMutation(final MutationRequest<DomainId, ?> request)
 		{
 			var current = definition.fetchPort()
 			                        .findById(request.domainId())
 			                        .orElseThrow(() -> ResourceNotFoundException.withId(request.domainId()));
 			var updatedModel = applyRegisteredHandler(current.model(), request.payload());
-			sourceAwareMutationPolicy.validate(request.source(), current.model(), updatedModel);
+			var policyDecision = sourceAwareMutationPolicy.evaluate(request.source(), current.model(), updatedModel);
+			var context = new MutationContext<>(
+					request.domainId(),
+					request.source(),
+					request.family(),
+					request.payloadType(),
+					request.correlationId(),
+					request.causationId(),
+					Optional.of(current.model()),
+					Optional.of(updatedModel));
+			if (policyDecision.quarantined())
+			{
+				log.warn(
+						"Mutation quarantined for id {} from source {} with violations {}",
+						request.domainId(),
+						request.source(),
+						policyDecision.quarantineRequest().orElseThrow().violations());
+				return MutationResult.quarantined(context, policyDecision);
+			}
 			var updated = definition.mutationPort().update(request.domainId(), updatedModel);
-			return new MutationDispatch<>(
-					updated,
-					new MutationContext<>(
-							request.domainId(),
-							request.source(),
-							request.family(),
-							request.payloadType(),
-							request.correlationId(),
-							request.causationId(),
-							Optional.of(current.model()),
-							Optional.of(updated.model())));
+			return MutationResult.applied(context, policyDecision, updated);
 		}
 
 		private DomainModel applyRegisteredHandler(
@@ -159,8 +173,12 @@ public final class AggregateMutationServices
 					payload);
 		}
 
-		private void dispatchMutationCompleted(final MutationDispatch<DomainId, DomainModel> result)
+		private void dispatchMutationCompleted(final MutationResult<DomainId, DomainModel> result)
 		{
+			if (result.quarantined())
+			{
+				return;
+			}
 			definition.postCommitMutation().accept(new PostCommitMutationContext<>(
 					PostCommitMutationKind.PATCH,
 					result.context().domainId(),
@@ -175,12 +193,6 @@ public final class AggregateMutationServices
 				throw AggregateRelationshipExecutionNotSupportedException.withMessage(
 						"Aggregate mutation service currently supports only aggregates without relationships");
 			}
-		}
-
-		private record MutationDispatch<DomainId, DomainModel>(
-				IdentifiedModel<DomainId, DomainModel> updated,
-				MutationContext<DomainId, DomainModel> context)
-		{
 		}
 	}
 }

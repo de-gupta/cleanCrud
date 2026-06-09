@@ -260,7 +260,27 @@ class AggregateMutationServicesTest
 	}
 
 	@Test
-	void softInvariantViolationsCanBeAllowedForAuthoritativeEvents()
+	void mutateWithResultCanExposeQuarantineWithoutThrowing()
+	{
+		var definition = new QuarantiningAggregateDefinition();
+		definition.store.put("order-1", new OrderModel("SUBMITTED"));
+		AggregateLifecycleEngine engine =
+				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
+		var service = mutationService(definition, engine);
+
+		var result = service.mutateWithResult(new MutationRequest<>(
+				"order-1",
+				new AcknowledgeOrder(),
+				MutationSource.AUTHORITATIVE_EXTERNAL_EVENT));
+
+		assertTrue(result.quarantined());
+		assertTrue(result.updated().isEmpty());
+		assertEquals(1, result.quarantineRequest().orElseThrow().violations().size());
+		assertEquals("SUBMITTED", definition.store.get("order-1").status());
+	}
+
+	@Test
+	void softInvariantViolationsCanBeAllowedForAuthoritativeEventsAndBeExposedOnResult()
 	{
 		var definition = new SoftInvariantAggregateDefinition();
 		definition.store.put("order-1", new OrderModel("SUBMITTED"));
@@ -268,12 +288,15 @@ class AggregateMutationServicesTest
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
 		var service = mutationService(definition, engine);
 
-		var updated = service.mutate(new MutationRequest<>(
+		MutationResult<String, OrderModel> result = service.mutateWithResult(new MutationRequest<>(
 				"order-1",
 				new AcknowledgeOrder(),
 				MutationSource.AUTHORITATIVE_EXTERNAL_EVENT));
 
-		assertEquals("ACKNOWLEDGED", updated.model().status());
+		assertTrue(result.applied());
+		assertEquals("ACKNOWLEDGED", result.updatedOrThrow().model().status());
+		assertEquals(1, result.toleratedViolations().size());
+		assertEquals(MutationViolationKind.INVARIANT, result.toleratedViolations().getFirst().kind());
 	}
 
 	@Test
