@@ -30,9 +30,9 @@ import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.*;
 import de.gupta.clean.crud.template.useCases.mutation.application.service.MutationService;
 import de.gupta.clean.crud.template.useCases.mutation.domain.handler.MutationHandlerRegistry;
 import de.gupta.clean.crud.template.useCases.mutation.domain.handler.RegisteredMutationHandler;
-import de.gupta.clean.crud.template.useCases.mutation.domain.model.ApplicationMutationPayload;
-import de.gupta.clean.crud.template.useCases.mutation.domain.model.MutationRequest;
-import de.gupta.clean.crud.template.useCases.mutation.domain.model.MutationSource;
+import de.gupta.clean.crud.template.useCases.mutation.domain.model.*;
+import de.gupta.clean.crud.template.useCases.mutation.domain.model.id.MutationCausationId;
+import de.gupta.clean.crud.template.useCases.mutation.domain.model.id.MutationCorrelationId;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStarter;
 import de.gupta.clean.crud.template.useCases.process.domain.definition.DurableProcessDefinition;
@@ -128,6 +128,37 @@ class AggregateMutationServicesTest
 
 		assertEquals(1, startedRequests.size());
 		assertEquals("order-follow-up", startedRequests.getFirst().definition().processType());
+	}
+
+	@Test
+	void mutationServicePassesCorrelationAndCausationMetadataToDurableProcessMapping()
+	{
+		var definition = new TestAggregateDefinition();
+		definition.store.put("order-1", new OrderModel("SUBMITTED"));
+		var observedContexts = new ArrayList<MutationContext<String, OrderModel>>();
+		var engine = DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
+		var service = AggregateMutationServices.mutationService(
+				definition,
+				engine,
+				registry(),
+				context ->
+				{
+					observedContexts.add(context);
+					return List.of();
+				});
+
+		service.mutate(new MutationRequest<>(
+				"order-1",
+				new AcknowledgeOrder(),
+				MutationSource.PROCESS_EMITTED_ACTION,
+				Optional.of(new MutationCorrelationId("corr-1")),
+				Optional.of(new MutationCausationId("cause-1"))));
+
+		assertEquals(1, observedContexts.size());
+		assertEquals(MutationFamily.APPLICATION, observedContexts.getFirst().family());
+		assertEquals(AcknowledgeOrder.class, observedContexts.getFirst().payloadType());
+		assertEquals("corr-1", observedContexts.getFirst().correlationId().orElseThrow().value());
+		assertEquals("cause-1", observedContexts.getFirst().causationId().orElseThrow().value());
 	}
 
 	@Test

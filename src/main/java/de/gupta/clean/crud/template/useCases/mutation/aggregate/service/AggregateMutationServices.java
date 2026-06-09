@@ -128,6 +128,10 @@ public final class AggregateMutationServices
 					new MutationContext<>(
 							request.domainId(),
 							request.source(),
+							request.family(),
+							request.payloadType(),
+							request.correlationId(),
+							request.causationId(),
 							Optional.of(current.model()),
 							Optional.of(updated.model())));
 		}
