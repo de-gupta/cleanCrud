@@ -9,6 +9,7 @@ import de.gupta.clean.crud.template.useCases.mutation.domain.model.id.MutationCo
 
 import java.util.Optional;
 
+@FunctionalInterface
 public interface MutationApplicationController<DomainId, DomainModel>
 {
 	IdentifiedModel<DomainId, DomainModel> apply(final MutationRequest<DomainId, ?> request);

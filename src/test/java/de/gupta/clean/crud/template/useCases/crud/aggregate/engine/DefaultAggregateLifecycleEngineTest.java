@@ -1554,7 +1554,8 @@ class DefaultAggregateLifecycleEngineTest
 			this.fetchCoordinator = AggregateFetchCoordinator.create();
 			this.deleteCoordinator = AggregateDeleteCoordinator.with(relationshipPlanner, referenceResolver);
 			this.updateCoordinator =
-					AggregateUpdateCoordinator.with(relationshipPlanner, referenceResolver, createIntentResolver);
+					AggregateUpdateCoordinator.with(relationshipPlanner, referenceResolver, createIntentResolver,
+							validationSupport);
 		}
 
 		private record UpdateDispatch<DomainId, DomainModel>(

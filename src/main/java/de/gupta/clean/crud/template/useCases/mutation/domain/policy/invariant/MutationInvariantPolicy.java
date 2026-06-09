@@ -1,4 +1,4 @@
-package de.gupta.clean.crud.template.useCases.mutation.domain.policy;
+package de.gupta.clean.crud.template.useCases.mutation.domain.policy.invariant;
 
 import de.gupta.clean.crud.template.useCases.mutation.domain.model.MutationSource;
 

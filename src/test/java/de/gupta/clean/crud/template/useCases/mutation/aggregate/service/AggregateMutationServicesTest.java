@@ -33,6 +33,13 @@ import de.gupta.clean.crud.template.useCases.mutation.domain.handler.RegisteredM
 import de.gupta.clean.crud.template.useCases.mutation.domain.model.*;
 import de.gupta.clean.crud.template.useCases.mutation.domain.model.id.MutationCausationId;
 import de.gupta.clean.crud.template.useCases.mutation.domain.model.id.MutationCorrelationId;
+import de.gupta.clean.crud.template.useCases.mutation.domain.policy.invariant.DomainInvariantPolicy;
+import de.gupta.clean.crud.template.useCases.mutation.domain.policy.invariant.InvariantViolation;
+import de.gupta.clean.crud.template.useCases.mutation.domain.policy.profile.MutationPolicyProfile;
+import de.gupta.clean.crud.template.useCases.mutation.domain.policy.profile.MutationPolicyProfileResolver;
+import de.gupta.clean.crud.template.useCases.mutation.domain.policy.quarantine.QuarantinedMutationException;
+import de.gupta.clean.crud.template.useCases.mutation.domain.policy.violation.MutationViolationHandling;
+import de.gupta.clean.crud.template.useCases.mutation.domain.policy.violation.MutationViolationKind;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStarter;
 import de.gupta.clean.crud.template.useCases.process.domain.definition.DurableProcessDefinition;
@@ -230,6 +237,43 @@ class AggregateMutationServicesTest
 						"order-1",
 						new AcknowledgeOrder(),
 						MutationSource.AUTHORITATIVE_EXTERNAL_EVENT)));
+	}
+
+	@Test
+	void authoritativeExternalEventsCanBeQuarantinedByHardInvariantPolicy()
+	{
+		var definition = new QuarantiningAggregateDefinition();
+		definition.store.put("order-1", new OrderModel("SUBMITTED"));
+		AggregateLifecycleEngine engine =
+				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
+		var service = mutationService(definition, engine);
+
+		var exception = assertThrows(
+				QuarantinedMutationException.class,
+				() -> service.mutate(new MutationRequest<>(
+						"order-1",
+						new AcknowledgeOrder(),
+						MutationSource.AUTHORITATIVE_EXTERNAL_EVENT)));
+
+		assertEquals(1, exception.request().violations().size());
+		assertEquals(MutationViolationKind.INVARIANT, exception.request().violations().getFirst().kind());
+	}
+
+	@Test
+	void softInvariantViolationsCanBeAllowedForAuthoritativeEvents()
+	{
+		var definition = new SoftInvariantAggregateDefinition();
+		definition.store.put("order-1", new OrderModel("SUBMITTED"));
+		AggregateLifecycleEngine engine =
+				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
+		var service = mutationService(definition, engine);
+
+		var updated = service.mutate(new MutationRequest<>(
+				"order-1",
+				new AcknowledgeOrder(),
+				MutationSource.AUTHORITATIVE_EXTERNAL_EVENT));
+
+		assertEquals("ACKNOWLEDGED", updated.model().status());
 	}
 
 	@Test
@@ -483,6 +527,40 @@ class AggregateMutationServicesTest
 			{
 				throw InvalidRequestException.withMessage("Invariant rejected mutation");
 			};
+		}
+	}
+
+	private static final class QuarantiningAggregateDefinition extends TestAggregateDefinition
+	{
+		@Override
+		public DomainInvariantPolicy<OrderModel> domainInvariantPolicy()
+		{
+			return (_, _, _) -> List.of(InvariantViolation.hard("External state must be quarantined"));
+		}
+	}
+
+	private static final class SoftInvariantAggregateDefinition extends TestAggregateDefinition
+	{
+		@Override
+		public MutationPolicyProfileResolver mutationPolicyProfileResolver()
+		{
+			return source -> switch (source)
+			{
+				case AUTHORITATIVE_EXTERNAL_EVENT -> new MutationPolicyProfile(
+						MutationViolationHandling.ALLOW,
+						MutationViolationHandling.REJECT,
+						MutationViolationHandling.QUARANTINE,
+						MutationViolationHandling.ALLOW,
+						MutationViolationHandling.QUARANTINE);
+				case USER_INTENT -> MutationPolicyProfile.userIntent();
+				case INTERNAL_COMMAND, PROCESS_EMITTED_ACTION -> MutationPolicyProfile.internalCommand();
+			};
+		}
+
+		@Override
+		public DomainInvariantPolicy<OrderModel> domainInvariantPolicy()
+		{
+			return (_, _, _) -> List.of(InvariantViolation.soft("External soft invariant violation"));
 		}
 	}
 

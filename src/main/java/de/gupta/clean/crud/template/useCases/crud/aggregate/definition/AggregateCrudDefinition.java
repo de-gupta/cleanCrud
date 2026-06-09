@@ -11,8 +11,14 @@ import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateFetchPort;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateMutationPort;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinitionContract;
+import de.gupta.clean.crud.template.useCases.mutation.domain.policy.access.AccessPolicy;
+import de.gupta.clean.crud.template.useCases.mutation.domain.policy.consistency.ExternalConsistencyPolicy;
+import de.gupta.clean.crud.template.useCases.mutation.domain.policy.invariant.DomainInvariantPolicy;
+import de.gupta.clean.crud.template.useCases.mutation.domain.policy.profile.MutationPolicyProfileResolver;
+import de.gupta.clean.crud.template.useCases.mutation.domain.policy.transition.MutationTransitionPolicy;
 
 import java.util.Collection;
+import java.util.Optional;
 
 public interface AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse>
 {
@@ -39,4 +45,51 @@ public interface AggregateCrudDefinition<MasterDomainId, MasterDomainModel, Mast
 	PostCommitMutation<MasterDomainId, MasterDomainModel> postCommitMutation();
 
 	Collection<AggregateRelationshipDefinitionContract<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch>> relationshipDefinitions();
+
+	default MutationPolicyProfileResolver mutationPolicyProfileResolver()
+	{
+		return MutationPolicyProfileResolver.defaultResolver();
+	}
+
+	default AccessPolicy<MasterDomainModel> mutationAccessPolicy()
+	{
+		return (_, beforeModel, afterModel) ->
+		{
+			if (!securityPolicy().isAccessAllowed(beforeModel))
+			{
+				return Optional.of("Access not allowed");
+			}
+			if (!securityPolicy().isAccessAllowed(afterModel))
+			{
+				return Optional.of("Access not allowed");
+			}
+			return Optional.empty();
+		};
+	}
+
+	default MutationTransitionPolicy<MasterDomainModel> mutationTransitionPolicy()
+	{
+		return (_, beforeModel, afterModel) ->
+		{
+			try
+			{
+				patchPolicy().validatePatchAttempt(beforeModel, afterModel);
+				return Optional.empty();
+			}
+			catch (RuntimeException e)
+			{
+				return Optional.ofNullable(e.getMessage()).or(() -> Optional.of("Mutation transition rejected"));
+			}
+		};
+	}
+
+	default DomainInvariantPolicy<MasterDomainModel> domainInvariantPolicy()
+	{
+		return DomainInvariantPolicy.allowing();
+	}
+
+	default ExternalConsistencyPolicy<MasterDomainModel> externalConsistencyPolicy()
+	{
+		return ExternalConsistencyPolicy.allowing();
+	}
 }

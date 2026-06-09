@@ -120,7 +120,14 @@ module de.gupta.clean.crud
 	exports de.gupta.clean.crud.template.useCases.mutation.domain.handler;
 	exports de.gupta.clean.crud.template.useCases.mutation.domain.model;
 	exports de.gupta.clean.crud.template.useCases.mutation.domain.model.id;
-	exports de.gupta.clean.crud.template.useCases.mutation.domain.policy;
+	exports de.gupta.clean.crud.template.useCases.mutation.domain.policy.access;
+	exports de.gupta.clean.crud.template.useCases.mutation.domain.policy.consistency;
+	exports de.gupta.clean.crud.template.useCases.mutation.domain.policy.evaluation;
+	exports de.gupta.clean.crud.template.useCases.mutation.domain.policy.invariant;
+	exports de.gupta.clean.crud.template.useCases.mutation.domain.policy.profile;
+	exports de.gupta.clean.crud.template.useCases.mutation.domain.policy.quarantine;
+	exports de.gupta.clean.crud.template.useCases.mutation.domain.policy.transition;
+	exports de.gupta.clean.crud.template.useCases.mutation.domain.policy.violation;
 	exports de.gupta.clean.crud.template.useCases.process.application.dispatch;
 	exports de.gupta.clean.crud.template.useCases.process.application.execution;
 	exports de.gupta.clean.crud.template.useCases.process.application.registration;

@@ -1,6 +1,8 @@
-package de.gupta.clean.crud.template.useCases.mutation.domain.policy;
+package de.gupta.clean.crud.template.useCases.mutation.domain.policy.evaluation;
 
 import de.gupta.clean.crud.template.useCases.mutation.domain.model.MutationSource;
+import de.gupta.clean.crud.template.useCases.mutation.domain.policy.access.MutationAccessPolicy;
+import de.gupta.clean.crud.template.useCases.mutation.domain.policy.invariant.MutationInvariantPolicy;
 
 import java.util.Objects;
 
@@ -18,6 +20,15 @@ public interface SourceAwareMutationPolicy<DomainModel>
 			accessPolicy.validateAccess(source, beforeModel, afterModel);
 			invariantPolicy.validateInvariant(source, beforeModel, afterModel);
 		};
+	}
+
+	default MutationPolicyDecision evaluate(
+			final MutationSource source,
+			final DomainModel beforeModel,
+			final DomainModel afterModel)
+	{
+		validate(source, beforeModel, afterModel);
+		return MutationPolicyDecision.allow();
 	}
 
 	void validate(

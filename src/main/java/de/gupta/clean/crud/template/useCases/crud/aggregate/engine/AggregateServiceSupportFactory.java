@@ -12,7 +12,8 @@ public final class AggregateServiceSupportFactory
 	private static final AggregateSaveCoordinator SAVE_COORDINATOR =
 			AggregateSaveCoordinator.with(RELATIONSHIP_PLANNER, CREATE_INTENT_RESOLVER);
 	private static final AggregateUpdateCoordinator UPDATE_COORDINATOR =
-			AggregateUpdateCoordinator.with(RELATIONSHIP_PLANNER, REFERENCE_RESOLVER, CREATE_INTENT_RESOLVER);
+			AggregateUpdateCoordinator.with(RELATIONSHIP_PLANNER, REFERENCE_RESOLVER, CREATE_INTENT_RESOLVER,
+					VALIDATION_SUPPORT);
 	private static final AggregateFetchCoordinator FETCH_COORDINATOR = AggregateFetchCoordinator.create();
 	private static final AggregateDeleteCoordinator DELETE_COORDINATOR =
 			AggregateDeleteCoordinator.with(RELATIONSHIP_PLANNER, REFERENCE_RESOLVER);

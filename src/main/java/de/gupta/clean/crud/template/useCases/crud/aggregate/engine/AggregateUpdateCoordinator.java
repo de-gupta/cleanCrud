@@ -10,6 +10,7 @@ import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMuta
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.Cardinality;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.SatellitePersistenceOrder;
+import de.gupta.clean.crud.template.useCases.mutation.domain.model.MutationSource;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -21,13 +22,16 @@ public final class AggregateUpdateCoordinator
 	private final SatelliteRelationshipPlanner relationshipPlanner;
 	private final SatelliteReferenceResolver referenceResolver;
 	private final SatelliteCreateIntentResolver createIntentResolver;
+	private final AggregateMutationValidationSupport validationSupport;
 
 	public static AggregateUpdateCoordinator with(
 			final SatelliteRelationshipPlanner relationshipPlanner,
 			final SatelliteReferenceResolver referenceResolver,
-			final SatelliteCreateIntentResolver createIntentResolver)
+			final SatelliteCreateIntentResolver createIntentResolver,
+			final AggregateMutationValidationSupport validationSupport)
 	{
-		return new AggregateUpdateCoordinator(relationshipPlanner, referenceResolver, createIntentResolver);
+		return new AggregateUpdateCoordinator(relationshipPlanner, referenceResolver, createIntentResolver,
+				validationSupport);
 	}
 
 	public <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
@@ -612,12 +616,11 @@ public final class AggregateUpdateCoordinator
 			final MasterDomainModel originalMasterDomainModel,
 			final MasterDomainModel replacementMasterDomainModel)
 	{
-		if (!definition.securityPolicy().isAccessAllowed(originalMasterDomainModel)
-				|| !definition.securityPolicy().isAccessAllowed(replacementMasterDomainModel))
-		{
-			throw AccessDeniedException.withMessage("Access not allowed");
-		}
-		definition.patchPolicy().validatePatchAttempt(originalMasterDomainModel, replacementMasterDomainModel);
+		validationSupport.validateSourceAwarePatch(
+				definition,
+				MutationSource.USER_INTENT,
+				originalMasterDomainModel,
+				replacementMasterDomainModel);
 	}
 
 	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
@@ -644,14 +647,11 @@ public final class AggregateUpdateCoordinator
 			final SatelliteDomainModel originalSatelliteDomainModel,
 			final SatelliteDomainModel replacementSatelliteDomainModel)
 	{
-		if (!relationship.satelliteDefinition().securityPolicy().isAccessAllowed(originalSatelliteDomainModel)
-				|| !relationship.satelliteDefinition().securityPolicy()
-				                .isAccessAllowed(replacementSatelliteDomainModel))
-		{
-			throw AccessDeniedException.withMessage("Access not allowed");
-		}
-		relationship.satelliteDefinition().patchPolicy()
-		            .validatePatchAttempt(originalSatelliteDomainModel, replacementSatelliteDomainModel);
+		validationSupport.validateSourceAwarePatch(
+				relationship.satelliteDefinition(),
+				MutationSource.USER_INTENT,
+				originalSatelliteDomainModel,
+				replacementSatelliteDomainModel);
 	}
 
 	private <DomainId> List<DomainId> difference(
@@ -724,11 +724,13 @@ public final class AggregateUpdateCoordinator
 	private AggregateUpdateCoordinator(
 			final SatelliteRelationshipPlanner relationshipPlanner,
 			final SatelliteReferenceResolver referenceResolver,
-			final SatelliteCreateIntentResolver createIntentResolver)
+			final SatelliteCreateIntentResolver createIntentResolver,
+			final AggregateMutationValidationSupport validationSupport)
 	{
 		this.relationshipPlanner = relationshipPlanner;
 		this.referenceResolver = referenceResolver;
 		this.createIntentResolver = createIntentResolver;
+		this.validationSupport = validationSupport;
 	}
 
 	private record ReplaceUpdateState<SatelliteDomainId>(

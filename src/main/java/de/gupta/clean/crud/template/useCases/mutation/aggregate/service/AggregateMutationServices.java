@@ -7,6 +7,7 @@ import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.Aggregate
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationKind;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.*;
+import de.gupta.clean.crud.template.useCases.mutation.aggregate.policy.AggregateMutationPolicies;
 import de.gupta.clean.crud.template.useCases.mutation.application.service.MutationService;
 import de.gupta.clean.crud.template.useCases.mutation.domain.handler.MutationHandler;
 import de.gupta.clean.crud.template.useCases.mutation.domain.handler.MutationHandlerRegistry;
@@ -14,7 +15,7 @@ import de.gupta.clean.crud.template.useCases.mutation.domain.handler.RegisteredM
 import de.gupta.clean.crud.template.useCases.mutation.domain.model.ApplicationMutationPayload;
 import de.gupta.clean.crud.template.useCases.mutation.domain.model.MutationContext;
 import de.gupta.clean.crud.template.useCases.mutation.domain.model.MutationRequest;
-import de.gupta.clean.crud.template.useCases.mutation.domain.policy.SourceAwareMutationPolicy;
+import de.gupta.clean.crud.template.useCases.mutation.domain.policy.evaluation.SourceAwareMutationPolicy;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 
 import java.util.Collection;
