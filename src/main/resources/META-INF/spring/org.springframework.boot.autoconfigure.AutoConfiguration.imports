@@ -1,0 +1,2 @@
+de.gupta.clean.crud.template.useCases.process.infrastructure.spring.DurableProcessInfrastructureAutoConfiguration
+de.gupta.clean.crud.template.infrastructure.web.openapi.CleanCrudSpringdocOpenApiAutoConfiguration

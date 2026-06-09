@@ -7,6 +7,7 @@ import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommi
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationKind;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.*;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinition;
+import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 
 import java.util.Collection;
 import java.util.List;
@@ -40,11 +41,18 @@ public abstract class AbstractSaveService<
 		var relationships = definitionGuard.satelliteRelationships(definition);
 		return engine.execute(
 							 CrudWorkflowBuilder.writeFlow(() -> persistAll(models, relationships))
+				                                .startDurableProcesses(this::durableProcessStartRequests)
 				                                .afterTransaction(this::dispatchCreated)
 				                                .build())
 		             .stream()
 		             .map(this::identifiedModel)
 		             .toList();
+	}
+
+	protected Collection<DurableProcessStartRequest<?, ?>> durableProcessStartRequests(
+			final Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> savedModels)
+	{
+		return List.of();
 	}
 
 	private Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> persistAll(

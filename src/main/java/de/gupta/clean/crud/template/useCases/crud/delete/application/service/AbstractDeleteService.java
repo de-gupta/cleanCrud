@@ -10,6 +10,7 @@ import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommi
 import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.*;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.useCases.crud.common.BulkOperationMode;
+import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -37,6 +38,7 @@ public abstract class AbstractDeleteService<
 		var relationships = definitionGuard.satelliteRelationships(definition);
 		engine.execute(
 				CrudWorkflowBuilder.writeFlow(() -> deleteModel(id, relationships))
+				                   .startDurableProcesses(this::durableProcessStartRequests)
 				                   .afterTransaction(definition.postCommitMutation())
 				                   .build());
 	}
@@ -49,6 +51,7 @@ public abstract class AbstractDeleteService<
 		{
 			case ALL_OR_NOTHING -> engine.execute(
 					CrudWorkflowBuilder.writeFlow(() -> deleteModels(ids, relationships))
+					                   .startDurableProcesses(this::durableProcessStartRequests)
 					                   .afterTransaction(this::dispatchDeleted)
 					                   .build());
 			case BEST_EFFORT -> ids.forEach(this::tryDeleteById);
@@ -116,6 +119,21 @@ public abstract class AbstractDeleteService<
 		catch (DomainException ignored)
 		{
 		}
+	}
+
+	protected Collection<DurableProcessStartRequest<?, ?>> durableProcessStartRequests(
+			final PostCommitMutationContext<MasterDomainId, MasterDomainModel> context)
+	{
+		return List.of();
+	}
+
+	protected Collection<DurableProcessStartRequest<?, ?>> durableProcessStartRequests(
+			final Collection<PostCommitMutationContext<MasterDomainId, MasterDomainModel>> contexts)
+	{
+		return contexts.stream()
+		               .map(this::durableProcessStartRequests)
+		               .flatMap(Collection::stream)
+		               .toList();
 	}
 
 	private PostCommitMutationContext<MasterDomainId, MasterDomainModel> deleteContext(

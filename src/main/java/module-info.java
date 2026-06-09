@@ -17,6 +17,11 @@ module de.gupta.clean.crud
 	requires transitive org.apache.tomcat.embed.core;
 	requires transitive org.aspectj.weaver;
 	requires transitive org.slf4j;
+	requires spring.boot;
+	requires spring.boot.autoconfigure;
+	requires com.fasterxml.jackson.databind;
+	requires static org.springdoc.openapi.common;
+	requires static io.swagger.v3.oas.models;
 
 	exports de.gupta.clean.crud.template.domain.mapping;
 	exports de.gupta.clean.crud.template.domain.mapping.fetch;
@@ -32,6 +37,7 @@ module de.gupta.clean.crud
 	exports de.gupta.clean.crud.template.domain.model.identified;
 	exports de.gupta.clean.crud.template.domain.model.validation;
 	exports de.gupta.clean.crud.template.domain.relationship;
+	exports de.gupta.clean.crud.template.generation.specification;
 	exports de.gupta.clean.crud.template.domain.service.constraints;
 	exports de.gupta.clean.crud.template.domain.service.crud.policy;
 	exports de.gupta.clean.crud.template.domain.service.equality;
@@ -108,5 +114,24 @@ module de.gupta.clean.crud
 	exports de.gupta.clean.crud.template.useCases.query.suppliedProperty.collection.facade;
 	exports de.gupta.clean.crud.template.useCases.query.suppliedProperty.unique.api.web;
 	exports de.gupta.clean.crud.template.useCases.query.suppliedProperty.unique.facade;
+	exports de.gupta.clean.crud.template.useCases.process.application.dispatch;
+	exports de.gupta.clean.crud.template.useCases.process.application.execution;
+	exports de.gupta.clean.crud.template.useCases.process.application.registration;
+	exports de.gupta.clean.crud.template.useCases.process.domain.action;
+	exports de.gupta.clean.crud.template.useCases.process.domain.definition;
+	exports de.gupta.clean.crud.template.useCases.process.domain.model.id;
+	exports de.gupta.clean.crud.template.useCases.process.domain.model.outcome;
+	exports de.gupta.clean.crud.template.useCases.process.domain.model.policy;
+	exports de.gupta.clean.crud.template.useCases.process.domain.model.task;
+	exports de.gupta.clean.crud.template.useCases.process.infrastructure.persistence;
+	exports de.gupta.clean.crud.template.useCases.process.infrastructure.persistence.model;
+	exports de.gupta.clean.crud.template.useCases.process.infrastructure.spring;
+	exports de.gupta.clean.crud.template.useCases.process.port.persistence;
+	exports de.gupta.clean.crud.template.useCases.process.port.scheduling;
 	exports de.gupta.clean.crud.template.infrastructure.persistence.history.audit;
+
+	opens de.gupta.clean.crud.template.useCases.process.infrastructure.persistence.model;
+	opens de.gupta.clean.crud.template.useCases.process.infrastructure.persistence;
+	opens de.gupta.clean.crud.template.useCases.process.infrastructure.spring;
+	opens de.gupta.clean.crud.template.infrastructure.web.openapi;
 }

@@ -18,10 +18,20 @@ import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommi
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateFetchPort;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateMutationPort;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinitionContract;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.service.AggregateCrudServices;
 import de.gupta.clean.crud.template.useCases.crud.delete.application.service.AbstractDeleteService;
 import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.AbstractFetchService;
 import de.gupta.clean.crud.template.useCases.crud.save.application.service.AbstractSaveService;
 import de.gupta.clean.crud.template.useCases.crud.update.application.service.AbstractUpdateService;
+import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
+import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStarter;
+import de.gupta.clean.crud.template.useCases.process.domain.definition.DurableProcessDefinition;
+import de.gupta.clean.crud.template.useCases.process.domain.definition.DurableProcessPayload;
+import de.gupta.clean.crud.template.useCases.process.domain.definition.DurableProcessTrigger;
+import de.gupta.clean.crud.template.useCases.process.domain.model.id.CorrelationId;
+import de.gupta.clean.crud.template.useCases.process.domain.model.id.DurableProcessTaskId;
+import de.gupta.clean.crud.template.useCases.process.domain.model.policy.BackoffPolicy;
+import de.gupta.clean.crud.template.useCases.process.domain.model.policy.RetryPolicy;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -123,6 +133,94 @@ class AbstractCrudServicesEngineBackedTest
 		TestDeleteService deleteService = new TestDeleteService(definition, engine);
 
 		assertThrows(ResourceNotFoundException.class, () -> deleteService.deleteById("missing"));
+	}
+
+	@Test
+	void aggregateCrudServicesSaveServiceCanStartDurableProcesses()
+	{
+		TestAggregateDefinition definition = new TestAggregateDefinition();
+		var startedRequests = new java.util.ArrayList<DurableProcessStartRequest<?, ?>>();
+		var engine = DefaultAggregateLifecycleEngine.withTransactionRunnerAndDurableProcessStarter(
+				new InlineTransactionRunner(),
+				new RecordingDurableProcessStarter(startedRequests));
+		var processDefinition = DurableProcessDefinition.of("test-process", SavedTrigger.class, SavedPayload.class);
+		var retryPolicy = new RetryPolicy(2, BackoffPolicy.fixed(java.time.Duration.ofMillis(5)));
+
+		var saveService = AggregateCrudServices.saveService(
+				definition,
+				engine,
+				savedModels -> savedModels.stream()
+				                          .map(saved -> new DurableProcessStartRequest<>(
+												  processDefinition,
+												  new SavedTrigger(saved.id()),
+												  new SavedPayload(saved.model()),
+												  new CorrelationId("saved:" + saved.id()),
+												  retryPolicy))
+				                          .<DurableProcessStartRequest<?, ?>>map(request -> request)
+				                          .toList());
+
+		saveService.save("saved");
+
+		assertEquals(1, startedRequests.size());
+		assertEquals("test-process", startedRequests.getFirst().definition().processType());
+	}
+
+	@Test
+	void aggregateCrudServicesUpdateServiceCanStartDurableProcesses()
+	{
+		TestAggregateDefinition definition = new TestAggregateDefinition();
+		definition.store.put("id", "before");
+		var startedRequests = new java.util.ArrayList<DurableProcessStartRequest<?, ?>>();
+		var engine = DefaultAggregateLifecycleEngine.withTransactionRunnerAndDurableProcessStarter(
+				new InlineTransactionRunner(),
+				new RecordingDurableProcessStarter(startedRequests));
+		var processDefinition = DurableProcessDefinition.of("test-update-process", SavedTrigger.class,
+				SavedPayload.class);
+		var retryPolicy = new RetryPolicy(2, BackoffPolicy.fixed(java.time.Duration.ofMillis(5)));
+
+		var updateService = AggregateCrudServices.updateService(
+				definition,
+				engine,
+				context -> List.of(new DurableProcessStartRequest<>(
+						processDefinition,
+						new SavedTrigger(context.domainId()),
+						new SavedPayload(context.currentModel().orElseThrow()),
+						new CorrelationId("updated:" + context.domainId()),
+						retryPolicy)));
+
+		updateService.updateById("id", "patched");
+
+		assertEquals(1, startedRequests.size());
+		assertEquals("test-update-process", startedRequests.getFirst().definition().processType());
+	}
+
+	@Test
+	void aggregateCrudServicesDeleteServiceCanStartDurableProcesses()
+	{
+		TestAggregateDefinition definition = new TestAggregateDefinition();
+		definition.store.put("id", "before");
+		var startedRequests = new java.util.ArrayList<DurableProcessStartRequest<?, ?>>();
+		var engine = DefaultAggregateLifecycleEngine.withTransactionRunnerAndDurableProcessStarter(
+				new InlineTransactionRunner(),
+				new RecordingDurableProcessStarter(startedRequests));
+		var processDefinition = DurableProcessDefinition.of("test-delete-process", SavedTrigger.class,
+				SavedPayload.class);
+		var retryPolicy = new RetryPolicy(2, BackoffPolicy.fixed(java.time.Duration.ofMillis(5)));
+
+		var deleteService = AggregateCrudServices.deleteService(
+				definition,
+				engine,
+				context -> List.of(new DurableProcessStartRequest<>(
+						processDefinition,
+						new SavedTrigger(context.domainId()),
+						new SavedPayload(context.previousModel().orElseThrow()),
+						new CorrelationId("deleted:" + context.domainId()),
+						retryPolicy)));
+
+		deleteService.deleteById("id");
+
+		assertEquals(1, startedRequests.size());
+		assertEquals("test-delete-process", startedRequests.getFirst().definition().processType());
 	}
 
 	private static final class TestSaveService
@@ -322,6 +420,25 @@ class AbstractCrudServicesEngineBackedTest
 		public <T> T inTransaction(final Supplier<T> action)
 		{
 			return action.get();
+		}
+	}
+
+	private record SavedTrigger(String id) implements DurableProcessTrigger
+	{
+	}
+
+	private record SavedPayload(String value) implements DurableProcessPayload
+	{
+	}
+
+	private record RecordingDurableProcessStarter(java.util.List<DurableProcessStartRequest<?, ?>> startedRequests)
+			implements DurableProcessStarter
+	{
+		@Override
+		public DurableProcessTaskId start(final DurableProcessStartRequest<?, ?> startRequest)
+		{
+			startedRequests.add(startRequest);
+			return DurableProcessTaskId.random();
 		}
 	}
 }
