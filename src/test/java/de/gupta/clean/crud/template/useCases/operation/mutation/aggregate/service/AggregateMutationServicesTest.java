@@ -70,6 +70,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 class AggregateMutationServicesTest
@@ -81,7 +82,7 @@ class AggregateMutationServicesTest
 		definition.store.put("order-1", new OrderModel("SUBMITTED"));
 		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
-		var service = mutationService(definition, engine);
+		var service = mutationService("test-aggregate", definition, engine);
 
 		var updated = service.mutate(new MutationRequest<>(
 				"order-1",
@@ -108,7 +109,7 @@ class AggregateMutationServicesTest
 		};
 		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
-		var service = mutationService(definition, engine);
+		var service = mutationService("test-aggregate", definition, engine);
 
 		service.mutate(new MutationRequest<>("order-1", new AcknowledgeOrder(), OperationSource.INTERNAL_COMMAND));
 
@@ -131,6 +132,7 @@ class AggregateMutationServicesTest
 		var processDefinition = DurableProcessDefinition.of("order-follow-up", OrderMutated.class, OrderPayload.class);
 		var retryPolicy = new RetryPolicy(3, BackoffPolicy.fixed(Duration.ofSeconds(1)));
 		var service = AggregateMutationServices.mutationService(
+				"test-aggregate",
 				definition,
 				engine,
 				registry(),
@@ -155,6 +157,7 @@ class AggregateMutationServicesTest
 		var observedContexts = new ArrayList<MutationContext<String, OrderModel>>();
 		var engine = DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
 		var service = AggregateMutationServices.mutationService(
+				"test-aggregate",
 				definition,
 				engine,
 				registry(),
@@ -185,7 +188,7 @@ class AggregateMutationServicesTest
 		definition.store.put("order-1", new OrderModel("SUBMITTED"));
 		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
-		var service = AggregateMutationServices.mutationService(definition, engine,
+		var service = AggregateMutationServices.mutationService("test-aggregate", definition, engine,
 				MutationHandlerRegistry.of(List.of()));
 
 		var exception = assertThrows(
@@ -205,7 +208,7 @@ class AggregateMutationServicesTest
 		definition.store.put("order-1", new OrderModel("SUBMITTED"));
 		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
-		var service = mutationService(definition, engine);
+		var service = mutationService("test-aggregate", definition, engine);
 
 		assertThrows(
 				AccessDeniedException.class,
@@ -222,7 +225,7 @@ class AggregateMutationServicesTest
 		definition.store.put("order-1", new OrderModel("SUBMITTED"));
 		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
-		var service = mutationService(definition, engine);
+		var service = mutationService("test-aggregate", definition, engine);
 
 		var updated = service.mutate(new MutationRequest<>(
 				"order-1",
@@ -239,7 +242,7 @@ class AggregateMutationServicesTest
 		definition.store.put("order-1", new OrderModel("SUBMITTED"));
 		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
-		var service = mutationService(definition, engine);
+		var service = mutationService("test-aggregate", definition, engine);
 
 		assertThrows(
 				InvalidRequestException.class,
@@ -256,7 +259,7 @@ class AggregateMutationServicesTest
 		definition.store.put("order-1", new OrderModel("SUBMITTED"));
 		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
-		var service = mutationService(definition, engine);
+		var service = mutationService("test-aggregate", definition, engine);
 
 		var result = service.mutate(new MutationRequest<>(
 				"order-1",
@@ -276,7 +279,7 @@ class AggregateMutationServicesTest
 		definition.store.put("order-1", new OrderModel("SUBMITTED"));
 		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
-		var service = mutationService(definition, engine);
+		var service = mutationService("test-aggregate", definition, engine);
 
 		var result = service.mutateWithResult(new MutationRequest<>(
 				"order-1",
@@ -298,7 +301,7 @@ class AggregateMutationServicesTest
 		var engine = DefaultAggregateLifecycleEngine.withTransactionRunnerAndMutationQuarantineRecorder(
 				new InlineTransactionRunner(),
 				recorder);
-		var service = mutationService(definition, engine);
+		var service = mutationService("test-aggregate", definition, engine);
 
 		var result = service.mutateWithResult(new MutationRequest<>(
 				"order-1",
@@ -319,7 +322,7 @@ class AggregateMutationServicesTest
 		var engine = DefaultAggregateLifecycleEngine.withTransactionRunnerAndMutationQuarantineRecorder(
 				new InlineTransactionRunner(),
 				recorder);
-		var service = mutationService(definition, engine);
+		var service = mutationService("test-aggregate", definition, engine);
 		var replayGateway = (MutationQuarantineReplayGateway) service;
 
 		var result = replayGateway.replay(new MutationQuarantineReplayCommand(
@@ -341,8 +344,9 @@ class AggregateMutationServicesTest
 		var secondDefinition = new AlternateAggregateDefinition();
 		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
-		var firstService = mutationService(firstDefinition, engine);
-		var secondService = AggregateMutationServices.mutationService(secondDefinition, engine, registry());
+		var firstService = mutationService("test-aggregate", firstDefinition, engine);
+		var secondService =
+				AggregateMutationServices.mutationService("test-aggregate-2", secondDefinition, engine, registry());
 
 		assertDoesNotThrow(() -> DefaultMutationQuarantineReplayRegistry.of(List.of(
 				(MutationQuarantineReplayGateway) firstService,
@@ -350,18 +354,16 @@ class AggregateMutationServicesTest
 	}
 
 	@Test
-	void quarantineReplayGatewayUsesBeanNameWhenAvailable()
+	void quarantineReplayGatewayReturnsExplicitAggregateKey()
 	{
 		var definition = new TestAggregateDefinition();
 		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
-		var service = (DefaultAggregateMutationService<String, OrderModel, String, String, String>) mutationService(
-				definition,
-				engine);
+		var service = (MutationQuarantineReplayGateway) mutationService("order-mutation", definition, engine);
 
-		service.setBeanName("orderMutationService");
-
-		assertEquals("orderMutationService", service.aggregateType());
+		assertThat(service.aggregateType())
+				.as("aggregateType should return the explicit key passed at construction")
+				.isEqualTo("order-mutation");
 	}
 
 	@Test
@@ -371,7 +373,7 @@ class AggregateMutationServicesTest
 		definition.store.put("order-1", new OrderModel("SUBMITTED"));
 		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
-		var service = mutationService(definition, engine);
+		var service = mutationService("test-aggregate", definition, engine);
 
 		MutationResult<String, OrderModel> result = service.mutateWithResult(new MutationRequest<>(
 				"order-1",
@@ -390,7 +392,7 @@ class AggregateMutationServicesTest
 		var definition = new TestAggregateDefinition();
 		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
-		var service = mutationService(definition, engine);
+		var service = mutationService("test-aggregate", definition, engine);
 
 		assertThrows(
 				ResourceNotFoundException.class,
@@ -407,7 +409,7 @@ class AggregateMutationServicesTest
 		definition.store.put("order-1", new OrderModel("SUBMITTED"));
 		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
-		var service = mutationService(definition, engine);
+		var service = mutationService("test-aggregate", definition, engine);
 
 		var updated = service.mutate(new MutationRequest<>(
 				"order-1",
@@ -431,10 +433,11 @@ class AggregateMutationServicesTest
 	}
 
 	private MutationService<String, OrderModel> mutationService(
+			final String aggregateKey,
 			final TestAggregateDefinition definition,
 			final AggregateLifecycleEngine engine)
 	{
-		return AggregateMutationServices.mutationService(definition, engine, registry());
+		return AggregateMutationServices.mutationService(aggregateKey, definition, engine, registry());
 	}
 
 	private MutationHandlerRegistry<OrderModel> registry()

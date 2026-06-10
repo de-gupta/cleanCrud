@@ -26,11 +26,9 @@ import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domai
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.BeanNameAware;
-import org.springframework.util.ClassUtils;
-
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -41,7 +39,7 @@ public final class DefaultAggregateMutationService<
 		DomainModelUpdatePatch,
 		DomainModelResponse>
 		extends AbstractMutationService<DomainId, DomainModel>
-		implements MutationQuarantineReplayGateway, BeanNameAware
+		implements MutationQuarantineReplayGateway
 {
 	private static final Logger log = LoggerFactory.getLogger(DefaultAggregateMutationService.class);
 
@@ -54,10 +52,10 @@ public final class DefaultAggregateMutationService<
 	private final AggregateDefinitionGuard definitionGuard;
 	private final SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy;
 	private final AggregateMutationCoordinator mutationCoordinator;
-	private final String defaultAggregateType;
-	private String aggregateType;
+	private final String aggregateType;
 
 	public DefaultAggregateMutationService(
+			final String aggregateKey,
 			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
 			final AggregateLifecycleEngine engine,
@@ -68,6 +66,7 @@ public final class DefaultAggregateMutationService<
 			final SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy,
 			final AggregateMutationCoordinator mutationCoordinator)
 	{
+		this.aggregateType = Objects.requireNonNull(aggregateKey, "aggregateKey");
 		this.definition = definition;
 		this.engine = engine;
 		this.handlerRegistry = handlerRegistry;
@@ -75,8 +74,6 @@ public final class DefaultAggregateMutationService<
 		this.definitionGuard = definitionGuard;
 		this.sourceAwareMutationPolicy = sourceAwareMutationPolicy;
 		this.mutationCoordinator = mutationCoordinator;
-		this.defaultAggregateType = ClassUtils.getUserClass(definition.fetchPort()).getName();
-		this.aggregateType = defaultAggregateType;
 	}
 
 	@Override
@@ -104,17 +101,6 @@ public final class DefaultAggregateMutationService<
 						command.correlationId(),
 						command.causationId()),
 				Optional.of(command.quarantineId()));
-	}
-
-	@Override
-	public void setBeanName(final String name)
-	{
-		if (name != null && !name.isBlank())
-		{
-			this.aggregateType = name;
-			return;
-		}
-		this.aggregateType = defaultAggregateType;
 	}
 
 	private MutationResult<DomainId, DomainModel> mutateWithResult(

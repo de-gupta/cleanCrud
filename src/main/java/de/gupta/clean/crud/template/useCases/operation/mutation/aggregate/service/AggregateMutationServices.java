@@ -19,12 +19,14 @@ public final class AggregateMutationServices
 {
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
 	MutationService<DomainId, DomainModel> mutationService(
+			final String aggregateKey,
 			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
 			final AggregateLifecycleEngine engine,
 			final MutationHandlerRegistry<DomainModel> handlerRegistry)
 	{
 		return mutationService(
+				aggregateKey,
 				definition,
 				engine,
 				handlerRegistry,
@@ -35,6 +37,7 @@ public final class AggregateMutationServices
 
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
 	MutationService<DomainId, DomainModel> mutationService(
+			final String aggregateKey,
 			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
 			final AggregateLifecycleEngine engine,
@@ -43,6 +46,7 @@ public final class AggregateMutationServices
 					durableProcessStartRequests)
 	{
 		return mutationService(
+				aggregateKey,
 				definition,
 				engine,
 				handlerRegistry,
@@ -53,6 +57,7 @@ public final class AggregateMutationServices
 
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
 	MutationService<DomainId, DomainModel> mutationService(
+			final String aggregateKey,
 			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
 			final AggregateLifecycleEngine engine,
@@ -60,12 +65,13 @@ public final class AggregateMutationServices
 			final AggregateDefinitionGuard definitionGuard,
 			final SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy)
 	{
-		return mutationService(definition, engine, handlerRegistry, _ -> List.of(), definitionGuard,
+		return mutationService(aggregateKey, definition, engine, handlerRegistry, _ -> List.of(), definitionGuard,
 				sourceAwareMutationPolicy);
 	}
 
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
 	MutationService<DomainId, DomainModel> mutationService(
+			final String aggregateKey,
 			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
 			final AggregateLifecycleEngine engine,
@@ -76,6 +82,7 @@ public final class AggregateMutationServices
 			final SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy)
 	{
 		return new DefaultAggregateMutationService<>(
+				aggregateKey,
 				definition,
 				engine,
 				handlerRegistry,

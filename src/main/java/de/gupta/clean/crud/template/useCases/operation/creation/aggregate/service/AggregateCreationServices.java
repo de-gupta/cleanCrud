@@ -20,12 +20,14 @@ public final class AggregateCreationServices
 {
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
 	CreationService<DomainId, DomainModel> creationService(
+			final String aggregateKey,
 			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
 			final AggregateLifecycleEngine engine,
 			final CreationHandlerRegistry<DomainModelCreate> handlerRegistry)
 	{
 		return creationService(
+				aggregateKey,
 				definition,
 				engine,
 				handlerRegistry,
@@ -37,6 +39,7 @@ public final class AggregateCreationServices
 
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
 	CreationService<DomainId, DomainModel> creationService(
+			final String aggregateKey,
 			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
 			final AggregateLifecycleEngine engine,
@@ -45,6 +48,7 @@ public final class AggregateCreationServices
 					durableProcessStartRequests)
 	{
 		return creationService(
+				aggregateKey,
 				definition,
 				engine,
 				handlerRegistry,
@@ -56,6 +60,7 @@ public final class AggregateCreationServices
 
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
 	CreationService<DomainId, DomainModel> creationService(
+			final String aggregateKey,
 			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
 			final AggregateLifecycleEngine engine,
@@ -67,6 +72,7 @@ public final class AggregateCreationServices
 			final SourceAwareCreationPolicy<DomainModel> sourceAwareCreationPolicy)
 	{
 		return new DefaultAggregateCreationService<>(
+				aggregateKey,
 				definition,
 				engine,
 				handlerRegistry,

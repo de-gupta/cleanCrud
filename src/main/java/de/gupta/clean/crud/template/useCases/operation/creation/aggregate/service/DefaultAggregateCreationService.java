@@ -26,11 +26,9 @@ import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domai
 import de.gupta.clean.crud.template.useCases.operation.domain.model.ApplicationOperationPayload;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
-import org.springframework.beans.factory.BeanNameAware;
-import org.springframework.util.ClassUtils;
-
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -41,7 +39,7 @@ public final class DefaultAggregateCreationService<
 		DomainModelUpdatePatch,
 		DomainModelResponse>
 		extends AbstractCreationService<DomainId, DomainModel>
-		implements CreationQuarantineReplayGateway, BeanNameAware
+		implements CreationQuarantineReplayGateway
 {
 	private final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 			DomainModelResponse> definition;
@@ -52,10 +50,10 @@ public final class DefaultAggregateCreationService<
 	private final AggregateDefinitionGuard definitionGuard;
 	private final AggregateSaveCoordinator saveCoordinator;
 	private final SourceAwareCreationPolicy<DomainModel> sourceAwareCreationPolicy;
-	private final String defaultAggregateType;
-	private String aggregateType;
+	private final String aggregateType;
 
 	public DefaultAggregateCreationService(
+			final String aggregateKey,
 			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
 			final AggregateLifecycleEngine engine,
@@ -66,6 +64,7 @@ public final class DefaultAggregateCreationService<
 			final AggregateSaveCoordinator saveCoordinator,
 			final SourceAwareCreationPolicy<DomainModel> sourceAwareCreationPolicy)
 	{
+		this.aggregateType = Objects.requireNonNull(aggregateKey, "aggregateKey");
 		this.definition = definition;
 		this.engine = engine;
 		this.handlerRegistry = handlerRegistry;
@@ -73,8 +72,6 @@ public final class DefaultAggregateCreationService<
 		this.definitionGuard = definitionGuard;
 		this.saveCoordinator = saveCoordinator;
 		this.sourceAwareCreationPolicy = sourceAwareCreationPolicy;
-		this.defaultAggregateType = ClassUtils.getUserClass(definition.fetchPort()).getName();
-		this.aggregateType = defaultAggregateType;
 	}
 
 	@Override
@@ -100,17 +97,6 @@ public final class DefaultAggregateCreationService<
 						command.correlationId(),
 						command.causationId()),
 				Optional.of(command.quarantineId()));
-	}
-
-	@Override
-	public void setBeanName(final String name)
-	{
-		if (name != null && !name.isBlank())
-		{
-			this.aggregateType = name;
-			return;
-		}
-		this.aggregateType = defaultAggregateType;
 	}
 
 	private CreationResult<DomainId, DomainModel> createWithResult(

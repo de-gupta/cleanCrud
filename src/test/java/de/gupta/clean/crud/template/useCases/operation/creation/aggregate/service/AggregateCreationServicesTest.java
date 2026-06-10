@@ -62,7 +62,7 @@ class AggregateCreationServicesTest
 		var definition = new TestAggregateDefinition();
 		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
-		var service = creationService(definition, engine);
+		var service = creationService("test-aggregate", definition, engine);
 
 		var created = service.create(new CreationRequest<>(
 				new OpenOrder("AAPL", 100),
@@ -87,7 +87,7 @@ class AggregateCreationServicesTest
 		};
 		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
-		var service = creationService(definition, engine);
+		var service = creationService("test-aggregate", definition, engine);
 
 		service.create(new CreationRequest<>(new OpenOrder("AAPL", 100), OperationSource.INTERNAL_COMMAND));
 
@@ -110,6 +110,7 @@ class AggregateCreationServicesTest
 				OrderPayload.class);
 		var retryPolicy = new RetryPolicy(3, BackoffPolicy.fixed(Duration.ofSeconds(1)));
 		var service = AggregateCreationServices.creationService(
+				"test-aggregate",
 				definition,
 				engine,
 				registry(),
@@ -133,6 +134,7 @@ class AggregateCreationServicesTest
 		var observedContexts = new ArrayList<CreationContext<String, OrderModel>>();
 		var engine = DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
 		var service = AggregateCreationServices.creationService(
+				"test-aggregate",
 				definition,
 				engine,
 				registry(),
@@ -165,7 +167,7 @@ class AggregateCreationServicesTest
 		var definition = new TestAggregateDefinition();
 		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
-		var service = AggregateCreationServices.creationService(definition, engine,
+		var service = AggregateCreationServices.creationService("test-aggregate", definition, engine,
 				CreationHandlerRegistry.of(List.of()));
 
 		var exception = assertThrows(
@@ -183,7 +185,7 @@ class AggregateCreationServicesTest
 		var definition = new AccessDeniedAggregateDefinition();
 		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
-		var service = creationService(definition, engine);
+		var service = creationService("test-aggregate", definition, engine);
 
 		assertThrows(
 				AccessDeniedException.class,
@@ -198,7 +200,7 @@ class AggregateCreationServicesTest
 		var definition = new AccessDeniedAggregateDefinition();
 		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
-		var service = creationService(definition, engine);
+		var service = creationService("test-aggregate", definition, engine);
 
 		var created = service.create(new CreationRequest<>(
 				new OpenOrder("AAPL", 100),
@@ -213,7 +215,7 @@ class AggregateCreationServicesTest
 		var definition = new QuarantiningAggregateDefinition();
 		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
-		var service = creationService(definition, engine);
+		var service = creationService("test-aggregate", definition, engine);
 
 		var result = service.createWithResult(new CreationRequest<>(
 				new OpenOrder("AAPL", 100),
@@ -230,7 +232,8 @@ class AggregateCreationServicesTest
 	{
 		var definition = new AggregateOrderDefinition();
 		var engine = DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
-		var service = AggregateCreationServices.creationService(definition, engine, aggregateRegistry());
+		var service =
+				AggregateCreationServices.creationService("test-aggregate", definition, engine, aggregateRegistry());
 
 		var created = service.create(new CreationRequest<>(
 				new OpenOrderWithLine("AAPL", "entry"),
@@ -246,7 +249,8 @@ class AggregateCreationServicesTest
 	{
 		var definition = new QuarantiningAggregateOrderDefinition();
 		var engine = DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
-		var service = AggregateCreationServices.creationService(definition, engine, aggregateRegistry());
+		var service =
+				AggregateCreationServices.creationService("test-aggregate", definition, engine, aggregateRegistry());
 
 		var result = service.createWithResult(new CreationRequest<>(
 				new OpenOrderWithLine("AAPL", "blocked"),
@@ -260,11 +264,12 @@ class AggregateCreationServicesTest
 	}
 
 	private static DefaultAggregateCreationService<String, OrderModel, OrderCreate, String, String> creationService(
+			final String aggregateKey,
 			final AggregateCrudDefinition<String, OrderModel, OrderCreate, String, String> definition,
 			final AggregateLifecycleEngine engine)
 	{
 		return (DefaultAggregateCreationService<String, OrderModel, OrderCreate, String, String>)
-				AggregateCreationServices.creationService(definition, engine, registry());
+				AggregateCreationServices.creationService(aggregateKey, definition, engine, registry());
 	}
 
 	private static CreationHandlerRegistry<OrderCreate> registry()

@@ -83,7 +83,7 @@ class AggregateMutationRelationshipSupportTest
 		var engine =
 				de.gupta.clean.crud.template.useCases.crud.aggregate.engine.DefaultAggregateLifecycleEngine.withTransactionRunner(
 						new InlineTransactionRunner());
-		return AggregateMutationServices.mutationService(definition, engine, registry);
+		return AggregateMutationServices.mutationService("test-aggregate", definition, engine, registry);
 	}
 
 	private MutationHandlerRegistry<MasterModel> registry()
