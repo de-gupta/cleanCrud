@@ -8,71 +8,6 @@ excluded — it is already tracked.
 ---
 
 ## Part 1 — Architecture & Code Quality
-
-### 1.1 The Five-Layer Mechanical Pipeline (Highest Priority)
-
-For every CRUD operation the call chain is:
-
-```
-SpringRestController
-  → ApplicationController          ← no logic, pure pass-through
-    → ServiceFacade                ← maps API ↔ domain types
-      → Service (AbstractSave/Fetch/Update/Delete)  ← one call to engine
-        → AggregateLifecycleEngine ← where work actually happens
-```
-
-The concrete `ApplicationController` classes contain no logic: every method delegates
-to the service verbatim. The `SpringRestController` and `ApplicationController` differ
-only by whether the return type is wrapped in `ResponseEntity`. Between them sits an
-`Abstract*Service` layer that is an equally empty one-liner: it delegates to the
-engine with no added value. The result is **~48 files** of scaffolding, each 10–30
-lines, that exist purely as structural ceremony.
-
-**Fix:** The `ApplicationController` layer has a legitimate purpose: it provides the
-non-HTTP entry point for callers such as service-to-service messaging, scheduled jobs,
-or internal orchestration that drives CRUD operations without going through HTTP. It is
-a valid boundary and should not be deleted. The real redundancy is the
-`Abstract*Service` layer (`AbstractSaveService`, `AbstractFetchService`,
-`AbstractUpdateService`, `AbstractDeleteService`) — each is a one-liner that does
-nothing but call the engine, has no logic, and carries dead type parameters (see 1.7).
-These service classes sit between the facade and the engine and add no value.
-
-**Files to delete (representative):**
-
-- `useCases/crud/save/application/service/AbstractSaveService.java`
-- `useCases/crud/fetch/application/service/AbstractFetchService.java`
-- `useCases/crud/update/application/service/AbstractUpdateService.java`
-- `useCases/crud/delete/application/service/AbstractDeleteService.java`
-
-Wire both the `ApplicationController` and the `ServiceFacade` directly to the engine
-via `AggregateCrudServices`. The `SpringRestController` → `ApplicationController` →
-`ServiceFacade` → engine path becomes `SpringRestController` → `ServiceFacade` →
-engine, and the non-HTTP path becomes `ApplicationController` → engine directly.
-
----
-
-### 1.2 Interface + Abstract Class for Every Layer (Speculative Generality)
-
-Every layer carries both an interface and an abstract class even when:
-
-- There is only one concrete implementation.
-- The abstract class has no abstract methods (just protected constructor + delegation).
-- The interface and the abstract class have identical method signatures.
-
-Examples: `SaveServiceFacade` / `AbstractSaveServiceFacade`,
-`SavePersistenceService` / `AbstractSavePersistenceService`,
-`SavePersistenceModelRepository` / `AbstractPersistenceModelJpaSaveRepository`.
-
-The interfaces for persistence repositories (`SavePersistenceModelRepository`,
-`FetchPersistenceModelRepository`, etc.) exist solely to be implemented by one
-abstract class which is itself never directly instantiated. They provide no seam
-for testing or substitution that the abstract class itself doesn't already provide.
-
-**Fix:** Where there is only one concrete implementation and no planned variation,
-collapse interface + abstract class into a single concrete or abstract class.
-Reserve interfaces for genuine ports (already done correctly with
-`AggregateFetchPort`, `AggregateMutationPort`).
-
 ---
 
 ### 1.3 Infrastructure Code Inside the Use Cases Package
@@ -158,28 +93,6 @@ the mapping naturally belongs at the controller boundary.
 
 ---
 
-### 1.7 Dead Type Parameters on Service Classes
-
-`AbstractSaveService` is declared with five type parameters:
-
-```java
-public abstract class AbstractSaveService<
-		MasterDomainId,
-		MasterDomainModel,           // never used in this class body
-		MasterDomainModelCreate,
-		MasterDomainModelUpdatePatch, // never used in this class body
-		MasterDomainModelResponse>
-```
-
-`MasterDomainModel` and `MasterDomainModelUpdatePatch` are dragged along solely to
-satisfy the `AggregateCrudDefinition` generic signature. Same pattern in
-`AbstractFetchService`, `AbstractUpdateService`, `AbstractDeleteService`.
-
-**Fix:** This is a downstream symptom of the unnecessary service layer. Resolves
-naturally when those abstract service classes are deleted (see 1.1).
-
----
-
 ### 1.8 `BEST_EFFORT` Bulk Operations Silently Swallow Exceptions
 
 In `DefaultAggregateLifecycleEngine`:
@@ -232,32 +145,6 @@ generation). The algorithm's correctness is hard to reason about in-situ.
 ---
 
 ## Part 2 — Feature Gaps
-
-### 2.1 No Domain Events / Lifecycle Hooks
-
-The engine executes saves, updates, and deletes internally with no extension points.
-There is no way for consumers to react to lifecycle events (post-save, post-update,
-post-delete) without modifying engine internals or wrapping ports.
-
-**Missing:** An `AggregateLifecycleListener<M>` or `AggregateEventPublisher` hook on
-`AggregateCrudDefinition` that the engine calls after successful operations. Consumers
-plug in their event bus, audit log, cache invalidation, etc. without touching the engine.
-
----
-
-### 2.2 Many-to-Many Relationship Support (Not a Current Gap)
-
-The standard builder library covers all cardinalities that the current use cases
-require: one-to-one owned, one-to-many owned, one-to-one referenced, and one-to-many
-referenced. The cardinality enum (`ONE_TO_ONE`, `ONE_TO_MANY`) reflects the actual
-domain modelling choices made by the framework's consumers — many-to-many relationships
-are typically resolved at the domain level into two one-to-many relationships via an
-explicit join aggregate.
-
-This is noted here for completeness only; it is not an active gap in the current use
-cases and adding it prematurely would be speculative generality.
-
----
 
 ### 2.3 No Soft Delete Support
 
@@ -389,20 +276,6 @@ runtime users and the generator.
 package-level Javadoc or a dedicated section of the README. Clarify the lifecycle:
 "implement `Relationships` once; the generator reads it at build time, `fromRelationship()`
 reads it at runtime." This is the missing contract documentation, not a code change.
-
----
-
-### 2.10 No Built-in Validation Framework Integration
-
-`Validatable.validate()` is a custom marker interface. `AbstractModelBuilder` calls
-`model.validate()` after build. However, there is no integration with Bean Validation
-(JSR-380 / `jakarta.validation`). Consumers who already annotate their domain models
-with `@NotNull`, `@Size`, etc. get no automatic enforcement — they must implement
-`validate()` manually and duplicate constraint declarations.
-
-**Missing:** An optional `BeanValidationModelValidator` that implements the
-`validate()` call via `jakarta.validation.Validator`, allowing annotation-driven
-validation to work alongside or instead of the custom `Validatable` contract.
 
 ---
 

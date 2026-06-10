@@ -1,70 +1,10 @@
-# cleanCrud Feature Request
+# cleanCrud Feature Request: Singleton
 
 ## Context
 
 Building a trading engine on top of cleanCrud. Order submission and cancellation fit
 the CRUD model well — domain model, insertion/deletion policies, persistence services,
 REST controllers all wire up cleanly. Two gaps surfaced.
-
----
-
-## Feature 1: Post-operation hooks
-
-### What's needed
-
-Optional hooks on `AggregateCrudDefinition` that fire **after** successful persistence:
-
-```java
-
-@FunctionalInterface
-public interface PostSaveHook<ID, Model>
-{
-	void onSaved(IdentifiedModel<ID, Model> saved);
-}
-
-@FunctionalInterface
-public interface PostDeleteHook<ID, Model>
-{
-	void onDeleted(ID id, Model modelBeforeDeletion);
-}
-```
-
-Wired via the existing fluent builder:
-
-```java
-AggregateCrudDefinitions.aggregateCrudDefinition()
-// ... existing fields ...
-    .
-
-postSaveHook(myPostSaveHook)          // optional
-    .
-
-postDeleteHook(myPostDeleteHook)      // optional
-    .
-
-build();
-```
-
-The engine invokes the hook after the persistence layer commits, before returning to
-the caller. If the hook throws, the operation is considered failed (the caller receives
-an error; whether to roll back depends on the engine's transaction boundary design).
-
-### Our use case
-
-After an Order is persisted as `SUBMITTED`, we must call an external broker API
-(`placeOrder`) with the saved order details. After an Order is updated to `CANCELLED`,
-we must call `cancelOrder` on the same API. Both are fire-and-confirm: the broker
-acknowledges synchronously, then pushes status updates asynchronously.
-
-The `InsertionPolicy` already handles pre-save validation (risk checks). The post-save
-hook handles the outbound side-effect. Without it, the side-effect logic has to live
-outside the framework's lifecycle, which breaks uniformity.
-
-### General usefulness
-
-Any system that needs to trigger side-effects after a successful write: send a webhook,
-publish a domain event, call a downstream API, invalidate a cache, notify an audit log.
-The hook is the standard "outbox-lite" pattern without requiring a full outbox.
 
 ---
 
