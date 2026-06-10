@@ -3,6 +3,7 @@ package de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.infr
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayEnvelope;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayOutcome;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCausationId;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCorrelationId;
@@ -106,10 +107,10 @@ public class JpaMutationQuarantineStore implements MutationQuarantineRepository
 		var persistenceModel = new MutationQuarantinePersistenceModel();
 		persistenceModel.setQuarantineId(record.quarantineId().value());
 		persistenceModel.setAggregateType(record.aggregateType());
-		persistenceModel.setDomainIdType(record.domainIdType());
-		persistenceModel.setDomainIdJson(record.domainIdJson());
-		persistenceModel.setPayloadType(record.payloadType());
-		persistenceModel.setPayloadJson(record.payloadJson());
+		persistenceModel.setDomainIdType(record.domainId().typeKey());
+		persistenceModel.setDomainIdJson(record.domainId().serialized());
+		persistenceModel.setPayloadType(record.payload().typeKey());
+		persistenceModel.setPayloadJson(record.payload().serialized());
 		persistenceModel.setSource(record.source());
 		persistenceModel.setFamily(record.family());
 		persistenceModel.setCorrelationId(record.correlationId().map(OperationCorrelationId::value).orElse(null));
@@ -130,10 +131,8 @@ public class JpaMutationQuarantineStore implements MutationQuarantineRepository
 		return new MutationQuarantineRecord(
 				new MutationQuarantineId(persistenceModel.quarantineId()),
 				persistenceModel.aggregateType(),
-				persistenceModel.domainIdType(),
-				persistenceModel.domainIdJson(),
-				persistenceModel.payloadType(),
-				persistenceModel.payloadJson(),
+				QuarantineReplayEnvelope.of(persistenceModel.domainIdType(), persistenceModel.domainIdJson()),
+				QuarantineReplayEnvelope.of(persistenceModel.payloadType(), persistenceModel.payloadJson()),
 				persistenceModel.source(),
 				persistenceModel.family(),
 				Optional.ofNullable(persistenceModel.correlationId()).map(OperationCorrelationId::new),

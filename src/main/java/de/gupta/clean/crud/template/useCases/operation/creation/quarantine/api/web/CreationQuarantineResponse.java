@@ -12,8 +12,7 @@ import java.util.Optional;
 public record CreationQuarantineResponse(
 		String quarantineId,
 		String aggregateType,
-		String payloadType,
-		String payloadJson,
+		String payloadTypeName,
 		OperationSource source,
 		OperationFamily family,
 		Optional<String> correlationId,

@@ -9,6 +9,7 @@ import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domai
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.CreationQuarantineStatus;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.id.CreationQuarantineId;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.port.persistence.CreationQuarantineRepository;
+import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayEnvelope;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayOutcome;
 
 import java.time.Clock;
@@ -43,8 +44,7 @@ public final class DefaultCreationQuarantineService implements CreationQuarantin
 		var record = new CreationQuarantineRecord(
 				CreationQuarantineId.random(),
 				submission.aggregateType(),
-				serializedPayload.payloadType(),
-				serializedPayload.payloadJson(),
+				QuarantineReplayEnvelope.of(serializedPayload.payloadType(), serializedPayload.payloadJson()),
 				request.source(),
 				request.family(),
 				request.correlationId(),
@@ -92,7 +92,8 @@ public final class DefaultCreationQuarantineService implements CreationQuarantin
 		{
 			var result = gateway.replay(new CreationQuarantineReplayCommand(
 					quarantineId,
-					payloadCodec.deserialize(new SerializedCreationPayload(record.payloadType(), record.payloadJson())),
+					payloadCodec.deserialize(
+							new SerializedCreationPayload(record.payload().typeKey(), record.payload().serialized())),
 					record.family(),
 					record.correlationId(),
 					record.causationId()));

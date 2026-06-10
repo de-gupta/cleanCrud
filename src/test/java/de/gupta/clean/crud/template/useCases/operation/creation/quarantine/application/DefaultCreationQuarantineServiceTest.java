@@ -31,8 +31,7 @@ class DefaultCreationQuarantineServiceTest
 		return new CreationQuarantineRecord(
 				new CreationQuarantineId("quarantine-1"),
 				aggregateType,
-				TestOperationPayload.class.getName(),
-				"{\"value\":\"ack\"}",
+				QuarantineReplayEnvelope.of(TestOperationPayload.class.getName(), "{\"value\":\"ack\"}"),
 				OperationSource.AUTHORITATIVE_EXTERNAL_EVENT,
 				OperationFamily.APPLICATION,
 				Optional.empty(),

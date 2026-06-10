@@ -3,6 +3,7 @@ package de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.appl
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.ApplicationOperationPayload;
+import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayEnvelope;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayOutcome;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.model.MutationResult;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.quarantine.MutationQuarantineRequest;
@@ -45,10 +46,8 @@ public final class DefaultMutationQuarantineService implements MutationQuarantin
 		var record = new MutationQuarantineRecord(
 				MutationQuarantineId.random(),
 				submission.aggregateType(),
-				serializedDomainId.valueType(),
-				serializedDomainId.valueJson(),
-				serializedPayload.valueType(),
-				serializedPayload.valueJson(),
+				QuarantineReplayEnvelope.of(serializedDomainId.valueType(), serializedDomainId.valueJson()),
+				QuarantineReplayEnvelope.of(serializedPayload.valueType(), serializedPayload.valueJson()),
 				request.source(),
 				request.family(),
 				request.correlationId(),
@@ -97,10 +96,10 @@ public final class DefaultMutationQuarantineService implements MutationQuarantin
 			var result = gateway.replay(new MutationQuarantineReplayCommand(
 					quarantineId,
 					valueCodec.deserialize(
-							new SerializedMutationValue(record.domainIdType(), record.domainIdJson()),
+							new SerializedMutationValue(record.domainId().typeKey(), record.domainId().serialized()),
 							Object.class),
 					valueCodec.deserialize(
-							new SerializedMutationValue(record.payloadType(), record.payloadJson()),
+							new SerializedMutationValue(record.payload().typeKey(), record.payload().serialized()),
 							ApplicationOperationPayload.class),
 					record.family(),
 					record.correlationId(),

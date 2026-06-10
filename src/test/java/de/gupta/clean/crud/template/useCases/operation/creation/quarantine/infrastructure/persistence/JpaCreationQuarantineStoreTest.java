@@ -8,6 +8,7 @@ import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domai
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infrastructure.persistence.model.CreationQuarantinePersistenceModel;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationFamily;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
+import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayEnvelope;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayOutcome;
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantViolation;
 import jakarta.persistence.EntityManager;
@@ -90,8 +91,7 @@ class JpaCreationQuarantineStoreTest
 		return new CreationQuarantineRecord(
 				new CreationQuarantineId(id),
 				"aggregate.OrderDefinition",
-				"payload.Type",
-				"{\"command\":\"register\"}",
+				QuarantineReplayEnvelope.of("payload.Type", "{\"command\":\"register\"}"),
 				OperationSource.AUTHORITATIVE_EXTERNAL_EVENT,
 				OperationFamily.APPLICATION,
 				Optional.empty(),

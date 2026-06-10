@@ -11,10 +11,7 @@ public final class MutationQuarantineWebMapper
 		return new MutationQuarantineResponse(
 				record.quarantineId().value(),
 				record.aggregateType(),
-				record.domainIdType(),
-				record.domainIdJson(),
-				record.payloadType(),
-				record.payloadJson(),
+				record.payload().typeKey(),
 				record.source(),
 				record.family(),
 				record.correlationId().map(OperationCorrelationId::value),

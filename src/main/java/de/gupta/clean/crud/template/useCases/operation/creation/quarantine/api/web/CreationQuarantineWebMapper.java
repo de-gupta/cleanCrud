@@ -12,8 +12,7 @@ public final class CreationQuarantineWebMapper
 		return new CreationQuarantineResponse(
 				record.quarantineId().value(),
 				record.aggregateType(),
-				record.payloadType(),
-				record.payloadJson(),
+				record.payload().typeKey(),
 				record.source(),
 				record.family(),
 				record.correlationId().map(OperationCorrelationId::value),

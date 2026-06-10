@@ -4,6 +4,7 @@ import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.vi
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.id.CreationQuarantineId;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationFamily;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
+import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayEnvelope;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayOutcome;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCausationId;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCorrelationId;
@@ -16,8 +17,7 @@ import java.util.Optional;
 public record CreationQuarantineRecord(
 		CreationQuarantineId quarantineId,
 		String aggregateType,
-		String payloadType,
-		String payloadJson,
+		QuarantineReplayEnvelope payload,
 		OperationSource source,
 		OperationFamily family,
 		Optional<OperationCorrelationId> correlationId,
@@ -35,8 +35,7 @@ public record CreationQuarantineRecord(
 	{
 		Objects.requireNonNull(quarantineId, "quarantineId");
 		Objects.requireNonNull(aggregateType, "aggregateType");
-		Objects.requireNonNull(payloadType, "payloadType");
-		Objects.requireNonNull(payloadJson, "payloadJson");
+		Objects.requireNonNull(payload, "payload");
 		Objects.requireNonNull(source, "source");
 		Objects.requireNonNull(family, "family");
 		Objects.requireNonNull(correlationId, "correlationId");
@@ -64,8 +63,7 @@ public record CreationQuarantineRecord(
 		return new CreationQuarantineRecord(
 				quarantineId,
 				aggregateType,
-				payloadType,
-				payloadJson,
+				payload,
 				source,
 				family,
 				correlationId,
@@ -85,8 +83,7 @@ public record CreationQuarantineRecord(
 		return new CreationQuarantineRecord(
 				quarantineId,
 				aggregateType,
-				payloadType,
-				payloadJson,
+				payload,
 				source,
 				family,
 				correlationId,
@@ -109,8 +106,7 @@ public record CreationQuarantineRecord(
 		return new CreationQuarantineRecord(
 				quarantineId,
 				aggregateType,
-				payloadType,
-				payloadJson,
+				payload,
 				source,
 				family,
 				correlationId,

@@ -1,9 +1,6 @@
 package de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application;
 
-import de.gupta.clean.crud.template.useCases.operation.domain.model.ApplicationOperationPayload;
-import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationFamily;
-import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
-import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayOutcome;
+import de.gupta.clean.crud.template.useCases.operation.domain.model.*;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.model.MutationRequest;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.model.MutationResult;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.evaluation.MutationPolicyDecision;
@@ -32,10 +29,8 @@ class DefaultMutationQuarantineServiceTest
 		return new MutationQuarantineRecord(
 				new MutationQuarantineId("quarantine-1"),
 				aggregateType,
-				String.class.getName(),
-				"\"order-1\"",
-				AcknowledgeOrder.class.getName(),
-				"{\"value\":\"ack\"}",
+				QuarantineReplayEnvelope.of(String.class.getName(), "\"order-1\""),
+				QuarantineReplayEnvelope.of(AcknowledgeOrder.class.getName(), "{\"value\":\"ack\"}"),
 				OperationSource.AUTHORITATIVE_EXTERNAL_EVENT,
 				OperationFamily.APPLICATION,
 				Optional.empty(),

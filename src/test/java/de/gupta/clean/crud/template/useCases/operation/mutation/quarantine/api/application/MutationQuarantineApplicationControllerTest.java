@@ -3,6 +3,7 @@ package de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.api.
 import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDeniedException;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationFamily;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
+import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayEnvelope;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationPolicyViolation;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.MutationQuarantineService;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.MutationQuarantineRecord;
@@ -28,10 +29,8 @@ class MutationQuarantineApplicationControllerTest
 		return new MutationQuarantineRecord(
 				new MutationQuarantineId("quarantine-1"),
 				"aggregate.OrderDefinition",
-				String.class.getName(),
-				"\"order-1\"",
-				"payload.Type",
-				"{\"name\":\"value\"}",
+				QuarantineReplayEnvelope.of(String.class.getName(), "\"order-1\""),
+				QuarantineReplayEnvelope.of("payload.Type", "{\"name\":\"value\"}"),
 				OperationSource.AUTHORITATIVE_EXTERNAL_EVENT,
 				OperationFamily.APPLICATION,
 				Optional.empty(),

@@ -12,10 +12,7 @@ import java.util.Optional;
 public record MutationQuarantineResponse(
 		String quarantineId,
 		String aggregateType,
-		String domainIdType,
-		String domainIdJson,
-		String payloadType,
-		String payloadJson,
+		String payloadTypeName,
 		OperationSource source,
 		OperationFamily family,
 		Optional<String> correlationId,

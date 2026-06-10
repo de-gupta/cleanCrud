@@ -10,6 +10,7 @@ import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domai
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.id.CreationQuarantineId;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infrastructure.persistence.model.CreationQuarantinePersistenceModel;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.port.persistence.CreationQuarantineRepository;
+import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayEnvelope;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayOutcome;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCausationId;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCorrelationId;
@@ -107,8 +108,8 @@ public class JpaCreationQuarantineStore implements CreationQuarantineRepository
 		var persistenceModel = new CreationQuarantinePersistenceModel();
 		persistenceModel.setQuarantineId(record.quarantineId().value());
 		persistenceModel.setAggregateType(record.aggregateType());
-		persistenceModel.setPayloadType(record.payloadType());
-		persistenceModel.setPayloadJson(record.payloadJson());
+		persistenceModel.setPayloadType(record.payload().typeKey());
+		persistenceModel.setPayloadJson(record.payload().serialized());
 		persistenceModel.setSource(record.source());
 		persistenceModel.setFamily(record.family());
 		persistenceModel.setCorrelationId(record.correlationId().map(OperationCorrelationId::value).orElse(null));
@@ -129,8 +130,7 @@ public class JpaCreationQuarantineStore implements CreationQuarantineRepository
 		return new CreationQuarantineRecord(
 				new CreationQuarantineId(persistenceModel.quarantineId()),
 				persistenceModel.aggregateType(),
-				persistenceModel.payloadType(),
-				persistenceModel.payloadJson(),
+				QuarantineReplayEnvelope.of(persistenceModel.payloadType(), persistenceModel.payloadJson()),
 				persistenceModel.source(),
 				persistenceModel.family(),
 				Optional.ofNullable(persistenceModel.correlationId()).map(OperationCorrelationId::new),

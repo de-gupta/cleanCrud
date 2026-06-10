@@ -3,6 +3,7 @@ package de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.infr
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationFamily;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
+import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayEnvelope;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayOutcome;
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantSeverity;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationPolicyViolation;
@@ -90,10 +91,8 @@ class JpaMutationQuarantineStoreTest
 		return new MutationQuarantineRecord(
 				new MutationQuarantineId(id),
 				"aggregate.OrderDefinition",
-				String.class.getName(),
-				"\"order-1\"",
-				"payload.Type",
-				"{\"command\":\"ack\"}",
+				QuarantineReplayEnvelope.of(String.class.getName(), "\"order-1\""),
+				QuarantineReplayEnvelope.of("payload.Type", "{\"command\":\"ack\"}"),
 				OperationSource.AUTHORITATIVE_EXTERNAL_EVENT,
 				OperationFamily.APPLICATION,
 				Optional.empty(),
