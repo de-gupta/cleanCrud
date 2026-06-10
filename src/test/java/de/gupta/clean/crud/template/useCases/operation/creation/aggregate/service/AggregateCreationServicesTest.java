@@ -64,7 +64,7 @@ class AggregateCreationServicesTest
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
 		var service = creationService(definition, engine);
 
-		var created = service.incant(new CreationRequest<>(
+		var created = service.create(new CreationRequest<>(
 				new OpenOrder("AAPL", 100),
 				OperationSource.INTERNAL_COMMAND));
 
@@ -89,7 +89,7 @@ class AggregateCreationServicesTest
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
 		var service = creationService(definition, engine);
 
-		service.incant(new CreationRequest<>(new OpenOrder("AAPL", 100), OperationSource.INTERNAL_COMMAND));
+		service.create(new CreationRequest<>(new OpenOrder("AAPL", 100), OperationSource.INTERNAL_COMMAND));
 
 		assertTrue(latch.await(2, TimeUnit.SECONDS));
 		assertEquals(1, contexts.size());
@@ -120,7 +120,7 @@ class AggregateCreationServicesTest
 						new CorrelationId("creation:" + context.domainId().orElseThrow()),
 						retryPolicy)));
 
-		service.incant(new CreationRequest<>(new OpenOrder("AAPL", 100), OperationSource.INTERNAL_COMMAND));
+		service.create(new CreationRequest<>(new OpenOrder("AAPL", 100), OperationSource.INTERNAL_COMMAND));
 
 		assertEquals(1, startedRequests.size());
 		assertEquals("order-create-follow-up", startedRequests.getFirst().definition().processType());
@@ -142,7 +142,7 @@ class AggregateCreationServicesTest
 					return List.of();
 				});
 
-		service.incant(new CreationRequest<>(
+		service.create(new CreationRequest<>(
 				new OpenOrder("AAPL", 100),
 				OperationSource.PROCESS_EMITTED_ACTION,
 				Optional.of(
@@ -170,7 +170,7 @@ class AggregateCreationServicesTest
 
 		var exception = assertThrows(
 				InvalidRequestException.class,
-				() -> service.incant(new CreationRequest<>(
+				() -> service.create(new CreationRequest<>(
 						new OpenOrder("AAPL", 100),
 						OperationSource.AUTHORITATIVE_EXTERNAL_EVENT)));
 
@@ -187,7 +187,7 @@ class AggregateCreationServicesTest
 
 		assertThrows(
 				AccessDeniedException.class,
-				() -> service.incant(new CreationRequest<>(
+				() -> service.create(new CreationRequest<>(
 						new OpenOrder("AAPL", 100),
 						OperationSource.USER_INTENT)));
 	}
@@ -200,7 +200,7 @@ class AggregateCreationServicesTest
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
 		var service = creationService(definition, engine);
 
-		var created = service.incant(new CreationRequest<>(
+		var created = service.create(new CreationRequest<>(
 				new OpenOrder("AAPL", 100),
 				OperationSource.AUTHORITATIVE_EXTERNAL_EVENT));
 
@@ -215,7 +215,7 @@ class AggregateCreationServicesTest
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
 		var service = creationService(definition, engine);
 
-		var result = service.incantWithResult(new CreationRequest<>(
+		var result = service.createWithResult(new CreationRequest<>(
 				new OpenOrder("AAPL", 100),
 				OperationSource.AUTHORITATIVE_EXTERNAL_EVENT));
 
@@ -232,7 +232,7 @@ class AggregateCreationServicesTest
 		var engine = DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
 		var service = AggregateCreationServices.creationService(definition, engine, aggregateRegistry());
 
-		var created = service.incant(new CreationRequest<>(
+		var created = service.create(new CreationRequest<>(
 				new OpenOrderWithLine("AAPL", "entry"),
 				OperationSource.INTERNAL_COMMAND));
 
@@ -248,7 +248,7 @@ class AggregateCreationServicesTest
 		var engine = DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
 		var service = AggregateCreationServices.creationService(definition, engine, aggregateRegistry());
 
-		var result = service.incantWithResult(new CreationRequest<>(
+		var result = service.createWithResult(new CreationRequest<>(
 				new OpenOrderWithLine("AAPL", "blocked"),
 				OperationSource.AUTHORITATIVE_EXTERNAL_EVENT));
 

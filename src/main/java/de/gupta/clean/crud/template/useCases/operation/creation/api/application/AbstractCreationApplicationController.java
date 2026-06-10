@@ -10,9 +10,9 @@ public abstract class AbstractCreationApplicationController<DomainId, DomainMode
 	private final CreationService<DomainId, DomainModel> service;
 
 	@Override
-	public CreationResult<DomainId, DomainModel> invokeWithResult(final CreationRequest<?> request)
+	public CreationResult<DomainId, DomainModel> createWithResult(final CreationRequest<?> request)
 	{
-		return service.incantWithResult(request);
+		return service.createWithResult(request);
 	}
 
 	protected AbstractCreationApplicationController(final CreationService<DomainId, DomainModel> service)

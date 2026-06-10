@@ -36,7 +36,7 @@ interface PostCommitMutationDispatcher
 		{
 			try
 			{
-				executor.execute(() -> invoke(postCommitMutation, context));
+				executor.execute(() -> create(postCommitMutation, context));
 			}
 			catch (RuntimeException e)
 			{
@@ -67,7 +67,7 @@ interface PostCommitMutationDispatcher
 			}
 		}
 
-		private <DomainId, DomainModel> void invoke(
+		private <DomainId, DomainModel> void create(
 				final PostCommitMutation<DomainId, DomainModel> postCommitMutation,
 				final PostCommitMutationContext<DomainId, DomainModel> context)
 		{

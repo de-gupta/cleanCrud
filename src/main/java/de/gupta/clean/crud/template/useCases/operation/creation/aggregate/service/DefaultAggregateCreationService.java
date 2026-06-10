@@ -66,7 +66,7 @@ public final class DefaultAggregateCreationService<
 	}
 
 	@Override
-	public CreationResult<DomainId, DomainModel> incantWithResult(final CreationRequest<?> request)
+	public CreationResult<DomainId, DomainModel> createWithResult(final CreationRequest<?> request)
 	{
 		try
 		{

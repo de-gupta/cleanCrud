@@ -7,10 +7,10 @@ import de.gupta.clean.crud.template.useCases.operation.creation.domain.model.Cre
 @FunctionalInterface
 public interface CreationService<DomainId, DomainModel>
 {
-	default CreateResult<DomainId, DomainModel> incant(final CreationRequest<?> request)
+	default CreateResult<DomainId, DomainModel> create(final CreationRequest<?> request)
 	{
-		return incantWithResult(request).createdOrThrow();
+		return createWithResult(request).createdOrThrow();
 	}
 
-	CreationResult<DomainId, DomainModel> incantWithResult(final CreationRequest<?> request);
+	CreationResult<DomainId, DomainModel> createWithResult(final CreationRequest<?> request);
 }

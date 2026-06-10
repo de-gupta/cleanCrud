@@ -13,90 +13,90 @@ import java.util.Optional;
 @FunctionalInterface
 public interface CreationApplicationController<DomainId, DomainModel>
 {
-	default CreateResult<DomainId, DomainModel> invoke(final CreationRequest<?> request)
+	default CreateResult<DomainId, DomainModel> create(final CreationRequest<?> request)
 	{
-		return invokeWithResult(request).createdOrThrow();
+		return createWithResult(request).createdOrThrow();
 	}
 
-	CreationResult<DomainId, DomainModel> invokeWithResult(final CreationRequest<?> request);
+	CreationResult<DomainId, DomainModel> createWithResult(final CreationRequest<?> request);
 
-	default <Payload extends ApplicationOperationPayload> CreateResult<DomainId, DomainModel> invoke(
+	default <Payload extends ApplicationOperationPayload> CreateResult<DomainId, DomainModel> create(
 			final Payload payload,
 			final OperationSource source)
 	{
-		return invoke(new CreationRequest<>(payload, source));
+		return create(new CreationRequest<>(payload, source));
 	}
 
-	default <Payload extends ApplicationOperationPayload> CreateResult<DomainId, DomainModel> invoke(
+	default <Payload extends ApplicationOperationPayload> CreateResult<DomainId, DomainModel> create(
 			final Payload payload,
 			final OperationSource source,
 			final Optional<OperationCorrelationId> correlationId,
 			final Optional<OperationCausationId> causationId)
 	{
-		return invoke(new CreationRequest<>(payload, source, correlationId, causationId));
+		return create(new CreationRequest<>(payload, source, correlationId, causationId));
 	}
 
-	default <Payload extends ApplicationOperationPayload> CreateResult<DomainId, DomainModel> invokeUserIntent(
+	default <Payload extends ApplicationOperationPayload> CreateResult<DomainId, DomainModel> createUserIntent(
 			final Payload payload)
 	{
-		return invoke(payload, OperationSource.USER_INTENT);
+		return create(payload, OperationSource.USER_INTENT);
 	}
 
-	default <Payload extends ApplicationOperationPayload> CreateResult<DomainId, DomainModel> invokeInternalCommand(
+	default <Payload extends ApplicationOperationPayload> CreateResult<DomainId, DomainModel> createInternalCommand(
 			final Payload payload)
 	{
-		return invoke(payload, OperationSource.INTERNAL_COMMAND);
+		return create(payload, OperationSource.INTERNAL_COMMAND);
 	}
 
 	default <Payload extends ApplicationOperationPayload>
-	CreateResult<DomainId, DomainModel> invokeAuthoritativeExternalEvent(final Payload payload)
+	CreateResult<DomainId, DomainModel> createAuthoritativeExternalEvent(final Payload payload)
 	{
-		return invoke(payload, OperationSource.AUTHORITATIVE_EXTERNAL_EVENT);
+		return create(payload, OperationSource.AUTHORITATIVE_EXTERNAL_EVENT);
 	}
 
-	default <Payload extends ApplicationOperationPayload> CreateResult<DomainId, DomainModel> invokeProcessEmittedAction(
+	default <Payload extends ApplicationOperationPayload> CreateResult<DomainId, DomainModel> createProcessEmittedAction(
 			final Payload payload)
 	{
-		return invoke(payload, OperationSource.PROCESS_EMITTED_ACTION);
+		return create(payload, OperationSource.PROCESS_EMITTED_ACTION);
 	}
 
-	default <Payload extends ApplicationOperationPayload> CreationResult<DomainId, DomainModel> invokeWithResult(
+	default <Payload extends ApplicationOperationPayload> CreationResult<DomainId, DomainModel> createWithResult(
 			final Payload payload,
 			final OperationSource source)
 	{
-		return invokeWithResult(new CreationRequest<>(payload, source));
+		return createWithResult(new CreationRequest<>(payload, source));
 	}
 
-	default <Payload extends ApplicationOperationPayload> CreationResult<DomainId, DomainModel> invokeWithResult(
+	default <Payload extends ApplicationOperationPayload> CreationResult<DomainId, DomainModel> createWithResult(
 			final Payload payload,
 			final OperationSource source,
 			final Optional<OperationCorrelationId> correlationId,
 			final Optional<OperationCausationId> causationId)
 	{
-		return invokeWithResult(new CreationRequest<>(payload, source, correlationId, causationId));
+		return createWithResult(new CreationRequest<>(payload, source, correlationId, causationId));
 	}
 
 	default <Payload extends ApplicationOperationPayload> CreationResult<DomainId, DomainModel>
-	invokeUserIntentWithResult(final Payload payload)
+	createUserIntentWithResult(final Payload payload)
 	{
-		return invokeWithResult(payload, OperationSource.USER_INTENT);
+		return createWithResult(payload, OperationSource.USER_INTENT);
 	}
 
 	default <Payload extends ApplicationOperationPayload> CreationResult<DomainId, DomainModel>
-	invokeInternalCommandWithResult(final Payload payload)
+	createInternalCommandWithResult(final Payload payload)
 	{
-		return invokeWithResult(payload, OperationSource.INTERNAL_COMMAND);
+		return createWithResult(payload, OperationSource.INTERNAL_COMMAND);
 	}
 
 	default <Payload extends ApplicationOperationPayload> CreationResult<DomainId, DomainModel>
-	invokeAuthoritativeExternalEventWithResult(final Payload payload)
+	createAuthoritativeExternalEventWithResult(final Payload payload)
 	{
-		return invokeWithResult(payload, OperationSource.AUTHORITATIVE_EXTERNAL_EVENT);
+		return createWithResult(payload, OperationSource.AUTHORITATIVE_EXTERNAL_EVENT);
 	}
 
 	default <Payload extends ApplicationOperationPayload> CreationResult<DomainId, DomainModel>
-	invokeProcessEmittedActionWithResult(final Payload payload)
+	createProcessEmittedActionWithResult(final Payload payload)
 	{
-		return invokeWithResult(payload, OperationSource.PROCESS_EMITTED_ACTION);
+		return createWithResult(payload, OperationSource.PROCESS_EMITTED_ACTION);
 	}
 }

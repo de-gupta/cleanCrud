@@ -25,7 +25,7 @@ class CreationApplicationControllerTest
 		var service = new RecordingCreationService();
 		var controller = CreationApplicationControllers.controller(service);
 
-		controller.invokeUserIntent(new OpenOrder());
+		controller.createUserIntent(new OpenOrder());
 
 		assertEquals(OperationSource.USER_INTENT, service.lastRequest.source());
 	}
@@ -36,7 +36,7 @@ class CreationApplicationControllerTest
 		var service = new RecordingCreationService();
 		var controller = CreationApplicationControllers.controller(service);
 
-		controller.invokeAuthoritativeExternalEvent(new OpenOrder());
+		controller.createAuthoritativeExternalEvent(new OpenOrder());
 
 		assertEquals(OperationSource.AUTHORITATIVE_EXTERNAL_EVENT, service.lastRequest.source());
 		assertEquals(OpenOrder.class, service.lastRequest.payloadType());
@@ -48,7 +48,7 @@ class CreationApplicationControllerTest
 		var service = new RecordingCreationService();
 		var controller = CreationApplicationControllers.controller(service);
 
-		controller.invoke(
+		controller.create(
 				new OpenOrder(),
 				OperationSource.PROCESS_EMITTED_ACTION,
 				Optional.of(new OperationCorrelationId("corr-1")),
@@ -64,7 +64,7 @@ class CreationApplicationControllerTest
 		var service = new RecordingCreationService();
 		var controller = CreationApplicationControllers.controller(service);
 
-		var result = controller.invokeInternalCommandWithResult(new OpenOrder());
+		var result = controller.createInternalCommandWithResult(new OpenOrder());
 
 		assertEquals("order-1", result.createdOrThrow().domainId());
 		assertEquals(OperationSource.INTERNAL_COMMAND, result.context().source());
@@ -79,7 +79,7 @@ class CreationApplicationControllerTest
 		private CreationRequest<?> lastRequest;
 
 		@Override
-		public CreationResult<String, String> incantWithResult(final CreationRequest<?> request)
+		public CreationResult<String, String> createWithResult(final CreationRequest<?> request)
 		{
 			lastRequest = request;
 			return CreationResult.created(
