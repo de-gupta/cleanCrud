@@ -11,6 +11,11 @@ import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateFetchPort;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateMutationPort;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinitionContract;
+import de.gupta.clean.crud.template.useCases.incantation.domain.policy.access.IncantationAccessPolicy;
+import de.gupta.clean.crud.template.useCases.incantation.domain.policy.consistency.IncantationExternalConsistencyPolicy;
+import de.gupta.clean.crud.template.useCases.incantation.domain.policy.creation.IncantationCreationPolicy;
+import de.gupta.clean.crud.template.useCases.incantation.domain.policy.invariant.IncantationInvariantPolicy;
+import de.gupta.clean.crud.template.useCases.incantation.domain.policy.profile.IncantationPolicyProfileResolver;
 import de.gupta.clean.crud.template.useCases.mutation.domain.policy.access.AccessPolicy;
 import de.gupta.clean.crud.template.useCases.mutation.domain.policy.consistency.ExternalConsistencyPolicy;
 import de.gupta.clean.crud.template.useCases.mutation.domain.policy.invariant.DomainInvariantPolicy;
@@ -91,5 +96,47 @@ public interface AggregateCrudDefinition<MasterDomainId, MasterDomainModel, Mast
 	default ExternalConsistencyPolicy<MasterDomainModel> externalConsistencyPolicy()
 	{
 		return ExternalConsistencyPolicy.allowing();
+	}
+
+	default IncantationPolicyProfileResolver incantationPolicyProfileResolver()
+	{
+		return IncantationPolicyProfileResolver.defaultResolver();
+	}
+
+	default IncantationAccessPolicy<MasterDomainModel> incantationAccessPolicy()
+	{
+		return (_, afterModel) ->
+		{
+			if (!securityPolicy().isAccessAllowed(afterModel))
+			{
+				throw new IllegalStateException("Access not allowed");
+			}
+		};
+	}
+
+	default IncantationCreationPolicy<MasterDomainModel> incantationCreationPolicy()
+	{
+		return (_, afterModel) ->
+		{
+			try
+			{
+				insertionPolicy().validateInsertion(afterModel);
+				return Optional.empty();
+			}
+			catch (RuntimeException e)
+			{
+				return Optional.ofNullable(e.getMessage()).or(() -> Optional.of("Creation rejected"));
+			}
+		};
+	}
+
+	default IncantationInvariantPolicy<MasterDomainModel> incantationInvariantPolicy()
+	{
+		return IncantationInvariantPolicy.allowing();
+	}
+
+	default IncantationExternalConsistencyPolicy<MasterDomainModel> incantationExternalConsistencyPolicy()
+	{
+		return IncantationExternalConsistencyPolicy.allowing();
 	}
 }

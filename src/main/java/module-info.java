@@ -156,6 +156,15 @@ module de.gupta.clean.crud
 	exports de.gupta.clean.crud.template.useCases.process.port.scheduling;
 	exports de.gupta.clean.crud.template.infrastructure.persistence.history.audit;
 
+	exports de.gupta.clean.crud.template.useCases.incantation.domain.policy.access;
+	exports de.gupta.clean.crud.template.useCases.incantation.domain.policy.consistency;
+	exports de.gupta.clean.crud.template.useCases.incantation.domain.policy.creation;
+	exports de.gupta.clean.crud.template.useCases.incantation.domain.policy.invariant;
+	exports de.gupta.clean.crud.template.useCases.incantation.domain.policy.evaluation;
+	exports de.gupta.clean.crud.template.useCases.incantation.domain.policy.profile;
+	exports de.gupta.clean.crud.template.useCases.incantation.domain.policy.quarantine;
+	exports de.gupta.clean.crud.template.useCases.incantation.domain.policy.violation;
+
 	opens de.gupta.clean.crud.template.useCases.process.infrastructure.persistence.model;
 	opens de.gupta.clean.crud.template.useCases.process.infrastructure.persistence;
 	opens de.gupta.clean.crud.template.useCases.process.infrastructure.spring;
@@ -164,5 +173,6 @@ module de.gupta.clean.crud
 	opens de.gupta.clean.crud.template.useCases.mutation.quarantine.infrastructure.persistence.model;
 	opens de.gupta.clean.crud.template.useCases.mutation.quarantine.infrastructure.persistence;
 	opens de.gupta.clean.crud.template.useCases.mutation.quarantine.infrastructure.spring;
+
 	opens de.gupta.clean.crud.template.infrastructure.web.openapi;
 }
