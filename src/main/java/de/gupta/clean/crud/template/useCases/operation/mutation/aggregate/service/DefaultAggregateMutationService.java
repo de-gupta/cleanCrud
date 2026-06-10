@@ -7,7 +7,6 @@ import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommi
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationKind;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateDefinitionGuard;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateLifecycleEngine;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateMutationValidationSupport;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.CrudWorkflowBuilder;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.ApplicationOperationPayload;
@@ -66,7 +65,8 @@ public final class DefaultAggregateMutationService<
 			final Function<MutationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
 					durableProcessStartRequests,
 			final AggregateDefinitionGuard definitionGuard,
-			final SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy)
+			final SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy,
+			final AggregateMutationCoordinator mutationCoordinator)
 	{
 		this.definition = definition;
 		this.engine = engine;
@@ -74,10 +74,7 @@ public final class DefaultAggregateMutationService<
 		this.durableProcessStartRequests = durableProcessStartRequests;
 		this.definitionGuard = definitionGuard;
 		this.sourceAwareMutationPolicy = sourceAwareMutationPolicy;
-		this.mutationCoordinator = AggregateMutationCoordinator.with(
-				new de.gupta.clean.crud.template.useCases.crud.aggregate.engine.SatelliteRelationshipPlanner(),
-				new de.gupta.clean.crud.template.useCases.crud.aggregate.engine.SatelliteReferenceResolver(),
-				new AggregateMutationValidationSupport());
+		this.mutationCoordinator = mutationCoordinator;
 		this.defaultAggregateType = ClassUtils.getUserClass(definition.fetchPort()).getName();
 		this.aggregateType = defaultAggregateType;
 	}

@@ -1,6 +1,6 @@
 package de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.violation;
 
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.invariant.InvariantViolation;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantViolation;
 
 import java.util.Objects;
 import java.util.Optional;

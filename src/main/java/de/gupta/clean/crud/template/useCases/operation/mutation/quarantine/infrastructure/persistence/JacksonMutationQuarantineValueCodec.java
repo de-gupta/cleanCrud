@@ -27,9 +27,9 @@ public final class JacksonMutationQuarantineValueCodec implements MutationQuaran
 					value.getClass().getName(),
 					objectMapper.writeValueAsString(value));
 		}
-		catch (JsonProcessingException e)
+		catch (JsonProcessingException caught)
 		{
-			throw new IllegalStateException("Failed to serialize mutation quarantine value", e);
+			throw new IllegalStateException("Failed to serialize mutation quarantine value", caught);
 		}
 	}
 
@@ -42,9 +42,9 @@ public final class JacksonMutationQuarantineValueCodec implements MutationQuaran
 					value.valueJson(),
 					Class.forName(value.valueType())));
 		}
-		catch (ClassNotFoundException | IOException e)
+		catch (ClassNotFoundException | IOException caught)
 		{
-			throw new IllegalStateException("Failed to deserialize mutation quarantine value", e);
+			throw new IllegalStateException("Failed to deserialize mutation quarantine value", caught);
 		}
 	}
 

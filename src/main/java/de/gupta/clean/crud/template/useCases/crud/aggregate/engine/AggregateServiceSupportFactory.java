@@ -28,6 +28,16 @@ public final class AggregateServiceSupportFactory
 		return VALIDATION_SUPPORT;
 	}
 
+	public static SatelliteRelationshipPlanner relationshipPlanner()
+	{
+		return RELATIONSHIP_PLANNER;
+	}
+
+	public static SatelliteReferenceResolver referenceResolver()
+	{
+		return REFERENCE_RESOLVER;
+	}
+
 	public static AggregateSaveCoordinator saveCoordinator()
 	{
 		return SAVE_COORDINATOR;

@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCausationId;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCorrelationId;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.invariant.InvariantSeverity;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantSeverity;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationPolicyViolation;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationViolationKind;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.MutationQuarantineRecord;
@@ -33,16 +33,6 @@ public class JpaMutationQuarantineStore implements MutationQuarantineRepository
 			final ObjectMapper objectMapper)
 	{
 		return new JpaMutationQuarantineStore(entityManager, objectMapper);
-	}
-
-	public JpaMutationQuarantineStore(
-			final EntityManager entityManager,
-			final ObjectMapper objectMapper)
-	{
-		this.entityManager = Objects.requireNonNull(entityManager, "entityManager");
-		this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
-		this.violationValueType = objectMapper.getTypeFactory()
-		                                      .constructCollectionType(List.class, StoredViolation.class);
 	}
 
 	@Override
@@ -95,6 +85,21 @@ public class JpaMutationQuarantineStore implements MutationQuarantineRepository
 		                    .toList();
 	}
 
+	private String serializeViolations(final List<MutationPolicyViolation> violations)
+	{
+		try
+		{
+			var values = violations.stream()
+			                       .map(StoredViolation::of)
+			                       .toList();
+			return objectMapper.writeValueAsString(values);
+		}
+		catch (JsonProcessingException caught)
+		{
+			throw new IllegalStateException("Failed to serialize mutation quarantine violations", caught);
+		}
+	}
+
 	private MutationQuarantinePersistenceModel toPersistenceModel(final MutationQuarantineRecord record)
 	{
 		var persistenceModel = new MutationQuarantinePersistenceModel();
@@ -142,21 +147,6 @@ public class JpaMutationQuarantineStore implements MutationQuarantineRepository
 				Optional.ofNullable(persistenceModel.lastReplaySummary()));
 	}
 
-	private String serializeViolations(final List<MutationPolicyViolation> violations)
-	{
-		try
-		{
-			var values = violations.stream()
-			                       .map(StoredViolation::of)
-			                       .toList();
-			return objectMapper.writeValueAsString(values);
-		}
-		catch (JsonProcessingException e)
-		{
-			throw new IllegalStateException("Failed to serialize mutation quarantine violations", e);
-		}
-	}
-
 	private List<MutationPolicyViolation> deserializeViolations(final String violationsJson)
 	{
 		try
@@ -166,10 +156,20 @@ public class JpaMutationQuarantineStore implements MutationQuarantineRepository
 			                       .map(StoredViolation::toDomain)
 			                       .toList();
 		}
-		catch (IOException e)
+		catch (IOException caught)
 		{
-			throw new IllegalStateException("Failed to deserialize mutation quarantine violations", e);
+			throw new IllegalStateException("Failed to deserialize mutation quarantine violations", caught);
 		}
+	}
+
+	private JpaMutationQuarantineStore(
+			final EntityManager entityManager,
+			final ObjectMapper objectMapper)
+	{
+		this.entityManager = Objects.requireNonNull(entityManager, "entityManager");
+		this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
+		this.violationValueType = objectMapper.getTypeFactory()
+		                                      .constructCollectionType(List.class, StoredViolation.class);
 	}
 
 	private record StoredViolation(

@@ -6,11 +6,7 @@ import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.api.a
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.api.application.CreationQuarantineApplicationControllers;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.api.web.CreationQuarantineWebMapper;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.api.web.DefaultSpringRestCreationQuarantineController;
-import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application.CreationQuarantinePayloadCodec;
-import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application.CreationQuarantineReplayGateway;
-import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application.CreationQuarantineReplayRegistry;
-import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application.CreationQuarantineService;
-import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application.DefaultCreationQuarantineService;
+import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application.*;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application.recording.CreationQuarantineRecorder;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.policy.CreationQuarantineAccessPolicy;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infrastructure.persistence.JacksonCreationQuarantinePayloadCodec;
@@ -33,9 +29,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.time.Clock;
-import java.util.IdentityHashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 
 @AutoConfiguration(after = HibernateJpaAutoConfiguration.class)
 @EntityScan(basePackageClasses = CreationQuarantinePersistenceModel.class)
@@ -47,7 +41,7 @@ public class CreationQuarantineInfrastructureAutoConfiguration
 	CreationQuarantineReplayRegistry creationQuarantineReplayRegistry(
 			final ListableBeanFactory beanFactory)
 	{
-		return aggregateType -> java.util.Optional.ofNullable(discoverReplayGateways(beanFactory).get(aggregateType));
+		return aggregateType -> Optional.ofNullable(discoverReplayGateways(beanFactory).get(aggregateType));
 	}
 
 	@Bean
@@ -61,7 +55,7 @@ public class CreationQuarantineInfrastructureAutoConfiguration
 			final ListableBeanFactory beanFactory)
 	{
 		var discovered = new LinkedHashMap<String, CreationQuarantineReplayGateway>();
-		var seen = java.util.Collections.newSetFromMap(new IdentityHashMap<CreationQuarantineReplayGateway, Boolean>());
+		var seen = Collections.newSetFromMap(new IdentityHashMap<CreationQuarantineReplayGateway, Boolean>());
 		for (var gateway : beanFactory.getBeansOfType(CreationQuarantineReplayGateway.class).values())
 		{
 			registerReplayGateway(discovered, seen, gateway);
@@ -75,7 +69,7 @@ public class CreationQuarantineInfrastructureAutoConfiguration
 
 	private static void registerReplayGateway(
 			final Map<String, CreationQuarantineReplayGateway> discovered,
-			final java.util.Set<CreationQuarantineReplayGateway> seen,
+			final Set<CreationQuarantineReplayGateway> seen,
 			final CreationQuarantineReplayGateway gateway)
 	{
 		if (!seen.add(gateway))
@@ -90,11 +84,11 @@ public class CreationQuarantineInfrastructureAutoConfiguration
 		}
 	}
 
-	private static java.util.Optional<CreationQuarantineReplayGateway> asReplayGateway(final Object candidate)
+	private static Optional<CreationQuarantineReplayGateway> asReplayGateway(final Object candidate)
 	{
 		if (candidate instanceof CreationQuarantineReplayGateway gateway)
 		{
-			return java.util.Optional.of(gateway);
+			return Optional.of(gateway);
 		}
 		if (candidate instanceof Advised advised)
 		{
@@ -103,7 +97,7 @@ public class CreationQuarantineInfrastructureAutoConfiguration
 				var target = advised.getTargetSource().getTarget();
 				if (target instanceof CreationQuarantineReplayGateway gateway)
 				{
-					return java.util.Optional.of(gateway);
+					return Optional.of(gateway);
 				}
 			}
 			catch (final Exception exception)
@@ -111,7 +105,7 @@ public class CreationQuarantineInfrastructureAutoConfiguration
 				throw new IllegalStateException("Failed to inspect creation service replay gateway", exception);
 			}
 		}
-		return java.util.Optional.empty();
+		return Optional.empty();
 	}
 
 	@Configuration

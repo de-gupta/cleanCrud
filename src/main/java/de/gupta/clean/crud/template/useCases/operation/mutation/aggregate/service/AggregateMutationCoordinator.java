@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.stream.Collectors;
 
 final class AggregateMutationCoordinator
 {
@@ -106,7 +107,7 @@ final class AggregateMutationCoordinator
 			final AggregateMutationPlan<MasterDomainModel> plan)
 	{
 		var knownRelationshipNames = relationships.stream().map(AggregateRelationshipDefinition::name).collect(
-				java.util.stream.Collectors.toSet());
+				Collectors.toSet());
 		for (var relationshipName : plan.relationshipMutations().keySet())
 		{
 			if (!knownRelationshipNames.contains(relationshipName))
@@ -547,9 +548,9 @@ final class AggregateMutationCoordinator
 			final SatelliteDomainModel satelliteDomainModel,
 			final OperationSource source)
 	{
-		if (!relationship.satelliteDefinition().mutationAccessPolicy()
-		                 .accessViolationFor(source, satelliteDomainModel, satelliteDomainModel)
-		                 .isEmpty())
+		if (relationship.satelliteDefinition().mutationAccessPolicy()
+		                .accessViolationFor(source, satelliteDomainModel, satelliteDomainModel)
+		                .isPresent())
 		{
 			throw AccessDeniedException.withMessage("Access not allowed");
 		}

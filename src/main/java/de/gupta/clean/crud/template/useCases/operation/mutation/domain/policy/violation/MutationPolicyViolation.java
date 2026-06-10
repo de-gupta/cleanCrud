@@ -1,7 +1,7 @@
 package de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation;
 
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.invariant.InvariantSeverity;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.invariant.InvariantViolation;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantSeverity;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantViolation;
 
 import java.util.Objects;
 import java.util.Optional;

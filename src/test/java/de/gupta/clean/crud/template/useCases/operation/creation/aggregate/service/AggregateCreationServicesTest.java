@@ -32,7 +32,7 @@ import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.pr
 import de.gupta.clean.crud.template.useCases.operation.domain.model.ApplicationOperationPayload;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationFamily;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.invariant.InvariantViolation;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantViolation;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStarter;
 import de.gupta.clean.crud.template.useCases.process.domain.definition.DurableProcessDefinition;

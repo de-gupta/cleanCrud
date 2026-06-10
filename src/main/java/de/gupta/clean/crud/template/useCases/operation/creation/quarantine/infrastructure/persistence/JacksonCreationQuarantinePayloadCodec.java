@@ -28,9 +28,9 @@ public final class JacksonCreationQuarantinePayloadCodec implements CreationQuar
 					payload.getClass().getName(),
 					objectMapper.writeValueAsString(payload));
 		}
-		catch (JsonProcessingException e)
+		catch (JsonProcessingException caught)
 		{
-			throw new IllegalStateException("Failed to serialize creation quarantine payload", e);
+			throw new IllegalStateException("Failed to serialize creation quarantine payload", caught);
 		}
 	}
 
@@ -43,9 +43,9 @@ public final class JacksonCreationQuarantinePayloadCodec implements CreationQuar
 					payload.payloadJson(),
 					Class.forName(payload.payloadType()));
 		}
-		catch (ClassNotFoundException | IOException e)
+		catch (ClassNotFoundException | IOException caught)
 		{
-			throw new IllegalStateException("Failed to deserialize creation quarantine payload", e);
+			throw new IllegalStateException("Failed to deserialize creation quarantine payload", caught);
 		}
 	}
 

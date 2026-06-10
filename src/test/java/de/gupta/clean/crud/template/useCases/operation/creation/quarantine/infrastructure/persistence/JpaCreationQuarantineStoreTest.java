@@ -8,7 +8,7 @@ import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domai
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infrastructure.persistence.model.CreationQuarantinePersistenceModel;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationFamily;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.invariant.InvariantViolation;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantViolation;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,10 +54,17 @@ class JpaCreationQuarantineStoreTest
 
 		var reloaded = quarantineStore.findById(original.quarantineId()).orElseThrow();
 
-		assertThat(reloaded.status()).isEqualTo(CreationQuarantineStatus.OPEN);
-		assertThat(reloaded.replayAttemptCount()).isEqualTo(1);
-		assertThat(reloaded.lastReplayOutcome()).contains("FAILED");
+		assertThat(reloaded.status())
+				.as("status should remain OPEN after failed replay attempt")
+				.isEqualTo(CreationQuarantineStatus.OPEN);
+		assertThat(reloaded.replayAttemptCount())
+				.as("replay attempt count should be 1 after one attempt")
+				.isEqualTo(1);
+		assertThat(reloaded.lastReplayOutcome())
+				.as("last replay outcome should reflect FAILED result")
+				.contains("FAILED");
 		assertThat(reloaded.violations().getFirst().invariantViolation())
+				.as("reloaded violations should round-trip the invariant violation")
 				.contains(InvariantViolation.hard("hard violation"));
 	}
 
@@ -72,6 +79,7 @@ class JpaCreationQuarantineStoreTest
 		entityManager.clear();
 
 		assertThat(quarantineStore.findOpen(10))
+				.as("findOpen should return only open records in quarantinedAt order")
 				.extracting(CreationQuarantineRecord::quarantineId)
 				.containsExactly(new CreationQuarantineId("open-1"), new CreationQuarantineId("open-2"));
 	}

@@ -1,6 +1,8 @@
 package de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.quarantine;
 
-public final class QuarantinedCreationException extends RuntimeException
+import de.gupta.clean.crud.template.domain.model.exceptions.DomainException;
+
+public final class QuarantinedCreationException extends DomainException
 {
 	private final CreationQuarantineRequest request;
 

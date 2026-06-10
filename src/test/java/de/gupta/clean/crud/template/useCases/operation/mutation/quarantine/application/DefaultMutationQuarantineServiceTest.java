@@ -13,90 +13,20 @@ import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domai
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.MutationQuarantineStatus;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.id.MutationQuarantineId;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.port.persistence.MutationQuarantineRepository;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class DefaultMutationQuarantineServiceTest
 {
-	@org.junit.jupiter.api.Test
-	void recordAssignsPersistentQuarantineId()
-	{
-		var service = DefaultMutationQuarantineService.with(
-				new InMemoryMutationQuarantineRepository(),
-				DefaultMutationQuarantineReplayRegistry.of(java.util.List.of()),
-				new TestMutationQuarantineValueCodec(),
-				Clock.fixed(Instant.parse("2026-06-09T10:15:30Z"), ZoneOffset.UTC));
-
-		var persisted = service.record(new MutationQuarantineSubmission(
-				"aggregate.OrderDefinition",
-				new MutationRequest<>("order-1", new AcknowledgeOrder("ack"),
-						OperationSource.AUTHORITATIVE_EXTERNAL_EVENT),
-				new MutationQuarantineRequest(
-						OperationSource.AUTHORITATIVE_EXTERNAL_EVENT,
-						java.util.List.of(MutationPolicyViolation.externalConsistency("broker mismatch")))));
-
-		assertThat(persisted.quarantineId()).isPresent();
-	}
-
-	@org.junit.jupiter.api.Test
-	void replayMarksRecordReplayedWhenGatewayAppliesMutation()
-	{
-		var repository = new InMemoryMutationQuarantineRepository();
-		var service = DefaultMutationQuarantineService.with(
-				repository,
-				DefaultMutationQuarantineReplayRegistry.of(java.util.List.of(new SuccessfulReplayGateway())),
-				new TestMutationQuarantineValueCodec(),
-				Clock.fixed(Instant.parse("2026-06-09T10:15:30Z"), ZoneOffset.UTC));
-		var record = repository.save(record("aggregate.OrderDefinition"));
-
-		var replayed = service.replay(record.quarantineId());
-
-		assertThat(replayed.status()).isEqualTo(MutationQuarantineStatus.REPLAYED);
-		assertThat(replayed.replayAttemptCount()).isEqualTo(1);
-	}
-
-	@org.junit.jupiter.api.Test
-	void replayLeavesRecordOpenWhenGatewayRejects()
-	{
-		var repository = new InMemoryMutationQuarantineRepository();
-		var service = DefaultMutationQuarantineService.with(
-				repository,
-				DefaultMutationQuarantineReplayRegistry.of(java.util.List.of(new FailingReplayGateway())),
-				new TestMutationQuarantineValueCodec(),
-				Clock.fixed(Instant.parse("2026-06-09T10:15:30Z"), ZoneOffset.UTC));
-		var record = repository.save(record("aggregate.OrderDefinition"));
-
-		var replayed = service.replay(record.quarantineId());
-
-		assertThat(replayed.status()).isEqualTo(MutationQuarantineStatus.OPEN);
-		assertThat(replayed.lastReplayOutcome()).contains("FAILED");
-	}
-
-	@org.junit.jupiter.api.Test
-	void dismissRejectsAlreadyResolvedRecords()
-	{
-		var repository = new InMemoryMutationQuarantineRepository();
-		var service = DefaultMutationQuarantineService.with(
-				repository,
-				DefaultMutationQuarantineReplayRegistry.of(java.util.List.of()),
-				new TestMutationQuarantineValueCodec(),
-				Clock.fixed(Instant.parse("2026-06-09T10:15:30Z"), ZoneOffset.UTC));
-		var dismissed = repository.save(record("aggregate.OrderDefinition")
-				.dismissed(Instant.parse("2026-06-09T10:16:00Z")));
-
-		assertThrows(RuntimeException.class, () -> service.dismiss(dismissed.quarantineId()));
-	}
-
-	private MutationQuarantineRecord record(final String aggregateType)
+	private MutationQuarantineRecord openRecord(final String aggregateType)
 	{
 		return new MutationQuarantineRecord(
 				new MutationQuarantineId("quarantine-1"),
@@ -110,7 +40,7 @@ class DefaultMutationQuarantineServiceTest
 				Optional.empty(),
 				Optional.empty(),
 				MutationQuarantineStatus.OPEN,
-				java.util.List.of(MutationPolicyViolation.externalConsistency("broker mismatch")),
+				List.of(MutationPolicyViolation.externalConsistency("broker mismatch")),
 				Instant.parse("2026-06-09T10:15:00Z"),
 				Instant.parse("2026-06-09T10:15:00Z"),
 				0,
@@ -119,7 +49,7 @@ class DefaultMutationQuarantineServiceTest
 				Optional.empty());
 	}
 
-	public record AcknowledgeOrder(String value) implements ApplicationOperationPayload
+	private record AcknowledgeOrder(String value) implements ApplicationOperationPayload
 	{
 	}
 
@@ -222,6 +152,99 @@ class DefaultMutationQuarantineServiceTest
 		public MutationResult<?, ?> replay(final MutationQuarantineReplayCommand command)
 		{
 			throw new IllegalStateException("still inconsistent");
+		}
+	}
+
+	@Nested
+	class WhenRecordingSubmission
+	{
+		@Test
+		void assignsPersistentQuarantineId()
+		{
+			var service = DefaultMutationQuarantineService.with(
+					new InMemoryMutationQuarantineRepository(),
+					DefaultMutationQuarantineReplayRegistry.of(List.of()),
+					new TestMutationQuarantineValueCodec(),
+					Clock.fixed(Instant.parse("2026-06-09T10:15:30Z"), ZoneOffset.UTC));
+
+			var persisted = service.record(new MutationQuarantineSubmission(
+					"aggregate.OrderDefinition",
+					new MutationRequest<>("order-1", new AcknowledgeOrder("ack"),
+							OperationSource.AUTHORITATIVE_EXTERNAL_EVENT),
+					new MutationQuarantineRequest(
+							OperationSource.AUTHORITATIVE_EXTERNAL_EVENT,
+							List.of(MutationPolicyViolation.externalConsistency("broker mismatch")))));
+
+			assertThat(persisted.quarantineId())
+					.as("recorded submission should carry a persisted quarantine id")
+					.isPresent();
+		}
+	}
+
+	@Nested
+	class WhenReplaying
+	{
+		@Test
+		void marksRecordReplayedWhenGatewayAppliesMutation()
+		{
+			var repository = new InMemoryMutationQuarantineRepository();
+			var service = DefaultMutationQuarantineService.with(
+					repository,
+					DefaultMutationQuarantineReplayRegistry.of(List.of(new SuccessfulReplayGateway())),
+					new TestMutationQuarantineValueCodec(),
+					Clock.fixed(Instant.parse("2026-06-09T10:15:30Z"), ZoneOffset.UTC));
+			var record = repository.save(openRecord("aggregate.OrderDefinition"));
+
+			var replayed = service.replay(record.quarantineId());
+
+			assertThat(replayed.status())
+					.as("status should be REPLAYED after successful gateway replay")
+					.isEqualTo(MutationQuarantineStatus.REPLAYED);
+			assertThat(replayed.replayAttemptCount())
+					.as("replay attempt count should increment after replay")
+					.isEqualTo(1);
+		}
+
+		@Test
+		void leavesRecordOpenWhenGatewayRejects()
+		{
+			var repository = new InMemoryMutationQuarantineRepository();
+			var service = DefaultMutationQuarantineService.with(
+					repository,
+					DefaultMutationQuarantineReplayRegistry.of(List.of(new FailingReplayGateway())),
+					new TestMutationQuarantineValueCodec(),
+					Clock.fixed(Instant.parse("2026-06-09T10:15:30Z"), ZoneOffset.UTC));
+			var record = repository.save(openRecord("aggregate.OrderDefinition"));
+
+			var replayed = service.replay(record.quarantineId());
+
+			assertThat(replayed.status())
+					.as("status should remain OPEN when gateway throws")
+					.isEqualTo(MutationQuarantineStatus.OPEN);
+			assertThat(replayed.lastReplayOutcome())
+					.as("last replay outcome should contain FAILED when gateway throws")
+					.contains("FAILED");
+		}
+	}
+
+	@Nested
+	class WhenDismissing
+	{
+		@Test
+		void rejectsAlreadyResolvedRecords()
+		{
+			var repository = new InMemoryMutationQuarantineRepository();
+			var service = DefaultMutationQuarantineService.with(
+					repository,
+					DefaultMutationQuarantineReplayRegistry.of(List.of()),
+					new TestMutationQuarantineValueCodec(),
+					Clock.fixed(Instant.parse("2026-06-09T10:15:30Z"), ZoneOffset.UTC));
+			var dismissed = repository.save(openRecord("aggregate.OrderDefinition")
+					.dismissed(Instant.parse("2026-06-09T10:16:00Z")));
+
+			assertThatThrownBy(() -> service.dismiss(dismissed.quarantineId()))
+					.as("dismissing an already-dismissed record should throw")
+					.isInstanceOf(RuntimeException.class);
 		}
 	}
 }

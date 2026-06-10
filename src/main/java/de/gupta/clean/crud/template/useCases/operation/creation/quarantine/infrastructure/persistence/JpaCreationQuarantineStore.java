@@ -12,8 +12,8 @@ import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infra
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.port.persistence.CreationQuarantineRepository;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCausationId;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCorrelationId;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.invariant.InvariantSeverity;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.invariant.InvariantViolation;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantSeverity;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantViolation;
 import jakarta.persistence.EntityManager;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,16 +34,6 @@ public class JpaCreationQuarantineStore implements CreationQuarantineRepository
 			final ObjectMapper objectMapper)
 	{
 		return new JpaCreationQuarantineStore(entityManager, objectMapper);
-	}
-
-	public JpaCreationQuarantineStore(
-			final EntityManager entityManager,
-			final ObjectMapper objectMapper)
-	{
-		this.entityManager = Objects.requireNonNull(entityManager, "entityManager");
-		this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
-		this.violationValueType = objectMapper.getTypeFactory()
-		                                      .constructCollectionType(List.class, StoredViolation.class);
 	}
 
 	@Override
@@ -96,6 +86,21 @@ public class JpaCreationQuarantineStore implements CreationQuarantineRepository
 		                    .toList();
 	}
 
+	private String serializeViolations(final List<CreationPolicyViolation> violations)
+	{
+		try
+		{
+			var values = violations.stream()
+			                       .map(StoredViolation::of)
+			                       .toList();
+			return objectMapper.writeValueAsString(values);
+		}
+		catch (JsonProcessingException caught)
+		{
+			throw new IllegalStateException("Failed to serialize creation quarantine violations", caught);
+		}
+	}
+
 	private CreationQuarantinePersistenceModel toPersistenceModel(final CreationQuarantineRecord record)
 	{
 		var persistenceModel = new CreationQuarantinePersistenceModel();
@@ -139,21 +144,6 @@ public class JpaCreationQuarantineStore implements CreationQuarantineRepository
 				Optional.ofNullable(persistenceModel.lastReplaySummary()));
 	}
 
-	private String serializeViolations(final List<CreationPolicyViolation> violations)
-	{
-		try
-		{
-			var values = violations.stream()
-			                       .map(StoredViolation::of)
-			                       .toList();
-			return objectMapper.writeValueAsString(values);
-		}
-		catch (JsonProcessingException e)
-		{
-			throw new IllegalStateException("Failed to serialize creation quarantine violations", e);
-		}
-	}
-
 	private List<CreationPolicyViolation> deserializeViolations(final String violationsJson)
 	{
 		try
@@ -163,10 +153,20 @@ public class JpaCreationQuarantineStore implements CreationQuarantineRepository
 			                       .map(StoredViolation::toDomain)
 			                       .toList();
 		}
-		catch (IOException e)
+		catch (IOException caught)
 		{
-			throw new IllegalStateException("Failed to deserialize creation quarantine violations", e);
+			throw new IllegalStateException("Failed to deserialize creation quarantine violations", caught);
 		}
+	}
+
+	private JpaCreationQuarantineStore(
+			final EntityManager entityManager,
+			final ObjectMapper objectMapper)
+	{
+		this.entityManager = Objects.requireNonNull(entityManager, "entityManager");
+		this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
+		this.violationValueType = objectMapper.getTypeFactory()
+		                                      .constructCollectionType(List.class, StoredViolation.class);
 	}
 
 	private record StoredViolation(

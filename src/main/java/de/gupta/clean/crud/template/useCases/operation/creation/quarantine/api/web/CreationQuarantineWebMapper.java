@@ -3,7 +3,7 @@ package de.gupta.clean.crud.template.useCases.operation.creation.quarantine.api.
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.CreationQuarantineRecord;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCausationId;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCorrelationId;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.invariant.InvariantViolation;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantViolation;
 
 public final class CreationQuarantineWebMapper
 {

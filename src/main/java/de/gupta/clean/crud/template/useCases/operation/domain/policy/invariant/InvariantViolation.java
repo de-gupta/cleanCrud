@@ -1,4 +1,4 @@
-package de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.invariant;
+package de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant;
 
 import java.util.Objects;
 

@@ -81,7 +81,11 @@ public final class AggregateMutationServices
 				handlerRegistry,
 				durableProcessStartRequests,
 				definitionGuard,
-				sourceAwareMutationPolicy);
+				sourceAwareMutationPolicy,
+				AggregateMutationCoordinator.with(
+						AggregateServiceSupportFactory.relationshipPlanner(),
+						AggregateServiceSupportFactory.referenceResolver(),
+						AggregateServiceSupportFactory.validationSupport()));
 	}
 
 	private AggregateMutationServices()

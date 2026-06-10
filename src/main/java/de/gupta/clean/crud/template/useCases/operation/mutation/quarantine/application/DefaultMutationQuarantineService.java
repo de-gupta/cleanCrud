@@ -106,12 +106,12 @@ public final class DefaultMutationQuarantineService implements MutationQuarantin
 					record.causationId()));
 			return persistReplayResult(record, result);
 		}
-		catch (RuntimeException e)
+		catch (RuntimeException caught)
 		{
 			return repository.update(record.replayAttempted(
 					clock.instant(),
 					"FAILED",
-					Optional.of(summaryFor(e))));
+					Optional.of(summaryFor(caught))));
 		}
 	}
 
@@ -143,9 +143,9 @@ public final class DefaultMutationQuarantineService implements MutationQuarantin
 		return record;
 	}
 
-	private String summaryFor(final RuntimeException e)
+	private String summaryFor(final RuntimeException caught)
 	{
-		var message = Optional.ofNullable(e.getMessage()).orElse(e.getClass().getSimpleName());
+		var message = Optional.ofNullable(caught.getMessage()).orElse(caught.getClass().getSimpleName());
 		return trimmed(message);
 	}
 

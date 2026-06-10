@@ -6,11 +6,7 @@ import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.api.a
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.api.application.MutationQuarantineApplicationControllers;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.api.web.DefaultSpringRestMutationQuarantineController;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.api.web.MutationQuarantineWebMapper;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.DefaultMutationQuarantineService;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.MutationQuarantineReplayGateway;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.MutationQuarantineReplayRegistry;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.MutationQuarantineService;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.MutationQuarantineValueCodec;
+import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.*;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.recording.MutationQuarantineRecorder;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.policy.MutationQuarantineAccessPolicy;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.infrastructure.persistence.JacksonMutationQuarantineValueCodec;
@@ -33,9 +29,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.time.Clock;
-import java.util.IdentityHashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 
 @AutoConfiguration(after = HibernateJpaAutoConfiguration.class)
 @EntityScan(basePackageClasses = MutationQuarantinePersistenceModel.class)
@@ -47,7 +41,7 @@ public class MutationQuarantineInfrastructureAutoConfiguration
 	MutationQuarantineReplayRegistry mutationQuarantineReplayRegistry(
 			final ListableBeanFactory beanFactory)
 	{
-		return aggregateType -> java.util.Optional.ofNullable(discoverReplayGateways(beanFactory).get(aggregateType));
+		return aggregateType -> Optional.ofNullable(discoverReplayGateways(beanFactory).get(aggregateType));
 	}
 
 	@Bean
@@ -61,7 +55,7 @@ public class MutationQuarantineInfrastructureAutoConfiguration
 			final ListableBeanFactory beanFactory)
 	{
 		var discovered = new LinkedHashMap<String, MutationQuarantineReplayGateway>();
-		var seen = java.util.Collections.newSetFromMap(new IdentityHashMap<MutationQuarantineReplayGateway, Boolean>());
+		var seen = Collections.newSetFromMap(new IdentityHashMap<MutationQuarantineReplayGateway, Boolean>());
 		for (var gateway : beanFactory.getBeansOfType(MutationQuarantineReplayGateway.class).values())
 		{
 			registerReplayGateway(discovered, seen, gateway);
@@ -75,7 +69,7 @@ public class MutationQuarantineInfrastructureAutoConfiguration
 
 	private static void registerReplayGateway(
 			final Map<String, MutationQuarantineReplayGateway> discovered,
-			final java.util.Set<MutationQuarantineReplayGateway> seen,
+			final Set<MutationQuarantineReplayGateway> seen,
 			final MutationQuarantineReplayGateway gateway)
 	{
 		if (!seen.add(gateway))
@@ -90,11 +84,11 @@ public class MutationQuarantineInfrastructureAutoConfiguration
 		}
 	}
 
-	private static java.util.Optional<MutationQuarantineReplayGateway> asReplayGateway(final Object candidate)
+	private static Optional<MutationQuarantineReplayGateway> asReplayGateway(final Object candidate)
 	{
 		if (candidate instanceof MutationQuarantineReplayGateway gateway)
 		{
-			return java.util.Optional.of(gateway);
+			return Optional.of(gateway);
 		}
 		if (candidate instanceof Advised advised)
 		{
@@ -103,7 +97,7 @@ public class MutationQuarantineInfrastructureAutoConfiguration
 				var target = advised.getTargetSource().getTarget();
 				if (target instanceof MutationQuarantineReplayGateway gateway)
 				{
-					return java.util.Optional.of(gateway);
+					return Optional.of(gateway);
 				}
 			}
 			catch (final Exception exception)
@@ -111,7 +105,7 @@ public class MutationQuarantineInfrastructureAutoConfiguration
 				throw new IllegalStateException("Failed to inspect mutation service replay gateway", exception);
 			}
 		}
-		return java.util.Optional.empty();
+		return Optional.empty();
 	}
 
 	@Configuration

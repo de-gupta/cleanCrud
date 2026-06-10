@@ -9,7 +9,6 @@ import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domai
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.CreationQuarantineStatus;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.id.CreationQuarantineId;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.port.persistence.CreationQuarantineRepository;
-import de.gupta.clean.crud.template.useCases.operation.domain.model.ApplicationOperationPayload;
 
 import java.time.Clock;
 import java.util.Collection;
@@ -98,12 +97,12 @@ public final class DefaultCreationQuarantineService implements CreationQuarantin
 					record.causationId()));
 			return persistReplayResult(record, result);
 		}
-		catch (RuntimeException e)
+		catch (RuntimeException caught)
 		{
 			return repository.update(record.replayAttempted(
 					clock.instant(),
 					"FAILED",
-					Optional.of(summaryFor(e))));
+					Optional.of(summaryFor(caught))));
 		}
 	}
 
@@ -135,9 +134,9 @@ public final class DefaultCreationQuarantineService implements CreationQuarantin
 		return record;
 	}
 
-	private String summaryFor(final RuntimeException e)
+	private String summaryFor(final RuntimeException caught)
 	{
-		var message = Optional.ofNullable(e.getMessage()).orElse(e.getClass().getSimpleName());
+		var message = Optional.ofNullable(caught.getMessage()).orElse(caught.getClass().getSimpleName());
 		return trimmed(message);
 	}
 

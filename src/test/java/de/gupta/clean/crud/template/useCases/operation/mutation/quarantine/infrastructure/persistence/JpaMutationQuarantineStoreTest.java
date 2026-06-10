@@ -3,7 +3,7 @@ package de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.infr
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationFamily;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.invariant.InvariantSeverity;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantSeverity;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationPolicyViolation;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.MutationQuarantineRecord;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.MutationQuarantineStatus;
@@ -54,10 +54,18 @@ class JpaMutationQuarantineStoreTest
 
 		var reloaded = quarantineStore.findById(original.quarantineId()).orElseThrow();
 
-		assertThat(reloaded.status()).isEqualTo(MutationQuarantineStatus.OPEN);
-		assertThat(reloaded.replayAttemptCount()).isEqualTo(1);
-		assertThat(reloaded.lastReplayOutcome()).contains("FAILED");
-		assertThat(reloaded.violations().getFirst().severity()).contains(InvariantSeverity.HARD);
+		assertThat(reloaded.status())
+				.as("status should remain OPEN after failed replay attempt")
+				.isEqualTo(MutationQuarantineStatus.OPEN);
+		assertThat(reloaded.replayAttemptCount())
+				.as("replay attempt count should be 1 after one attempt")
+				.isEqualTo(1);
+		assertThat(reloaded.lastReplayOutcome())
+				.as("last replay outcome should reflect FAILED result")
+				.contains("FAILED");
+		assertThat(reloaded.violations().getFirst().severity())
+				.as("reloaded violations should round-trip the invariant severity")
+				.contains(InvariantSeverity.HARD);
 	}
 
 	@Test
@@ -71,6 +79,7 @@ class JpaMutationQuarantineStoreTest
 		entityManager.clear();
 
 		assertThat(quarantineStore.findOpen(10))
+				.as("findOpen should return only open records in quarantinedAt order")
 				.extracting(MutationQuarantineRecord::quarantineId)
 				.containsExactly(new MutationQuarantineId("open-1"), new MutationQuarantineId("open-2"));
 	}

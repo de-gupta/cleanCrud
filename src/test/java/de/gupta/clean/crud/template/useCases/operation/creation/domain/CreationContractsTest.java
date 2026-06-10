@@ -15,8 +15,8 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class CreationContractsTest
 {
@@ -27,11 +27,21 @@ class CreationContractsTest
 				new OpenOrder("AAPL", 100),
 				OperationSource.AUTHORITATIVE_EXTERNAL_EVENT);
 
-		assertEquals("AAPL", request.payload().symbol());
-		assertEquals(OperationSource.AUTHORITATIVE_EXTERNAL_EVENT, request.source());
-		assertEquals(OperationFamily.APPLICATION, request.family());
-		assertEquals(OpenOrder.class, request.payloadType());
-		assertEquals(Optional.empty(), request.correlationId());
+		assertThat(request.payload().symbol())
+				.as("request should capture payload symbol")
+				.isEqualTo("AAPL");
+		assertThat(request.source())
+				.as("request should capture operation source")
+				.isEqualTo(OperationSource.AUTHORITATIVE_EXTERNAL_EVENT);
+		assertThat(request.family())
+				.as("request family should default to APPLICATION")
+				.isEqualTo(OperationFamily.APPLICATION);
+		assertThat(request.payloadType())
+				.as("request should capture payload type")
+				.isEqualTo(OpenOrder.class);
+		assertThat(request.correlationId())
+				.as("request without correlation id should be empty")
+				.isEmpty();
 	}
 
 	@Test
@@ -43,8 +53,12 @@ class CreationContractsTest
 				Optional.of(new OperationCorrelationId("corr-1")),
 				Optional.of(new OperationCausationId("cause-1")));
 
-		assertEquals("corr-1", request.correlationId().orElseThrow().value());
-		assertEquals("cause-1", request.causationId().orElseThrow().value());
+		assertThat(request.correlationId().orElseThrow().value())
+				.as("request should carry correlation id value")
+				.isEqualTo("corr-1");
+		assertThat(request.causationId().orElseThrow().value())
+				.as("request should carry causation id value")
+				.isEqualTo("cause-1");
 	}
 
 	@Test
@@ -61,9 +75,15 @@ class CreationContractsTest
 				Optional.of(new OrderState("SUBMITTED")))
 				.withCreated("order-1", new OrderState("SUBMITTED"));
 
-		assertEquals("order-1", context.domainId().orElseThrow());
-		assertEquals(OperationSource.INTERNAL_COMMAND, context.source());
-		assertEquals("SUBMITTED", context.afterModel().orElseThrow().status());
+		assertThat(context.domainId().orElseThrow())
+				.as("context should carry the created domain id")
+				.isEqualTo("order-1");
+		assertThat(context.source())
+				.as("context should preserve the operation source")
+				.isEqualTo(OperationSource.INTERNAL_COMMAND);
+		assertThat(context.afterModel().orElseThrow().status())
+				.as("context should carry the after model state")
+				.isEqualTo("SUBMITTED");
 	}
 
 	@Test
@@ -74,8 +94,12 @@ class CreationContractsTest
 
 		var create = handler.apply(new OpenOrder("AAPL", 100));
 
-		assertEquals("AAPL", create.symbol());
-		assertEquals(100, create.quantity());
+		assertThat(create.symbol())
+				.as("handler should map payload symbol to create input")
+				.isEqualTo("AAPL");
+		assertThat(create.quantity())
+				.as("handler should map payload quantity to create input")
+				.isEqualTo(100);
 	}
 
 	@Test
@@ -95,17 +119,23 @@ class CreationContractsTest
 				CreationPolicyDecision.allow(),
 				created);
 
-		assertEquals("order-1", result.createdOrThrow().domainId());
-		assertEquals("SUBMITTED", result.createdOrThrow().model().status());
+		assertThat(result.createdOrThrow().domainId())
+				.as("result should carry the created domain id")
+				.isEqualTo("order-1");
+		assertThat(result.createdOrThrow().model().status())
+				.as("result should carry the created model state")
+				.isEqualTo("SUBMITTED");
 	}
 
 	@Test
 	void requestRejectsMissingRequiredValues()
 	{
-		assertThrows(NullPointerException.class,
-				() -> new CreationRequest<>(null, OperationSource.USER_INTENT));
-		assertThrows(NullPointerException.class,
-				() -> new CreationRequest<>(new OpenOrder("AAPL", 1), null));
+		assertThatThrownBy(() -> new CreationRequest<>(null, OperationSource.USER_INTENT))
+				.as("null payload should throw")
+				.isInstanceOf(NullPointerException.class);
+		assertThatThrownBy(() -> new CreationRequest<>(new OpenOrder("AAPL", 1), null))
+				.as("null source should throw")
+				.isInstanceOf(NullPointerException.class);
 	}
 
 	private record OrderState(String status)
