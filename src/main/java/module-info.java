@@ -171,10 +171,26 @@ module de.gupta.clean.crud
 	exports de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.profile;
 	exports de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.quarantine;
 	exports de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.violation;
+	exports de.gupta.clean.crud.template.useCases.operation.creation.quarantine.api.application;
+	exports de.gupta.clean.crud.template.useCases.operation.creation.quarantine.api.web;
+	exports de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application;
+	exports de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application.recording;
+	exports de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model;
+	exports de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.id;
+	exports de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.policy;
+	exports de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infrastructure.persistence;
+	exports de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infrastructure.persistence.model;
+	exports de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infrastructure.spring;
+	exports de.gupta.clean.crud.template.useCases.operation.creation.quarantine.port.persistence;
 
 	opens de.gupta.clean.crud.template.useCases.process.infrastructure.persistence.model;
 	opens de.gupta.clean.crud.template.useCases.process.infrastructure.persistence;
 	opens de.gupta.clean.crud.template.useCases.process.infrastructure.spring;
+	opens de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application;
+	opens de.gupta.clean.crud.template.useCases.operation.creation.quarantine.api.web;
+	opens de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infrastructure.persistence.model;
+	opens de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infrastructure.persistence;
+	opens de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infrastructure.spring;
 	opens de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application;
 	opens de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.api.web;
 	opens de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.infrastructure.persistence.model;

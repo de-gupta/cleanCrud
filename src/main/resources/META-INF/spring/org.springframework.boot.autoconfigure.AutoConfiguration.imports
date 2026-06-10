@@ -1,3 +1,4 @@
 de.gupta.clean.crud.template.useCases.process.infrastructure.spring.DurableProcessInfrastructureAutoConfiguration
+de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infrastructure.spring.CreationQuarantineInfrastructureAutoConfiguration
 de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.infrastructure.spring.MutationQuarantineInfrastructureAutoConfiguration
 de.gupta.clean.crud.template.infrastructure.web.openapi.CleanCrudSpringdocOpenApiAutoConfiguration

@@ -1,18 +1,26 @@
 package de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.infrastructure.spring;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import de.gupta.clean.crud.template.useCases.operation.mutation.application.service.MutationService;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.api.application.MutationQuarantineApplicationController;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.api.application.MutationQuarantineApplicationControllers;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.api.web.DefaultSpringRestMutationQuarantineController;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.api.web.MutationQuarantineWebMapper;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.*;
+import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.DefaultMutationQuarantineService;
+import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.MutationQuarantineReplayGateway;
+import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.MutationQuarantineReplayRegistry;
+import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.MutationQuarantineService;
+import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.MutationQuarantineValueCodec;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.recording.MutationQuarantineRecorder;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.policy.MutationQuarantineAccessPolicy;
+import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.infrastructure.persistence.JacksonMutationQuarantineValueCodec;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.infrastructure.persistence.JpaMutationQuarantineStore;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.infrastructure.persistence.model.MutationQuarantinePersistenceModel;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.port.persistence.MutationQuarantineRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
+import org.springframework.aop.framework.Advised;
+import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -25,7 +33,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.time.Clock;
-import java.util.Collection;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @AutoConfiguration(after = HibernateJpaAutoConfiguration.class)
 @EntityScan(basePackageClasses = MutationQuarantinePersistenceModel.class)
@@ -35,9 +45,9 @@ public class MutationQuarantineInfrastructureAutoConfiguration
 	@Bean
 	@ConditionalOnMissingBean
 	MutationQuarantineReplayRegistry mutationQuarantineReplayRegistry(
-			final Collection<MutationQuarantineReplayGateway> gateways)
+			final ListableBeanFactory beanFactory)
 	{
-		return DefaultMutationQuarantineReplayRegistry.of(gateways);
+		return aggregateType -> java.util.Optional.ofNullable(discoverReplayGateways(beanFactory).get(aggregateType));
 	}
 
 	@Bean
@@ -45,6 +55,63 @@ public class MutationQuarantineInfrastructureAutoConfiguration
 	MutationQuarantineAccessPolicy mutationQuarantineAccessPolicy()
 	{
 		return MutationQuarantineAccessPolicy.allowing();
+	}
+
+	private static Map<String, MutationQuarantineReplayGateway> discoverReplayGateways(
+			final ListableBeanFactory beanFactory)
+	{
+		var discovered = new LinkedHashMap<String, MutationQuarantineReplayGateway>();
+		var seen = java.util.Collections.newSetFromMap(new IdentityHashMap<MutationQuarantineReplayGateway, Boolean>());
+		for (var gateway : beanFactory.getBeansOfType(MutationQuarantineReplayGateway.class).values())
+		{
+			registerReplayGateway(discovered, seen, gateway);
+		}
+		for (var service : beanFactory.getBeansOfType(MutationService.class).values())
+		{
+			asReplayGateway(service).ifPresent(gateway -> registerReplayGateway(discovered, seen, gateway));
+		}
+		return discovered;
+	}
+
+	private static void registerReplayGateway(
+			final Map<String, MutationQuarantineReplayGateway> discovered,
+			final java.util.Set<MutationQuarantineReplayGateway> seen,
+			final MutationQuarantineReplayGateway gateway)
+	{
+		if (!seen.add(gateway))
+		{
+			return;
+		}
+		var duplicate = discovered.putIfAbsent(gateway.aggregateType(), gateway);
+		if (duplicate != null)
+		{
+			throw new IllegalArgumentException(
+					"Duplicate mutation quarantine replay gateway for aggregate type " + gateway.aggregateType());
+		}
+	}
+
+	private static java.util.Optional<MutationQuarantineReplayGateway> asReplayGateway(final Object candidate)
+	{
+		if (candidate instanceof MutationQuarantineReplayGateway gateway)
+		{
+			return java.util.Optional.of(gateway);
+		}
+		if (candidate instanceof Advised advised)
+		{
+			try
+			{
+				var target = advised.getTargetSource().getTarget();
+				if (target instanceof MutationQuarantineReplayGateway gateway)
+				{
+					return java.util.Optional.of(gateway);
+				}
+			}
+			catch (final Exception exception)
+			{
+				throw new IllegalStateException("Failed to inspect mutation service replay gateway", exception);
+			}
+		}
+		return java.util.Optional.empty();
 	}
 
 	@Configuration
@@ -67,13 +134,20 @@ public class MutationQuarantineInfrastructureAutoConfiguration
 
 		@Bean
 		@ConditionalOnMissingBean
+		MutationQuarantineValueCodec mutationQuarantineValueCodec(final ObjectMapper objectMapper)
+		{
+			return JacksonMutationQuarantineValueCodec.with(objectMapper);
+		}
+
+		@Bean
+		@ConditionalOnMissingBean
 		MutationQuarantineService mutationQuarantineService(
 				final MutationQuarantineRepository repository,
 				final MutationQuarantineReplayRegistry replayRegistry,
-				final ObjectMapper objectMapper,
+				final MutationQuarantineValueCodec valueCodec,
 				final Clock durableProcessClock)
 		{
-			return DefaultMutationQuarantineService.with(repository, replayRegistry, objectMapper, durableProcessClock);
+			return DefaultMutationQuarantineService.with(repository, replayRegistry, valueCodec, durableProcessClock);
 		}
 
 		@Bean

@@ -19,8 +19,15 @@ import de.gupta.clean.crud.template.useCases.operation.creation.domain.model.Cre
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.plan.AggregateCreationPlan;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.evaluation.SourceAwareCreationPolicy;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.quarantine.QuarantinedCreationException;
+import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application.CreationQuarantineReplayCommand;
+import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application.CreationQuarantineReplayGateway;
+import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application.recording.CreationQuarantineSubmission;
+import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.id.CreationQuarantineId;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.ApplicationOperationPayload;
+import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
+import org.springframework.beans.factory.BeanNameAware;
+import org.springframework.util.ClassUtils;
 
 import java.util.Collection;
 import java.util.List;
@@ -34,6 +41,7 @@ public final class DefaultAggregateCreationService<
 		DomainModelUpdatePatch,
 		DomainModelResponse>
 		extends AbstractCreationService<DomainId, DomainModel>
+		implements CreationQuarantineReplayGateway, BeanNameAware
 {
 	private final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 			DomainModelResponse> definition;
@@ -44,6 +52,8 @@ public final class DefaultAggregateCreationService<
 	private final AggregateDefinitionGuard definitionGuard;
 	private final AggregateSaveCoordinator saveCoordinator;
 	private final SourceAwareCreationPolicy<DomainModel> sourceAwareCreationPolicy;
+	private final String defaultAggregateType;
+	private String aggregateType;
 
 	public DefaultAggregateCreationService(
 			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
@@ -63,15 +73,54 @@ public final class DefaultAggregateCreationService<
 		this.definitionGuard = definitionGuard;
 		this.saveCoordinator = saveCoordinator;
 		this.sourceAwareCreationPolicy = sourceAwareCreationPolicy;
+		this.defaultAggregateType = ClassUtils.getUserClass(definition.fetchPort()).getName();
+		this.aggregateType = defaultAggregateType;
 	}
 
 	@Override
 	public CreationResult<DomainId, DomainModel> createWithResult(final CreationRequest<?> request)
 	{
+		return createWithResult(request, Optional.empty());
+	}
+
+	@Override
+	public String aggregateType()
+	{
+		return aggregateType;
+	}
+
+	@Override
+	public CreationResult<?, ?> replay(final CreationQuarantineReplayCommand command)
+	{
+		return createWithResult(
+				new CreationRequest<>(
+						command.payload(),
+						OperationSource.ADMINISTRATIVE_REPLAY,
+						command.family(),
+						command.correlationId(),
+						command.causationId()),
+				Optional.of(command.quarantineId()));
+	}
+
+	@Override
+	public void setBeanName(final String name)
+	{
+		if (name != null && !name.isBlank())
+		{
+			this.aggregateType = name;
+			return;
+		}
+		this.aggregateType = defaultAggregateType;
+	}
+
+	private CreationResult<DomainId, DomainModel> createWithResult(
+			final CreationRequest<?> request,
+			final Optional<CreationQuarantineId> replayQuarantineId)
+	{
 		try
 		{
 			return engine.execute(
-					CrudWorkflowBuilder.writeFlow(() -> applyCreation(request))
+					CrudWorkflowBuilder.writeFlow(() -> applyCreation(request, replayQuarantineId))
 					                   .startDurableProcesses(result -> result.created()
 					                                                          .map(_ -> durableProcessStartRequests.apply(
 																					  result.context()))
@@ -85,7 +134,9 @@ public final class DefaultAggregateCreationService<
 		}
 	}
 
-	private CreationResult<DomainId, DomainModel> applyCreation(final CreationRequest<?> request)
+	private CreationResult<DomainId, DomainModel> applyCreation(
+			final CreationRequest<?> request,
+			final Optional<CreationQuarantineId> replayQuarantineId)
 	{
 		var plan = applyRegisteredHandler(request.payload());
 		var createInput = plan.rootCreate().orElseThrow(() -> InvalidRequestException.withMessage(
@@ -104,12 +155,22 @@ public final class DefaultAggregateCreationService<
 				Optional.of(candidateModel));
 		if (policyDecision.quarantined())
 		{
+			if (replayQuarantineId.isEmpty())
+			{
+				policyDecision = persistQuarantine(request, policyDecision);
+			}
 			return CreationResult.quarantined(baseContext, policyDecision);
 		}
 
 		var created = relationships.isEmpty()
 				? definition.mutationPort().create(candidateModel)
-				: createAggregateWithRelationships(request, relationships, createInput, policyDecision, baseContext);
+				: createAggregateWithRelationships(
+				request,
+				relationships,
+				createInput,
+				policyDecision,
+				baseContext,
+				replayQuarantineId);
 		var context = baseContext.withCreated(created.id(), created.model());
 		return CreationResult.created(context, policyDecision, CreateResult.of(created.id(), created.model()));
 	}
@@ -120,7 +181,8 @@ public final class DefaultAggregateCreationService<
 					DomainModelUpdatePatch, ?, ?, ?, ?>> relationships,
 			final DomainModelCreate createInput,
 			final de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.evaluation.CreationPolicyDecision policyDecision,
-			final CreationContext<DomainId, DomainModel> baseContext)
+			final CreationContext<DomainId, DomainModel> baseContext,
+			final Optional<CreationQuarantineId> replayQuarantineId)
 	{
 		var satelliteCreateIntentResolver = AggregateServiceSupportFactory.satelliteCreateIntentResolver(
 				AggregateCreationPolicies.satelliteCreateValidator(request.source()));
@@ -138,20 +200,28 @@ public final class DefaultAggregateCreationService<
 		}
 		catch (final QuarantinedCreationException exception)
 		{
-			throw quarantinedAggregateCreation(exception, baseContext, policyDecision);
+			throw quarantinedAggregateCreation(exception, request, baseContext, policyDecision, replayQuarantineId);
 		}
 	}
 
 	private RuntimeException quarantinedAggregateCreation(
 			final QuarantinedCreationException exception,
+			final CreationRequest<?> request,
 			final CreationContext<DomainId, DomainModel> baseContext,
-			final de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.evaluation.CreationPolicyDecision policyDecision)
+			final de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.evaluation.CreationPolicyDecision policyDecision,
+			final Optional<CreationQuarantineId> replayQuarantineId)
 	{
-		return new QuarantinedAggregateCreationResultException(CreationResult.quarantined(
-				baseContext,
+		var quarantineDecision =
 				de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.evaluation.CreationPolicyDecision.quarantine(
 						exception.request(),
-						policyDecision.toleratedViolations())));
+						policyDecision.toleratedViolations());
+		if (replayQuarantineId.isEmpty())
+		{
+			quarantineDecision = persistQuarantine(request, quarantineDecision);
+		}
+		return new QuarantinedAggregateCreationResultException(CreationResult.quarantined(
+				baseContext,
+				quarantineDecision));
 	}
 
 	private void dispatchCreationCompleted(final CreationResult<DomainId, DomainModel> result)
@@ -184,6 +254,17 @@ public final class DefaultAggregateCreationService<
 	{
 		return ((AggregateCreationHandler<DomainModelCreate, ApplicationOperationPayload>) registeredHandler.handler()).apply(
 				payload);
+	}
+
+	private de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.evaluation.CreationPolicyDecision persistQuarantine(
+			final CreationRequest<?> request,
+			final de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.evaluation.CreationPolicyDecision policyDecision)
+	{
+		var persistedRequest = engine.creationQuarantineRecorder().record(new CreationQuarantineSubmission(
+				aggregateType,
+				request,
+				policyDecision.quarantineRequest().orElseThrow()));
+		return policyDecision.withQuarantineRequest(persistedRequest);
 	}
 
 	private static final class QuarantinedAggregateCreationResultException extends RuntimeException

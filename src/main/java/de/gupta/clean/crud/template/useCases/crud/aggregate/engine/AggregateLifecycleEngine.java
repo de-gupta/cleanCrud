@@ -1,5 +1,6 @@
 package de.gupta.clean.crud.template.useCases.crud.aggregate.engine;
 
+import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application.recording.CreationQuarantineRecorder;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.recording.MutationQuarantineRecorder;
 
 @FunctionalInterface
@@ -10,5 +11,10 @@ public interface AggregateLifecycleEngine
 	default MutationQuarantineRecorder mutationQuarantineRecorder()
 	{
 		return MutationQuarantineRecorder.noop();
+	}
+
+	default CreationQuarantineRecorder creationQuarantineRecorder()
+	{
+		return CreationQuarantineRecorder.noop();
 	}
 }

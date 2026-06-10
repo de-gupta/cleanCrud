@@ -48,4 +48,13 @@ public record CreationPolicyDecision(
 	{
 		return quarantineRequest.isPresent();
 	}
+
+	public CreationPolicyDecision withQuarantineRequest(final CreationQuarantineRequest quarantineRequest)
+	{
+		if (allowed)
+		{
+			throw new IllegalStateException("Allowed creation decisions cannot carry quarantine requests");
+		}
+		return new CreationPolicyDecision(false, toleratedViolations, Optional.of(quarantineRequest));
+	}
 }

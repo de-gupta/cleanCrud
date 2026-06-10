@@ -1,6 +1,7 @@
 package de.gupta.clean.crud.template.useCases.crud.aggregate.engine;
 
 import de.gupta.clean.crud.template.infrastructure.persistence.transaction.PersistenceTransactionRunner;
+import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application.recording.CreationQuarantineRecorder;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.recording.MutationQuarantineRecorder;
 import de.gupta.clean.crud.template.useCases.process.application.execution.DurableProcessExecutionNudge;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStarter;
@@ -15,6 +16,7 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 	private final DurableProcessStarter durableProcessStarter;
 	private final DurableProcessExecutionNudge durableProcessExecutionNudge;
 	private final MutationQuarantineRecorder mutationQuarantineRecorder;
+	private final CreationQuarantineRecorder creationQuarantineRecorder;
 
 	public static DefaultAggregateLifecycleEngine withTransactionRunner(
 			final PersistenceTransactionRunner transactionRunner)
@@ -24,7 +26,8 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 				PostCommitMutationDispatcher.async(),
 				unsupportedDurableProcessStarter(),
 				DurableProcessExecutionNudge.noop(),
-				MutationQuarantineRecorder.noop());
+				MutationQuarantineRecorder.noop(),
+				CreationQuarantineRecorder.noop());
 	}
 
 	public static DefaultAggregateLifecycleEngine withTransactionRunnerAndMutationQuarantineRecorder(
@@ -36,7 +39,22 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 				PostCommitMutationDispatcher.async(),
 				unsupportedDurableProcessStarter(),
 				DurableProcessExecutionNudge.noop(),
-				mutationQuarantineRecorder);
+				mutationQuarantineRecorder,
+				CreationQuarantineRecorder.noop());
+	}
+
+	public static DefaultAggregateLifecycleEngine withTransactionRunnerAndQuarantineRecorders(
+			final PersistenceTransactionRunner transactionRunner,
+			final MutationQuarantineRecorder mutationQuarantineRecorder,
+			final CreationQuarantineRecorder creationQuarantineRecorder)
+	{
+		return new DefaultAggregateLifecycleEngine(
+				transactionRunner,
+				PostCommitMutationDispatcher.async(),
+				unsupportedDurableProcessStarter(),
+				DurableProcessExecutionNudge.noop(),
+				mutationQuarantineRecorder,
+				creationQuarantineRecorder);
 	}
 
 	public static DefaultAggregateLifecycleEngine withTransactionRunnerAndDurableProcessStarter(
@@ -59,7 +77,8 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 				PostCommitMutationDispatcher.async(),
 				durableProcessStarter,
 				durableProcessExecutionNudge,
-				MutationQuarantineRecorder.noop());
+				MutationQuarantineRecorder.noop(),
+				CreationQuarantineRecorder.noop());
 	}
 
 	public static DefaultAggregateLifecycleEngine withTransactionRunnerAndDurableProcessStarterExecutionNudgeAndMutationQuarantineRecorder(
@@ -73,7 +92,24 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 				PostCommitMutationDispatcher.async(),
 				durableProcessStarter,
 				durableProcessExecutionNudge,
-				mutationQuarantineRecorder);
+				mutationQuarantineRecorder,
+				CreationQuarantineRecorder.noop());
+	}
+
+	public static DefaultAggregateLifecycleEngine withTransactionRunnerAndDurableProcessStarterExecutionNudgeAndQuarantineRecorders(
+			final PersistenceTransactionRunner transactionRunner,
+			final DurableProcessStarter durableProcessStarter,
+			final DurableProcessExecutionNudge durableProcessExecutionNudge,
+			final MutationQuarantineRecorder mutationQuarantineRecorder,
+			final CreationQuarantineRecorder creationQuarantineRecorder)
+	{
+		return new DefaultAggregateLifecycleEngine(
+				transactionRunner,
+				PostCommitMutationDispatcher.async(),
+				durableProcessStarter,
+				durableProcessExecutionNudge,
+				mutationQuarantineRecorder,
+				creationQuarantineRecorder);
 	}
 
 	static DefaultAggregateLifecycleEngine withTransactionRunnerAndDispatcher(
@@ -85,7 +121,8 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 				postCommitMutationDispatcher,
 				unsupportedDurableProcessStarter(),
 				DurableProcessExecutionNudge.noop(),
-				MutationQuarantineRecorder.noop());
+				MutationQuarantineRecorder.noop(),
+				CreationQuarantineRecorder.noop());
 	}
 
 	static DefaultAggregateLifecycleEngine withTransactionRunnerDispatcherAndStarter(
@@ -107,7 +144,10 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 			final DurableProcessExecutionNudge durableProcessExecutionNudge)
 	{
 		return new DefaultAggregateLifecycleEngine(transactionRunner, postCommitMutationDispatcher,
-				durableProcessStarter, durableProcessExecutionNudge, MutationQuarantineRecorder.noop());
+				durableProcessStarter,
+				durableProcessExecutionNudge,
+				MutationQuarantineRecorder.noop(),
+				CreationQuarantineRecorder.noop());
 	}
 
 	@Override
@@ -136,6 +176,12 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 		return mutationQuarantineRecorder;
 	}
 
+	@Override
+	public CreationQuarantineRecorder creationQuarantineRecorder()
+	{
+		return creationQuarantineRecorder;
+	}
+
 	private static DurableProcessStarter unsupportedDurableProcessStarter()
 	{
 		return _ ->
@@ -149,12 +195,14 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 			final PostCommitMutationDispatcher postCommitMutationDispatcher,
 			final DurableProcessStarter durableProcessStarter,
 			final DurableProcessExecutionNudge durableProcessExecutionNudge,
-			final MutationQuarantineRecorder mutationQuarantineRecorder)
+			final MutationQuarantineRecorder mutationQuarantineRecorder,
+			final CreationQuarantineRecorder creationQuarantineRecorder)
 	{
 		this.transactionRunner = transactionRunner;
 		this.postCommitMutationDispatcher = postCommitMutationDispatcher;
 		this.durableProcessStarter = durableProcessStarter;
 		this.durableProcessExecutionNudge = durableProcessExecutionNudge;
 		this.mutationQuarantineRecorder = mutationQuarantineRecorder;
+		this.creationQuarantineRecorder = creationQuarantineRecorder;
 	}
 }
