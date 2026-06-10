@@ -10,9 +10,10 @@ It is a layered application framework with:
 - aggregate definitions
 - workflow execution
 - relationship orchestration
-- source-aware mutation policy
+- source-aware operation policy
 - post-commit hooks
 - durable subprocesses
+- creation quarantine
 - mutation quarantine
 
 That is a lot of moving pieces.
@@ -29,10 +30,15 @@ It focuses on roles, responsibilities, and the sequence of events.
 
 ## The Big Picture
 
-Today `cleanCrud` has two main business lanes:
+Today `cleanCrud` has two top-level business lanes:
 
 1. the **CRUD lane**
-2. the **application mutation lane**
+2. the **application operation lane**
+
+The operation lane currently has two mature operation families:
+
+- **creation**
+- **mutation**
 
 Both lanes share the same aggregate substrate underneath:
 
@@ -54,6 +60,14 @@ The CRUD lane says:
 - patch this aggregate
 - delete this aggregate
 
+The creation lane says:
+
+- here is a typed business command or event that creates a new aggregate
+- let the registered handler interpret it into create input or an aggregate
+  creation plan
+- apply source-aware policy before persistence
+- persist the new aggregate if allowed
+
 The mutation lane says:
 
 - here is a typed business command or event
@@ -65,8 +79,8 @@ The mutation lane says:
 So the architecture is not "one CRUD framework plus a random side subsystem".
 It is better understood as:
 
-> one aggregate workflow substrate with two currently mature business entry
-> lanes on top of it
+> one aggregate workflow substrate with one CRUD lane and one application
+> operation lane on top of it
 
 ---
 
@@ -90,7 +104,7 @@ It tells the framework:
 - what duplicate rules apply
 - what post-commit hook should run
 - what relationships exist
-- what mutation policy profile applies
+- what source-aware operation policy profiles apply
 
 This is the center of gravity of the architecture.
 If the framework needs to know "how does this aggregate behave?", it asks the
@@ -122,11 +136,12 @@ Its concrete implementation, `DefaultAggregateLifecycleEngine`, owns:
 - post-transaction dispatch
 - durable process task start
 - immediate durable-process execution nudge
+- creation quarantine recording access
 - mutation quarantine recording access
 
 Importantly, the engine does **not** decide the business sequence of "save",
-"patch", "delete", or "mutate". The services define those workflows. The engine
-executes them.
+"patch", "delete", "create", or "mutate". The services define those workflows.
+The engine executes them.
 
 ### The workflow object
 
@@ -171,6 +186,17 @@ The mutation lane is implemented by:
 
 This service is the mutation equivalent of the CRUD services.
 It is application-facing, workflow-based, and aggregate-aware.
+
+### The creation service
+
+The creation side of the operation lane is implemented by:
+
+- `AggregateCreationServices`
+- `DefaultAggregateCreationService`
+
+This service is the creation-family sibling of the mutation service.
+It is also application-facing, workflow-based, and aggregate-aware, but starts
+from a typed creation payload instead of an existing aggregate id.
 
 ### Relationship coordinators
 
@@ -256,20 +282,25 @@ assembly points that consumers are expected to inject per module.
 
 ### Validation and policy support
 
-Two different kinds of rule checking matter:
+Three different kinds of rule checking matter:
 
 1. classic CRUD validation
-2. source-aware mutation policy
+2. source-aware creation policy
+3. source-aware mutation policy
 
 Classic CRUD validation is mainly handled by:
 
 - `AggregateMutationValidationSupport`
 
+Source-aware creation policy is built by:
+
+- `AggregateCreationPolicies`
+
 Source-aware mutation policy is built by:
 
 - `AggregateMutationPolicies`
 
-That policy combines:
+Those policy bundles combine:
 
 - access policy
 - transition policy
@@ -289,7 +320,34 @@ The durable subprocess path persists a task and then nudges execution.
 
 These are intentionally separate.
 
-### Mutation quarantine
+### Operation quarantine
+
+The operation lane can decide that a creation or mutation should neither be
+accepted nor simply rejected. It can be **quarantined**.
+
+That means:
+
+- the aggregate change is not applied
+- the operation request is persisted
+- it can later be inspected and replayed
+
+The two operation families currently have their own quarantine subsystems:
+
+#### Creation quarantine
+
+The creation lane can quarantine a proposed creation before root persistence or
+while relationship-aware creation is being resolved.
+
+That means:
+
+- the aggregate is not created
+- the creation request is persisted
+- it can later be inspected, dismissed, or replayed
+
+This is implemented by the creation quarantine subsystem and wired into the
+engine through `CreationQuarantineRecorder`.
+
+#### Mutation quarantine
 
 The mutation lane can decide that a mutation should neither be accepted nor
 simply rejected. It can be **quarantined**.
@@ -606,10 +664,11 @@ In the sample repo, `CommonPersistenceConfiguration` wires a
 
 - durable process starter
 - durable process execution nudge
+- creation quarantine recorder
 - mutation quarantine recorder
 
 So this single engine bean is the shared runtime substrate for both CRUD and
-mutation.
+the application operation lane.
 
 This engine bean is created through an explicit `@Bean` method in
 `CommonPersistenceConfiguration`, not through component scanning.
@@ -622,6 +681,7 @@ It needs several cross-cutting collaborators:
 - transaction runner
 - durable process starter
 - durable process execution nudge
+- creation quarantine recorder
 - mutation quarantine recorder
 
 Putting that assembly in one configuration method makes the runtime wiring
@@ -820,7 +880,133 @@ That ordering is what makes aggregate delete honor ownership semantics.
 
 ---
 
-## Story Two: A Mutation Request
+## Story Two: A Creation Request
+
+Now let us switch from CRUD to the application operation lane's creation
+family.
+
+The sample repo demonstrates this with typed creation payloads such as:
+
+- `RegisterTagCreation`
+- `RegisterTaskCreation`
+
+These are handled through the creation operation lane, not through REST save
+controllers.
+
+### Scene 1: Someone calls the creation application controller
+
+The entry point is:
+
+- `CreationApplicationController`
+
+Like the mutation controller, it exposes source-aware methods such as:
+
+- `applyUserIntent(...)`
+- `applyInternalCommand(...)`
+- `applyAuthoritativeExternalEvent(...)`
+- `applyProcessEmittedAction(...)`
+
+So operation creation is not modeled as "just call save from another
+controller". It is its own application surface with explicit source semantics.
+
+### Scene 2: The controller packages the call as a `CreationRequest`
+
+The controller builds a `CreationRequest`.
+
+A `CreationRequest` conceptually carries:
+
+- typed payload
+- operation source
+- operation family
+- optional correlation id
+- optional causation id
+
+This gives operation creation richer semantics than plain CRUD save.
+
+### Scene 3: The creation service dispatches through a handler registry
+
+The creation lane is implemented by:
+
+- `AggregateCreationServices`
+- `DefaultAggregateCreationService`
+
+The service asks a `CreationHandlerRegistry` to find the registered handler for
+the incoming payload type.
+
+That handler may return:
+
+- a simple create input
+- or an `AggregateCreationPlan`
+
+So the creation lane is open for additional intent-shaped creation use cases
+without changing the service itself.
+
+### Scene 4: The service evaluates source-aware creation policy
+
+Once the would-be root model has been built, the creation service applies:
+
+- `AggregateCreationPolicies.sourceAwarePolicy(definition)`
+
+This is the creation-family sibling of mutation policy.
+It can:
+
+- allow creation
+- quarantine creation
+- surface tolerated violations in the returned `CreationResult`
+
+So operation creation is semantically richer than CRUD save even though both
+eventually reuse the same aggregate infrastructure.
+
+### Scene 5: Relationship-aware creation reuses the CRUD aggregate substrate
+
+If the aggregate has no executable relationships, the service can persist the
+root directly through the mutation port.
+
+If it does have owned relationships, `DefaultAggregateCreationService`
+delegates to the same `AggregateSaveCoordinator` used by CRUD save.
+
+That is one of the central architectural choices of the operation lane:
+
+- application semantics stay distinct
+- aggregate persistence choreography is reused underneath
+
+So operation creation is not a parallel persistence implementation.
+It is a parallel application entry lane on top of the same aggregate save
+machinery.
+
+### Scene 6: The result is explicitly semantic
+
+The creation lane returns a `CreationResult`, not just an identified model.
+
+That result can carry:
+
+- `CreationContext`
+- policy decision
+- optional `CreateResult`
+- optional quarantine request
+
+So callers can choose between convenient unwrapping and preserving the richer
+semantic result.
+
+### Scene 7: Quarantine and replay are first-class
+
+If source-aware creation policy says quarantine:
+
+1. the aggregate is not created
+2. the creation request is persisted through `CreationQuarantineRecorder`
+3. the service returns `CreationResult.quarantined(...)`
+
+Later, the creation quarantine subsystem can replay that request back through
+the normal creation service using source:
+
+- `ADMINISTRATIVE_REPLAY`
+
+So creation now mirrors mutation in having durable quarantine persistence and
+replay support.
+
+---
+
+## Story Three: A Mutation Request
 
 Now let us switch lanes.
 
@@ -1190,11 +1376,11 @@ So the mutation application controller gives consumers a choice:
 
 ---
 
-## How CRUD And Mutation Relate
+## How CRUD And Operation Relate
 
 By now the family resemblance should be clear.
 
-Both lanes:
+CRUD and both operation families:
 
 - are aggregate-based
 - use the same aggregate definition
@@ -1211,6 +1397,13 @@ But they differ in how they express business change.
 - here is create input
 - here is patch input
 - here is delete intent
+
+### Operation creation says
+
+- here is a typed business creation payload
+- here is where it came from
+- here is the handler that knows how to interpret it
+- here is the policy profile that determines whether to allow or quarantine it
 
 ### Mutation says
 
@@ -1248,13 +1441,36 @@ It provides:
 
 The important architectural relation is this:
 
-- CRUD or mutation can start a durable task
+- CRUD, operation creation, or mutation can start a durable task
 - the engine persists that task in the same transaction
 - after commit, the engine nudges execution
 - if execution fails or must retry, the durable subsystem owns that lifecycle
 
-So durable processes are not inside CRUD or mutation.
+So durable processes are not inside CRUD or the operation families.
 They are a separate subsystem that both lanes can use.
+
+### Creation quarantine subsystem
+
+The creation quarantine infrastructure is auto-configured by
+`CreationQuarantineInfrastructureAutoConfiguration`.
+
+It provides:
+
+- creation quarantine repository
+- creation quarantine service
+- recorder bean
+- replay registry
+- application controller
+- optional REST controller
+
+The relation to the creation lane is:
+
+- creation service decides whether to quarantine
+- engine exposes the recorder
+- quarantine subsystem persists, inspects, dismisses, and later replays
+
+Again, this is a separate subsystem, but tightly integrated with the creation
+lane.
 
 ### Mutation quarantine subsystem
 
@@ -1293,6 +1509,7 @@ And the engine is built with:
 
 - durable process starter
 - durable process execution nudge
+- creation quarantine recorder
 - mutation quarantine recorder
 
 That one bean is a good summary of the modern architecture.
@@ -1300,9 +1517,11 @@ The engine is not just "run this in a transaction".
 It is the shared lifecycle executor for:
 
 - CRUD
+- operation creation
 - mutation
 - durable-process start
-- quarantine recording access
+- creation quarantine recording access
+- mutation quarantine recording access
 
 This is also a good place to make the bean taxonomy explicit.
 The sample app uses three main ways of getting Spring beans.
@@ -1315,6 +1534,7 @@ These are the leaf classes where the module is expressing its own behavior:
 - facades
 - API/domain adapters
 - persistence services
+- creation handlers
 - mutation handlers
 
 These classes are usually small, named, and domain-specific.
@@ -1327,7 +1547,9 @@ These are used when the module is composing generic framework machinery:
 - aggregate definition beans
 - aggregate fetch/mutation port beans
 - CRUD service beans
+- creation service beans
 - mutation service beans
+- creation application controller beans
 - mutation application controller beans
 - relationship definition beans
 - the shared lifecycle engine bean
@@ -1351,6 +1573,7 @@ Some infrastructure is created by `cleanCrud` itself through Spring
 auto-configuration classes, such as:
 
 - durable process infrastructure
+- creation quarantine infrastructure
 - mutation quarantine infrastructure
 - optional Swagger support
 
@@ -1391,6 +1614,7 @@ These classes decide the business sequence:
 - `AbstractFetchService`
 - `AbstractUpdateService`
 - `AbstractDeleteService`
+- `DefaultAggregateCreationService`
 - `DefaultAggregateMutationService`
 
 Their job is to define workflows.
@@ -1415,6 +1639,7 @@ These classes actually move data and side effects:
 - repositories
 - JPA models
 - durable process storage and runner
+- creation quarantine storage and replay
 - mutation quarantine storage and replay
 
 Their job is to make the workflows real.
@@ -1432,7 +1657,8 @@ It is translated into application language through adapters and facades.
 From there, one of two main lanes takes over:
 
 - CRUD, if the request is a normal create/fetch/update/delete action
-- mutation, if the request is a typed command or event
+- the operation lane, if the request is a typed creation or mutation command or
+  event
 
 In both cases, the lane-specific service builds a workflow.
 That workflow is executed by one shared engine.
@@ -1448,8 +1674,8 @@ The aggregate definition acts as the contract that tells the framework what the
 aggregate is and how it behaves.
 
 When relationships are involved, coordinators do the heavy lifting.
-When typed mutations are involved, handlers and source-aware policy do the
-heavy lifting.
+When typed operation requests are involved, handlers and source-aware policy do
+the heavy lifting.
 
 The result is a framework that still looks like CRUD from the outside, but is
 already much richer underneath:
@@ -1457,8 +1683,10 @@ already much richer underneath:
 - aggregate-aware
 - workflow-owned
 - source-aware
+- operation-family aware
 - post-commit capable
 - durable-process capable
-- quarantine capable
+- creation-quarantine capable
+- mutation-quarantine capable
 
 That is the architecture as it exists today.
