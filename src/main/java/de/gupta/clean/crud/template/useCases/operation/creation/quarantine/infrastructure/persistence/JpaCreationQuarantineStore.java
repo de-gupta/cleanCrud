@@ -10,6 +10,7 @@ import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domai
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.id.CreationQuarantineId;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infrastructure.persistence.model.CreationQuarantinePersistenceModel;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.port.persistence.CreationQuarantineRepository;
+import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayOutcome;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCausationId;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCorrelationId;
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantSeverity;
@@ -118,7 +119,7 @@ public class JpaCreationQuarantineStore implements CreationQuarantineRepository
 		persistenceModel.setUpdatedAt(record.updatedAt());
 		persistenceModel.setReplayAttemptCount(record.replayAttemptCount());
 		persistenceModel.setLastReplayAt(record.lastReplayAt().orElse(null));
-		persistenceModel.setLastReplayOutcome(record.lastReplayOutcome().orElse(null));
+		persistenceModel.setLastReplayOutcome(record.lastReplayOutcome().map(Enum::name).orElse(null));
 		persistenceModel.setLastReplaySummary(record.lastReplaySummary().orElse(null));
 		return persistenceModel;
 	}
@@ -140,7 +141,7 @@ public class JpaCreationQuarantineStore implements CreationQuarantineRepository
 				persistenceModel.updatedAt(),
 				persistenceModel.replayAttemptCount(),
 				Optional.ofNullable(persistenceModel.lastReplayAt()),
-				Optional.ofNullable(persistenceModel.lastReplayOutcome()),
+				Optional.ofNullable(persistenceModel.lastReplayOutcome()).map(QuarantineReplayOutcome::valueOf),
 				Optional.ofNullable(persistenceModel.lastReplaySummary()));
 	}
 

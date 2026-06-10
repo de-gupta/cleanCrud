@@ -3,6 +3,7 @@ package de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.appl
 import de.gupta.clean.crud.template.useCases.operation.domain.model.ApplicationOperationPayload;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationFamily;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
+import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayOutcome;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.model.MutationRequest;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.model.MutationResult;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.evaluation.MutationPolicyDecision;
@@ -223,7 +224,7 @@ class DefaultMutationQuarantineServiceTest
 					.isEqualTo(MutationQuarantineStatus.OPEN);
 			assertThat(replayed.lastReplayOutcome())
 					.as("last replay outcome should contain FAILED when gateway throws")
-					.contains("FAILED");
+					.contains(QuarantineReplayOutcome.FAILED);
 		}
 	}
 

@@ -3,6 +3,7 @@ package de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.appl
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.ApplicationOperationPayload;
+import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayOutcome;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.model.MutationResult;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.quarantine.MutationQuarantineRequest;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.recording.MutationQuarantineSubmission;
@@ -110,7 +111,7 @@ public final class DefaultMutationQuarantineService implements MutationQuarantin
 		{
 			return repository.update(record.replayAttempted(
 					clock.instant(),
-					"FAILED",
+					QuarantineReplayOutcome.FAILED,
 					Optional.of(summaryFor(caught))));
 		}
 	}
@@ -125,7 +126,7 @@ public final class DefaultMutationQuarantineService implements MutationQuarantin
 		}
 		return repository.update(record.replayAttempted(
 				clock.instant(),
-				"QUARANTINED",
+				QuarantineReplayOutcome.QUARANTINED,
 				result.quarantineRequest()
 				      .map(request -> request.violations().toString())
 				      .map(this::trimmed)));

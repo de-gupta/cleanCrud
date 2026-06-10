@@ -9,6 +9,7 @@ import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.*;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.useCases.operation.creation.aggregate.policy.AggregateCreationPolicies;
 import de.gupta.clean.crud.template.useCases.operation.creation.application.service.AbstractCreationService;
+import de.gupta.clean.crud.template.useCases.operation.creation.application.service.QuarantinableCreationService;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.handler.AggregateCreationHandler;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.handler.CreationHandlerRegistry;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.handler.RegisteredCreationHandler;
@@ -20,12 +21,12 @@ import de.gupta.clean.crud.template.useCases.operation.creation.domain.plan.Aggr
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.evaluation.SourceAwareCreationPolicy;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.quarantine.QuarantinedCreationException;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application.CreationQuarantineReplayCommand;
-import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application.CreationQuarantineReplayGateway;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application.recording.CreationQuarantineSubmission;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.id.CreationQuarantineId;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.ApplicationOperationPayload;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -39,7 +40,7 @@ public final class DefaultAggregateCreationService<
 		DomainModelUpdatePatch,
 		DomainModelResponse>
 		extends AbstractCreationService<DomainId, DomainModel>
-		implements CreationQuarantineReplayGateway
+		implements QuarantinableCreationService<DomainId, DomainModel>
 {
 	private final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 			DomainModelResponse> definition;

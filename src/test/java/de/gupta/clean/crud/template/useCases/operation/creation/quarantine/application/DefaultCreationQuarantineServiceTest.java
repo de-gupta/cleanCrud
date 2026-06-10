@@ -12,10 +12,7 @@ import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domai
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.CreationQuarantineStatus;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.id.CreationQuarantineId;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.port.persistence.CreationQuarantineRepository;
-import de.gupta.clean.crud.template.useCases.operation.domain.model.ApplicationOperationPayload;
-import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationFamily;
-import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
-import de.gupta.clean.crud.template.useCases.operation.domain.model.TestOperationPayload;
+import de.gupta.clean.crud.template.useCases.operation.domain.model.*;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -206,7 +203,7 @@ class DefaultCreationQuarantineServiceTest
 					.isEqualTo(CreationQuarantineStatus.OPEN);
 			assertThat(replayed.lastReplayOutcome())
 					.as("last replay outcome should contain FAILED when gateway throws")
-					.contains("FAILED");
+					.contains(QuarantineReplayOutcome.FAILED);
 		}
 	}
 

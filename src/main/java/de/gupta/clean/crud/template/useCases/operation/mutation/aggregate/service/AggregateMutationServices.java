@@ -5,7 +5,7 @@ import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateDefi
 import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateLifecycleEngine;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateServiceSupportFactory;
 import de.gupta.clean.crud.template.useCases.operation.mutation.aggregate.policy.AggregateMutationPolicies;
-import de.gupta.clean.crud.template.useCases.operation.mutation.application.service.MutationService;
+import de.gupta.clean.crud.template.useCases.operation.mutation.application.service.QuarantinableMutationService;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.handler.MutationHandlerRegistry;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.model.MutationContext;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.evaluation.SourceAwareMutationPolicy;
@@ -18,7 +18,7 @@ import java.util.function.Function;
 public final class AggregateMutationServices
 {
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
-	MutationService<DomainId, DomainModel> mutationService(
+	QuarantinableMutationService<DomainId, DomainModel> mutationService(
 			final String aggregateKey,
 			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
@@ -36,7 +36,7 @@ public final class AggregateMutationServices
 	}
 
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
-	MutationService<DomainId, DomainModel> mutationService(
+	QuarantinableMutationService<DomainId, DomainModel> mutationService(
 			final String aggregateKey,
 			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
@@ -56,7 +56,7 @@ public final class AggregateMutationServices
 	}
 
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
-	MutationService<DomainId, DomainModel> mutationService(
+	QuarantinableMutationService<DomainId, DomainModel> mutationService(
 			final String aggregateKey,
 			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
@@ -70,7 +70,7 @@ public final class AggregateMutationServices
 	}
 
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
-	MutationService<DomainId, DomainModel> mutationService(
+	QuarantinableMutationService<DomainId, DomainModel> mutationService(
 			final String aggregateKey,
 			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,

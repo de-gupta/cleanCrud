@@ -3,6 +3,7 @@ package de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.infr
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayOutcome;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCausationId;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCorrelationId;
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantSeverity;
@@ -119,7 +120,7 @@ public class JpaMutationQuarantineStore implements MutationQuarantineRepository
 		persistenceModel.setUpdatedAt(record.updatedAt());
 		persistenceModel.setReplayAttemptCount(record.replayAttemptCount());
 		persistenceModel.setLastReplayAt(record.lastReplayAt().orElse(null));
-		persistenceModel.setLastReplayOutcome(record.lastReplayOutcome().orElse(null));
+		persistenceModel.setLastReplayOutcome(record.lastReplayOutcome().map(Enum::name).orElse(null));
 		persistenceModel.setLastReplaySummary(record.lastReplaySummary().orElse(null));
 		return persistenceModel;
 	}
@@ -143,7 +144,7 @@ public class JpaMutationQuarantineStore implements MutationQuarantineRepository
 				persistenceModel.updatedAt(),
 				persistenceModel.replayAttemptCount(),
 				Optional.ofNullable(persistenceModel.lastReplayAt()),
-				Optional.ofNullable(persistenceModel.lastReplayOutcome()),
+				Optional.ofNullable(persistenceModel.lastReplayOutcome()).map(QuarantineReplayOutcome::valueOf),
 				Optional.ofNullable(persistenceModel.lastReplaySummary()));
 	}
 

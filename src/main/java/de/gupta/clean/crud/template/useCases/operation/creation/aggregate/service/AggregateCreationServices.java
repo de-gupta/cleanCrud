@@ -6,7 +6,7 @@ import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateLife
 import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateSaveCoordinator;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateServiceSupportFactory;
 import de.gupta.clean.crud.template.useCases.operation.creation.aggregate.policy.AggregateCreationPolicies;
-import de.gupta.clean.crud.template.useCases.operation.creation.application.service.CreationService;
+import de.gupta.clean.crud.template.useCases.operation.creation.application.service.QuarantinableCreationService;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.handler.CreationHandlerRegistry;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.model.CreationContext;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.evaluation.SourceAwareCreationPolicy;
@@ -19,7 +19,7 @@ import java.util.function.Function;
 public final class AggregateCreationServices
 {
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
-	CreationService<DomainId, DomainModel> creationService(
+	QuarantinableCreationService<DomainId, DomainModel> creationService(
 			final String aggregateKey,
 			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
@@ -38,7 +38,7 @@ public final class AggregateCreationServices
 	}
 
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
-	CreationService<DomainId, DomainModel> creationService(
+	QuarantinableCreationService<DomainId, DomainModel> creationService(
 			final String aggregateKey,
 			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
@@ -59,7 +59,7 @@ public final class AggregateCreationServices
 	}
 
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
-	CreationService<DomainId, DomainModel> creationService(
+	QuarantinableCreationService<DomainId, DomainModel> creationService(
 			final String aggregateKey,
 			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,

@@ -3,6 +3,7 @@ package de.gupta.clean.crud.template.useCases.operation.creation.quarantine.api.
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.CreationQuarantineStatus;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationFamily;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
+import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayOutcome;
 
 import java.time.Instant;
 import java.util.List;
@@ -23,7 +24,7 @@ public record CreationQuarantineResponse(
 		Instant updatedAt,
 		int replayAttemptCount,
 		Optional<Instant> lastReplayAt,
-		Optional<String> lastReplayOutcome,
+		Optional<QuarantineReplayOutcome> lastReplayOutcome,
 		Optional<String> lastReplaySummary)
 {
 }

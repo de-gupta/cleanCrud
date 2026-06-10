@@ -3,6 +3,7 @@ package de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.infr
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationFamily;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
+import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayOutcome;
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantSeverity;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationPolicyViolation;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.MutationQuarantineRecord;
@@ -46,7 +47,7 @@ class JpaMutationQuarantineStoreTest
 		quarantineStore.save(original);
 		var updated = original.replayAttempted(
 				Instant.parse("2026-06-09T10:05:00Z"),
-				"FAILED",
+				QuarantineReplayOutcome.FAILED,
 				Optional.of("still inconsistent"));
 		quarantineStore.update(updated);
 		entityManager.flush();
@@ -62,7 +63,7 @@ class JpaMutationQuarantineStoreTest
 				.isEqualTo(1);
 		assertThat(reloaded.lastReplayOutcome())
 				.as("last replay outcome should reflect FAILED result")
-				.contains("FAILED");
+				.contains(QuarantineReplayOutcome.FAILED);
 		assertThat(reloaded.violations().getFirst().severity())
 				.as("reloaded violations should round-trip the invariant severity")
 				.contains(InvariantSeverity.HARD);

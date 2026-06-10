@@ -8,6 +8,7 @@ import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domai
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infrastructure.persistence.model.CreationQuarantinePersistenceModel;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationFamily;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
+import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayOutcome;
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantViolation;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,7 +47,7 @@ class JpaCreationQuarantineStoreTest
 		quarantineStore.save(original);
 		var updated = original.replayAttempted(
 				Instant.parse("2026-06-09T10:05:00Z"),
-				"FAILED",
+				QuarantineReplayOutcome.FAILED,
 				Optional.of("still inconsistent"));
 		quarantineStore.update(updated);
 		entityManager.flush();
@@ -62,7 +63,7 @@ class JpaCreationQuarantineStoreTest
 				.isEqualTo(1);
 		assertThat(reloaded.lastReplayOutcome())
 				.as("last replay outcome should reflect FAILED result")
-				.contains("FAILED");
+				.contains(QuarantineReplayOutcome.FAILED);
 		assertThat(reloaded.violations().getFirst().invariantViolation())
 				.as("reloaded violations should round-trip the invariant violation")
 				.contains(InvariantViolation.hard("hard violation"));

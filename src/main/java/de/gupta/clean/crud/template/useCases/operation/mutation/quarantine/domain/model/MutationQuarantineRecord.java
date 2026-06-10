@@ -2,6 +2,7 @@ package de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.doma
 
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationFamily;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
+import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayOutcome;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCausationId;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCorrelationId;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationPolicyViolation;
@@ -29,7 +30,7 @@ public record MutationQuarantineRecord(
 		Instant updatedAt,
 		int replayAttemptCount,
 		Optional<Instant> lastReplayAt,
-		Optional<String> lastReplayOutcome,
+		Optional<QuarantineReplayOutcome> lastReplayOutcome,
 		Optional<String> lastReplaySummary)
 {
 	public MutationQuarantineRecord
@@ -104,13 +105,13 @@ public record MutationQuarantineRecord(
 				replayedAt,
 				replayAttemptCount + 1,
 				Optional.of(replayedAt),
-				Optional.of("APPLIED"),
+				Optional.of(QuarantineReplayOutcome.APPLIED),
 				Optional.empty());
 	}
 
 	public MutationQuarantineRecord replayAttempted(
 			final Instant replayedAt,
-			final String replayOutcome,
+			final QuarantineReplayOutcome replayOutcome,
 			final Optional<String> replaySummary)
 	{
 		return new MutationQuarantineRecord(

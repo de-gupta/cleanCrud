@@ -12,6 +12,7 @@ import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.Aggrega
 import de.gupta.clean.crud.template.useCases.operation.domain.model.ApplicationOperationPayload;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
 import de.gupta.clean.crud.template.useCases.operation.mutation.application.service.AbstractMutationService;
+import de.gupta.clean.crud.template.useCases.operation.mutation.application.service.QuarantinableMutationService;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.handler.MutationHandlerRegistry;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.handler.RegisteredMutationHandler;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.model.MutationContext;
@@ -20,12 +21,12 @@ import de.gupta.clean.crud.template.useCases.operation.mutation.domain.model.Mut
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.plan.AggregateMutationPlan;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.evaluation.SourceAwareMutationPolicy;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.MutationQuarantineReplayCommand;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.MutationQuarantineReplayGateway;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.recording.MutationQuarantineSubmission;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.id.MutationQuarantineId;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -39,7 +40,7 @@ public final class DefaultAggregateMutationService<
 		DomainModelUpdatePatch,
 		DomainModelResponse>
 		extends AbstractMutationService<DomainId, DomainModel>
-		implements MutationQuarantineReplayGateway
+		implements QuarantinableMutationService<DomainId, DomainModel>
 {
 	private static final Logger log = LoggerFactory.getLogger(DefaultAggregateMutationService.class);
 

@@ -9,6 +9,7 @@ import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domai
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.CreationQuarantineStatus;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.id.CreationQuarantineId;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.port.persistence.CreationQuarantineRepository;
+import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayOutcome;
 
 import java.time.Clock;
 import java.util.Collection;
@@ -101,7 +102,7 @@ public final class DefaultCreationQuarantineService implements CreationQuarantin
 		{
 			return repository.update(record.replayAttempted(
 					clock.instant(),
-					"FAILED",
+					QuarantineReplayOutcome.FAILED,
 					Optional.of(summaryFor(caught))));
 		}
 	}
@@ -116,7 +117,7 @@ public final class DefaultCreationQuarantineService implements CreationQuarantin
 		}
 		return repository.update(record.replayAttempted(
 				clock.instant(),
-				"QUARANTINED",
+				QuarantineReplayOutcome.QUARANTINED,
 				result.quarantineRequest()
 				      .map(request -> request.violations().toString())
 				      .map(this::trimmed)));

@@ -1,7 +1,6 @@
 package de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infrastructure.spring;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import de.gupta.clean.crud.template.useCases.operation.creation.application.service.CreationService;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.api.application.CreationQuarantineApplicationController;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.api.application.CreationQuarantineApplicationControllers;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.api.web.CreationQuarantineWebMapper;
@@ -15,7 +14,6 @@ import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infra
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.port.persistence.CreationQuarantineRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
-import org.springframework.aop.framework.Advised;
 import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -29,7 +27,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.time.Clock;
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Optional;
 
 @AutoConfiguration(after = HibernateJpaAutoConfiguration.class)
 @EntityScan(basePackageClasses = CreationQuarantinePersistenceModel.class)
@@ -55,57 +55,16 @@ public class CreationQuarantineInfrastructureAutoConfiguration
 			final ListableBeanFactory beanFactory)
 	{
 		var discovered = new LinkedHashMap<String, CreationQuarantineReplayGateway>();
-		var seen = Collections.newSetFromMap(new IdentityHashMap<CreationQuarantineReplayGateway, Boolean>());
 		for (var gateway : beanFactory.getBeansOfType(CreationQuarantineReplayGateway.class).values())
 		{
-			registerReplayGateway(discovered, seen, gateway);
-		}
-		for (var service : beanFactory.getBeansOfType(CreationService.class).values())
-		{
-			asReplayGateway(service).ifPresent(gateway -> registerReplayGateway(discovered, seen, gateway));
+			var duplicate = discovered.putIfAbsent(gateway.aggregateType(), gateway);
+			if (duplicate != null)
+			{
+				throw new IllegalArgumentException(
+						"Duplicate creation quarantine replay gateway for aggregate type " + gateway.aggregateType());
+			}
 		}
 		return discovered;
-	}
-
-	private static void registerReplayGateway(
-			final Map<String, CreationQuarantineReplayGateway> discovered,
-			final Set<CreationQuarantineReplayGateway> seen,
-			final CreationQuarantineReplayGateway gateway)
-	{
-		if (!seen.add(gateway))
-		{
-			return;
-		}
-		var duplicate = discovered.putIfAbsent(gateway.aggregateType(), gateway);
-		if (duplicate != null)
-		{
-			throw new IllegalArgumentException(
-					"Duplicate creation quarantine replay gateway for aggregate type " + gateway.aggregateType());
-		}
-	}
-
-	private static Optional<CreationQuarantineReplayGateway> asReplayGateway(final Object candidate)
-	{
-		if (candidate instanceof CreationQuarantineReplayGateway gateway)
-		{
-			return Optional.of(gateway);
-		}
-		if (candidate instanceof Advised advised)
-		{
-			try
-			{
-				var target = advised.getTargetSource().getTarget();
-				if (target instanceof CreationQuarantineReplayGateway gateway)
-				{
-					return Optional.of(gateway);
-				}
-			}
-			catch (final Exception exception)
-			{
-				throw new IllegalStateException("Failed to inspect creation service replay gateway", exception);
-			}
-		}
-		return Optional.empty();
 	}
 
 	@Configuration
