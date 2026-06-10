@@ -159,7 +159,7 @@ public class JpaCreationQuarantineStore implements CreationQuarantineRepository
 		}
 	}
 
-	private JpaCreationQuarantineStore(
+	JpaCreationQuarantineStore(
 			final EntityManager entityManager,
 			final ObjectMapper objectMapper)
 	{

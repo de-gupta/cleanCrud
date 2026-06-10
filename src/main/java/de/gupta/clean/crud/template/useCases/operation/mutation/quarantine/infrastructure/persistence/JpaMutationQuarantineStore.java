@@ -162,7 +162,7 @@ public class JpaMutationQuarantineStore implements MutationQuarantineRepository
 		}
 	}
 
-	private JpaMutationQuarantineStore(
+	JpaMutationQuarantineStore(
 			final EntityManager entityManager,
 			final ObjectMapper objectMapper)
 	{
