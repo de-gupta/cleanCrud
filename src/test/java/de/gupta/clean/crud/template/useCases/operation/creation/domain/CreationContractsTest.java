@@ -1,6 +1,7 @@
 package de.gupta.clean.crud.template.useCases.operation.creation.domain;
 
-import de.gupta.clean.crud.template.useCases.operation.creation.domain.handler.CreationHandler;
+import de.gupta.clean.crud.template.useCases.operation.creation.domain.handler.AggregateCreationHandler;
+import de.gupta.clean.crud.template.useCases.operation.creation.domain.plan.AggregateCreationPlan;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.model.CreateResult;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.model.CreationContext;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.model.CreationRequest;
@@ -89,10 +90,10 @@ class CreationContractsTest
 	@Test
 	void creationHandlerAppliesTypedPayloadToCreateInput()
 	{
-		CreationHandler<OrderCreate, OpenOrder> handler =
-				payload -> new OrderCreate(payload.symbol(), payload.quantity());
+		AggregateCreationHandler<OrderCreate, OpenOrder> handler =
+				payload -> AggregateCreationPlan.rootOnly(new OrderCreate(payload.symbol(), payload.quantity()));
 
-		var create = handler.apply(new OpenOrder("AAPL", 100));
+		var create = handler.apply(new OpenOrder("AAPL", 100)).rootCreate().orElseThrow();
 
 		assertThat(create.symbol())
 				.as("handler should map payload symbol to create input")

@@ -26,6 +26,7 @@ import de.gupta.clean.crud.template.useCases.operation.creation.domain.handler.C
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.handler.RegisteredCreationHandler;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.model.CreationContext;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.model.CreationRequest;
+import de.gupta.clean.crud.template.useCases.operation.creation.domain.plan.AggregateCreationPlan;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.invariant.CreationInvariantPolicy;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.profile.CreationPolicyProfile;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.profile.CreationPolicyProfileResolver;
@@ -276,17 +277,18 @@ class AggregateCreationServicesTest
 	{
 		return CreationHandlerRegistry.of(List.of(
 				RegisteredCreationHandler.of(OpenOrder.class,
-						payload -> new OrderCreate(payload.symbol(), payload.quantity()))));
+						payload -> AggregateCreationPlan.rootOnly(
+								new OrderCreate(payload.symbol(), payload.quantity())))));
 	}
 
 	private static CreationHandlerRegistry<AggregateOrderCreate> aggregateRegistry()
 	{
 		return CreationHandlerRegistry.of(List.of(
 				RegisteredCreationHandler.of(OpenOrderWithLine.class,
-						payload -> new AggregateOrderCreate(
+						payload -> AggregateCreationPlan.rootOnly(new AggregateOrderCreate(
 								payload.symbol(),
 								List.of(new SatelliteCreateIntent.InlineSatelliteCreateIntent<>(
-										new OrderLineCreate(payload.lineValue())))))));
+										new OrderLineCreate(payload.lineValue()))))))));
 	}
 
 	private record OpenOrder(String symbol, int quantity) implements ApplicationOperationPayload

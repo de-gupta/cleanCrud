@@ -89,7 +89,7 @@ class AggregateMutationRelationshipSupportTest
 	private MutationHandlerRegistry<MasterModel> registry()
 	{
 		return MutationHandlerRegistry.of(List.of(
-				RegisteredMutationHandler.ofAggregate(
+				RegisteredMutationHandler.of(
 						AcknowledgeWithOwnedNote.class,
 						(currentModel, payload) -> AggregateMutationPlan.builder(
 																				new MasterModel("ACKNOWLEDGED", currentModel.noteIds()))
@@ -104,7 +104,7 @@ class AggregateMutationRelationshipSupportTest
 	private MutationHandlerRegistry<MasterModel> referencedRegistry()
 	{
 		return MutationHandlerRegistry.of(List.of(
-				RegisteredMutationHandler.ofAggregate(
+				RegisteredMutationHandler.of(
 						LinkReferencedNote.class,
 						(currentModel, payload) -> AggregateMutationPlan.builder(currentModel)
 						                                                .mutateRelationship(

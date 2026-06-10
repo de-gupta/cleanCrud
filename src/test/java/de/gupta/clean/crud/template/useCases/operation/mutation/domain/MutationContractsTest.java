@@ -5,9 +5,10 @@ import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationFam
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCausationId;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCorrelationId;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.handler.MutationHandler;
+import de.gupta.clean.crud.template.useCases.operation.mutation.domain.handler.AggregateMutationHandler;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.model.MutationContext;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.model.MutationRequest;
+import de.gupta.clean.crud.template.useCases.operation.mutation.domain.plan.AggregateMutationPlan;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
@@ -108,10 +109,12 @@ class MutationContractsTest
 	@Test
 	void mutationHandlerAppliesTypedPayloadToCurrentModel()
 	{
-		MutationHandler<OrderState, ApplyFill> handler =
-				(currentModel, payload) -> new OrderState(currentModel.status() + ":" + payload.fillQuantity());
+		AggregateMutationHandler<OrderState, ApplyFill> handler =
+				(currentModel, payload) -> AggregateMutationPlan.rootOnly(
+						new OrderState(currentModel.status() + ":" + payload.fillQuantity()));
 
-		var updated = handler.apply(new OrderState("PARTIALLY_FILLED"), new ApplyFill(10));
+		var updated = handler.apply(new OrderState("PARTIALLY_FILLED"), new ApplyFill(10))
+		                     .updatedRoot().orElseThrow();
 
 		assertThat(updated.status())
 				.as("handler should produce updated model from current and payload")

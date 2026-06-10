@@ -39,6 +39,7 @@ import de.gupta.clean.crud.template.useCases.operation.mutation.domain.handler.R
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.model.MutationContext;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.model.MutationRequest;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.model.MutationResult;
+import de.gupta.clean.crud.template.useCases.operation.mutation.domain.plan.AggregateMutationPlan;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.invariant.DomainInvariantPolicy;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.profile.MutationPolicyProfile;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.profile.MutationPolicyProfileResolver;
@@ -350,7 +351,7 @@ class AggregateMutationServicesTest
 
 		assertDoesNotThrow(() -> DefaultMutationQuarantineReplayRegistry.of(List.of(
 				(MutationQuarantineReplayGateway) firstService,
-				(MutationQuarantineReplayGateway) secondService)));
+				secondService)));
 	}
 
 	@Test
@@ -426,10 +427,11 @@ class AggregateMutationServicesTest
 				IllegalArgumentException.class,
 				() -> MutationHandlerRegistry.of(List.of(
 						RegisteredMutationHandler.of(AcknowledgeOrder.class, (OrderModel currentModel,
-						                                                      AcknowledgeOrder ignored) -> new OrderModel(
-								"ACKNOWLEDGED")),
+						                                                      AcknowledgeOrder ignored) -> AggregateMutationPlan.rootOnly(
+								new OrderModel("ACKNOWLEDGED"))),
 						RegisteredMutationHandler.of(AcknowledgeOrder.class, (OrderModel currentModel,
-						                                                      AcknowledgeOrder ignored) -> currentModel))));
+						                                                      AcknowledgeOrder ignored) -> AggregateMutationPlan.rootOnly(
+								currentModel)))));
 	}
 
 	private MutationService<String, OrderModel> mutationService(
@@ -444,7 +446,7 @@ class AggregateMutationServicesTest
 	{
 		return MutationHandlerRegistry.of(List.of(
 				RegisteredMutationHandler.of(AcknowledgeOrder.class,
-						(currentModel, _) -> new OrderModel("ACKNOWLEDGED"))));
+						(currentModel, _) -> AggregateMutationPlan.rootOnly(new OrderModel("ACKNOWLEDGED")))));
 	}
 
 	private record OrderModel(String status)

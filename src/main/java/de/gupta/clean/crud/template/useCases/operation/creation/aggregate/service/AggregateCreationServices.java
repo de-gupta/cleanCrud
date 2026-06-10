@@ -65,6 +65,21 @@ public final class AggregateCreationServices
 					DomainModelResponse> definition,
 			final AggregateLifecycleEngine engine,
 			final CreationHandlerRegistry<DomainModelCreate> handlerRegistry,
+			final AggregateDefinitionGuard definitionGuard,
+			final AggregateSaveCoordinator saveCoordinator,
+			final SourceAwareCreationPolicy<DomainModel> sourceAwareCreationPolicy)
+	{
+		return creationService(aggregateKey, definition, engine, handlerRegistry, _ -> List.of(), definitionGuard,
+				saveCoordinator, sourceAwareCreationPolicy);
+	}
+
+	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
+	QuarantinableCreationService<DomainId, DomainModel> creationService(
+			final String aggregateKey,
+			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
+					DomainModelResponse> definition,
+			final AggregateLifecycleEngine engine,
+			final CreationHandlerRegistry<DomainModelCreate> handlerRegistry,
 			final Function<CreationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
 					durableProcessStartRequests,
 			final AggregateDefinitionGuard definitionGuard,

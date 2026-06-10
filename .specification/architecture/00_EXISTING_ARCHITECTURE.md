@@ -10,6 +10,7 @@ It is a layered application framework with:
 - aggregate definitions
 - workflow execution
 - relationship orchestration
+- an operation umbrella on top of the aggregate substrate
 - source-aware operation policy
 - post-commit hooks
 - durable subprocesses
@@ -30,17 +31,29 @@ It focuses on roles, responsibilities, and the sequence of events.
 
 ## The Big Picture
 
-Today `cleanCrud` has two top-level business lanes:
+Today `cleanCrud` is best understood as one shared aggregate execution substrate
+with two business-facing umbrellas on top of it:
 
 1. the **CRUD lane**
-2. the **application operation lane**
+2. the **operation umbrella**
 
-The operation lane currently has two mature operation families:
+The operation umbrella is not a vague future direction.
+It already exists in the code under:
 
-- **creation**
-- **mutation**
+- `template.useCases.operation.creation`
+- `template.useCases.operation.mutation`
 
-Both lanes share the same aggregate substrate underneath:
+Those two operation families are intentionally parallel.
+They are not identical, but they are built from the same architectural idea:
+
+- a typed application payload
+- a source-aware request model
+- a registry of handlers
+- a workflow-oriented aggregate service
+- quarantine and replay support
+- optional web exposure around quarantine management
+
+CRUD and both operation families share the same aggregate substrate underneath:
 
 - one aggregate definition
 - one aggregate fetch port
@@ -63,8 +76,7 @@ The CRUD lane says:
 The creation lane says:
 
 - here is a typed business command or event that creates a new aggregate
-- let the registered handler interpret it into create input or an aggregate
-  creation plan
+- let the registered handler interpret it into an aggregate creation plan
 - apply source-aware policy before persistence
 - persist the new aggregate if allowed
 
@@ -72,15 +84,22 @@ The mutation lane says:
 
 - here is a typed business command or event
 - load the current aggregate
-- let the registered handler interpret it
+- let the registered handler interpret it into an aggregate mutation plan
 - apply source-aware policy
 - persist the resulting state if allowed
 
 So the architecture is not "one CRUD framework plus a random side subsystem".
 It is better understood as:
 
-> one aggregate workflow substrate with one CRUD lane and one application
-> operation lane on top of it
+> one aggregate workflow substrate with one CRUD lane and one operation
+> umbrella on top of it, where creation and mutation are parallel operation
+> families
+
+Another way to say it is:
+
+- CRUD is the direct aggregate manipulation lane
+- operation creation is the "typed create intent" lane
+- operation mutation is the "typed state transition" lane
 
 ---
 
@@ -183,6 +202,7 @@ The mutation lane is implemented by:
 
 - `AggregateMutationServices`
 - `DefaultAggregateMutationService`
+- `QuarantinableMutationService`
 
 This service is the mutation equivalent of the CRUD services.
 It is application-facing, workflow-based, and aggregate-aware.
@@ -193,6 +213,7 @@ The creation side of the operation lane is implemented by:
 
 - `AggregateCreationServices`
 - `DefaultAggregateCreationService`
+- `QuarantinableCreationService`
 
 This service is the creation-family sibling of the mutation service.
 It is also application-facing, workflow-based, and aggregate-aware, but starts
@@ -332,6 +353,22 @@ That means:
 - it can later be inspected and replayed
 
 The two operation families currently have their own quarantine subsystems:
+
+- `template.useCases.operation.creation.quarantine`
+- `template.useCases.operation.mutation.quarantine`
+
+But they already share some operation-level concepts.
+Both quarantine records now carry:
+
+- an `aggregateType`
+- an operation family and source
+- correlation and causation ids
+- replay attempt metadata
+- `QuarantineReplayOutcome`
+
+Both sides also persist replayable envelopes rather than only transient request
+objects, and the web responses deliberately expose the payload type name instead
+of dumping arbitrary payload JSON back to clients.
 
 #### Creation quarantine
 
@@ -1390,7 +1427,21 @@ CRUD and both operation families:
 - can trigger the same post-commit hook
 - can start the same durable subprocesses
 
-But they differ in how they express business change.
+Creation and mutation also resemble each other much more than either resembles
+plain CRUD.
+
+Both operation families currently have:
+
+- an application controller
+- a request object carrying source, family, payload type, and correlation data
+- a handler registry keyed by payload class
+- a default aggregate service created by a small service factory
+- source-aware policy evaluation
+- quarantine recording through the shared lifecycle engine
+- replay routed back through the same aggregate service via
+  `ADMINISTRATIVE_REPLAY`
+
+But they still differ in where their business flow starts.
 
 ### CRUD says
 
@@ -1404,18 +1455,22 @@ But they differ in how they express business change.
 - here is where it came from
 - here is the handler that knows how to interpret it
 - here is the policy profile that determines whether to allow or quarantine it
+- if allowed, create a new aggregate, optionally through relationship-aware save
 
 ### Mutation says
 
 - here is a business payload
+- here is the aggregate id whose current state matters
 - here is where it came from
 - here is the handler that knows how to interpret it
 - here is the policy profile that determines what to do with violations
+- if allowed, apply the resulting state transition to the existing aggregate
 
 So the current architecture already hints at the broader direction:
 
-> CRUD is one business lane on top of a general aggregate workflow substrate,
-> not the whole story of the framework
+> CRUD is one business lane on top of a general aggregate workflow substrate.
+> The operation umbrella is another, and creation plus mutation are its two
+> parallel use-case families in the current implementation.
 
 ---
 
@@ -1468,6 +1523,8 @@ The relation to the creation lane is:
 - creation service decides whether to quarantine
 - engine exposes the recorder
 - quarantine subsystem persists, inspects, dismisses, and later replays
+- replay gateway discovery is keyed by aggregate type through
+  `CreationQuarantineReplayGateway`
 
 Again, this is a separate subsystem, but tightly integrated with the creation
 lane.
@@ -1490,7 +1547,9 @@ The relation to the mutation lane is:
 
 - mutation service decides whether to quarantine
 - engine exposes the recorder
-- quarantine subsystem persists and later replays
+- quarantine subsystem persists, inspects, dismisses, and later replays
+- replay gateway discovery is keyed by aggregate type through
+  `MutationQuarantineReplayGateway`
 
 Again, this is a separate subsystem, but tightly integrated with the mutation
 lane.
