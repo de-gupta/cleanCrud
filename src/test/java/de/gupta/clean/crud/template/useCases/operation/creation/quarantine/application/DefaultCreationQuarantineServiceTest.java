@@ -1,6 +1,5 @@
 package de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.model.CreateResult;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.model.CreationContext;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.model.CreationRequest;
@@ -37,7 +36,7 @@ class DefaultCreationQuarantineServiceTest
 		var service = DefaultCreationQuarantineService.with(
 				new InMemoryCreationQuarantineRepository(),
 				DefaultCreationQuarantineReplayRegistry.of(java.util.List.of()),
-				new ObjectMapper(),
+				new TestCreationQuarantinePayloadCodec(),
 				Clock.fixed(Instant.parse("2026-06-09T10:15:30Z"), ZoneOffset.UTC));
 
 		var persisted = service.record(new CreationQuarantineSubmission(
@@ -58,7 +57,7 @@ class DefaultCreationQuarantineServiceTest
 		var service = DefaultCreationQuarantineService.with(
 				repository,
 				DefaultCreationQuarantineReplayRegistry.of(java.util.List.of(new SuccessfulReplayGateway())),
-				new ObjectMapper(),
+				new TestCreationQuarantinePayloadCodec(),
 				Clock.fixed(Instant.parse("2026-06-09T10:15:30Z"), ZoneOffset.UTC));
 		var record = repository.save(record("aggregate.OrderDefinition"));
 
@@ -75,7 +74,7 @@ class DefaultCreationQuarantineServiceTest
 		var service = DefaultCreationQuarantineService.with(
 				repository,
 				DefaultCreationQuarantineReplayRegistry.of(java.util.List.of(new FailingReplayGateway())),
-				new ObjectMapper(),
+				new TestCreationQuarantinePayloadCodec(),
 				Clock.fixed(Instant.parse("2026-06-09T10:15:30Z"), ZoneOffset.UTC));
 		var record = repository.save(record("aggregate.OrderDefinition"));
 
@@ -92,7 +91,7 @@ class DefaultCreationQuarantineServiceTest
 		var service = DefaultCreationQuarantineService.with(
 				repository,
 				DefaultCreationQuarantineReplayRegistry.of(java.util.List.of()),
-				new ObjectMapper(),
+				new TestCreationQuarantinePayloadCodec(),
 				Clock.fixed(Instant.parse("2026-06-09T10:15:30Z"), ZoneOffset.UTC));
 		var dismissed = repository.save(record("aggregate.OrderDefinition")
 				.dismissed(Instant.parse("2026-06-09T10:16:00Z")));
@@ -119,6 +118,24 @@ class DefaultCreationQuarantineServiceTest
 				Optional.empty(),
 				Optional.empty(),
 				Optional.empty());
+	}
+
+	private static final class TestCreationQuarantinePayloadCodec implements CreationQuarantinePayloadCodec
+	{
+		@Override
+		public SerializedCreationPayload serialize(
+				final de.gupta.clean.crud.template.useCases.operation.domain.model.ApplicationOperationPayload payload)
+		{
+			var testPayload = (TestOperationPayload) payload;
+			return new SerializedCreationPayload(TestOperationPayload.class.getName(), testPayload.value());
+		}
+
+		@Override
+		public de.gupta.clean.crud.template.useCases.operation.domain.model.ApplicationOperationPayload deserialize(
+				final SerializedCreationPayload payload)
+		{
+			return new TestOperationPayload(payload.payloadJson());
+		}
 	}
 
 	private static final class InMemoryCreationQuarantineRepository implements CreationQuarantineRepository

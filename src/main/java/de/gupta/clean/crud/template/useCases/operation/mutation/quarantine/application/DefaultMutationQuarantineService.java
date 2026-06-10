@@ -1,8 +1,5 @@
 package de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.MapperFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.ApplicationOperationPayload;
@@ -14,7 +11,6 @@ import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domai
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.id.MutationQuarantineId;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.port.persistence.MutationQuarantineRepository;
 
-import java.io.IOException;
 import java.time.Clock;
 import java.util.Collection;
 import java.util.Objects;
@@ -26,17 +22,16 @@ public final class DefaultMutationQuarantineService implements MutationQuarantin
 
 	private final MutationQuarantineRepository repository;
 	private final MutationQuarantineReplayRegistry replayRegistry;
-	private final ObjectMapper objectMapper;
-	private final ObjectMapper payloadObjectMapper;
+	private final MutationQuarantineValueCodec valueCodec;
 	private final Clock clock;
 
 	public static DefaultMutationQuarantineService with(
 			final MutationQuarantineRepository repository,
 			final MutationQuarantineReplayRegistry replayRegistry,
-			final ObjectMapper objectMapper,
+			final MutationQuarantineValueCodec valueCodec,
 			final Clock clock)
 	{
-		return new DefaultMutationQuarantineService(repository, replayRegistry, objectMapper, clock);
+		return new DefaultMutationQuarantineService(repository, replayRegistry, valueCodec, clock);
 	}
 
 	@Override
@@ -44,13 +39,15 @@ public final class DefaultMutationQuarantineService implements MutationQuarantin
 	{
 		var request = submission.mutationRequest();
 		var now = clock.instant();
+		var serializedDomainId = valueCodec.serialize(request.domainId());
+		var serializedPayload = valueCodec.serialize(request.payload());
 		var record = new MutationQuarantineRecord(
 				MutationQuarantineId.random(),
 				submission.aggregateType(),
-				request.domainId().getClass().getName(),
-				serialize(request.domainId()),
-				request.payloadType().getName(),
-				serialize(request.payload()),
+				serializedDomainId.valueType(),
+				serializedDomainId.valueJson(),
+				serializedPayload.valueType(),
+				serializedPayload.valueJson(),
 				request.source(),
 				request.family(),
 				request.correlationId(),
@@ -98,8 +95,12 @@ public final class DefaultMutationQuarantineService implements MutationQuarantin
 		{
 			var result = gateway.replay(new MutationQuarantineReplayCommand(
 					quarantineId,
-					deserialize(record.domainIdType(), record.domainIdJson()),
-					(ApplicationOperationPayload) deserialize(record.payloadType(), record.payloadJson()),
+					valueCodec.deserialize(
+							new SerializedMutationValue(record.domainIdType(), record.domainIdJson()),
+							Object.class),
+					valueCodec.deserialize(
+							new SerializedMutationValue(record.payloadType(), record.payloadJson()),
+							ApplicationOperationPayload.class),
 					record.family(),
 					record.correlationId(),
 					record.causationId()));
@@ -142,30 +143,6 @@ public final class DefaultMutationQuarantineService implements MutationQuarantin
 		return record;
 	}
 
-	private String serialize(final Object value)
-	{
-		try
-		{
-			return payloadObjectMapper.writeValueAsString(value);
-		}
-		catch (JsonProcessingException e)
-		{
-			throw new IllegalStateException("Failed to serialize mutation quarantine value", e);
-		}
-	}
-
-	private Object deserialize(final String valueType, final String valueJson)
-	{
-		try
-		{
-			return payloadObjectMapper.readValue(valueJson, Class.forName(valueType));
-		}
-		catch (ClassNotFoundException | IOException e)
-		{
-			throw new IllegalStateException("Failed to deserialize mutation quarantine value", e);
-		}
-	}
-
 	private String summaryFor(final RuntimeException e)
 	{
 		var message = Optional.ofNullable(e.getMessage()).orElse(e.getClass().getSimpleName());
@@ -180,13 +157,12 @@ public final class DefaultMutationQuarantineService implements MutationQuarantin
 	private DefaultMutationQuarantineService(
 			final MutationQuarantineRepository repository,
 			final MutationQuarantineReplayRegistry replayRegistry,
-			final ObjectMapper objectMapper,
+			final MutationQuarantineValueCodec valueCodec,
 			final Clock clock)
 	{
 		this.repository = Objects.requireNonNull(repository, "repository");
 		this.replayRegistry = Objects.requireNonNull(replayRegistry, "replayRegistry");
-		this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
-		this.payloadObjectMapper = objectMapper.copy().disable(MapperFeature.CAN_OVERRIDE_ACCESS_MODIFIERS);
+		this.valueCodec = Objects.requireNonNull(valueCodec, "valueCodec");
 		this.clock = Objects.requireNonNull(clock, "clock");
 	}
 }

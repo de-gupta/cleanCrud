@@ -1,6 +1,5 @@
 package de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.ApplicationOperationPayload;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationFamily;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
@@ -34,7 +33,7 @@ class DefaultMutationQuarantineServiceTest
 		var service = DefaultMutationQuarantineService.with(
 				new InMemoryMutationQuarantineRepository(),
 				DefaultMutationQuarantineReplayRegistry.of(java.util.List.of()),
-				new ObjectMapper(),
+				new TestMutationQuarantineValueCodec(),
 				Clock.fixed(Instant.parse("2026-06-09T10:15:30Z"), ZoneOffset.UTC));
 
 		var persisted = service.record(new MutationQuarantineSubmission(
@@ -55,7 +54,7 @@ class DefaultMutationQuarantineServiceTest
 		var service = DefaultMutationQuarantineService.with(
 				repository,
 				DefaultMutationQuarantineReplayRegistry.of(java.util.List.of(new SuccessfulReplayGateway())),
-				new ObjectMapper(),
+				new TestMutationQuarantineValueCodec(),
 				Clock.fixed(Instant.parse("2026-06-09T10:15:30Z"), ZoneOffset.UTC));
 		var record = repository.save(record("aggregate.OrderDefinition"));
 
@@ -72,7 +71,7 @@ class DefaultMutationQuarantineServiceTest
 		var service = DefaultMutationQuarantineService.with(
 				repository,
 				DefaultMutationQuarantineReplayRegistry.of(java.util.List.of(new FailingReplayGateway())),
-				new ObjectMapper(),
+				new TestMutationQuarantineValueCodec(),
 				Clock.fixed(Instant.parse("2026-06-09T10:15:30Z"), ZoneOffset.UTC));
 		var record = repository.save(record("aggregate.OrderDefinition"));
 
@@ -89,7 +88,7 @@ class DefaultMutationQuarantineServiceTest
 		var service = DefaultMutationQuarantineService.with(
 				repository,
 				DefaultMutationQuarantineReplayRegistry.of(java.util.List.of()),
-				new ObjectMapper(),
+				new TestMutationQuarantineValueCodec(),
 				Clock.fixed(Instant.parse("2026-06-09T10:15:30Z"), ZoneOffset.UTC));
 		var dismissed = repository.save(record("aggregate.OrderDefinition")
 				.dismissed(Instant.parse("2026-06-09T10:16:00Z")));
@@ -122,6 +121,34 @@ class DefaultMutationQuarantineServiceTest
 
 	public record AcknowledgeOrder(String value) implements ApplicationOperationPayload
 	{
+	}
+
+	private static final class TestMutationQuarantineValueCodec implements MutationQuarantineValueCodec
+	{
+		@Override
+		public SerializedMutationValue serialize(final Object value)
+		{
+			return switch (value)
+			{
+				case String domainId -> new SerializedMutationValue(String.class.getName(), domainId);
+				case AcknowledgeOrder payload -> new SerializedMutationValue(AcknowledgeOrder.class.getName(),
+						payload.value());
+				default -> throw new IllegalArgumentException("Unsupported value " + value);
+			};
+		}
+
+		@Override
+		public <T> T deserialize(final SerializedMutationValue value, final Class<T> expectedType)
+		{
+			Object restored = switch (value.valueType())
+			{
+				case "java.lang.String" -> value.valueJson();
+				case "de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.DefaultMutationQuarantineServiceTest$AcknowledgeOrder" ->
+						new AcknowledgeOrder(value.valueJson());
+				default -> throw new IllegalArgumentException("Unsupported value type " + value.valueType());
+			};
+			return expectedType.cast(restored);
+		}
 	}
 
 	private static final class InMemoryMutationQuarantineRepository implements MutationQuarantineRepository
