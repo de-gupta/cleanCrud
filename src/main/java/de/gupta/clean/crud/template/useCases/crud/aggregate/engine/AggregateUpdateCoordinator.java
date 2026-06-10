@@ -10,7 +10,7 @@ import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMuta
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.Cardinality;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.SatellitePersistenceOrder;
-import de.gupta.clean.crud.template.useCases.mutation.domain.model.MutationSource;
+import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -618,7 +618,7 @@ public final class AggregateUpdateCoordinator
 	{
 		validationSupport.validateSourceAwarePatch(
 				definition,
-				MutationSource.USER_INTENT,
+				OperationSource.USER_INTENT,
 				originalMasterDomainModel,
 				replacementMasterDomainModel);
 	}
@@ -649,7 +649,7 @@ public final class AggregateUpdateCoordinator
 	{
 		validationSupport.validateSourceAwarePatch(
 				relationship.satelliteDefinition(),
-				MutationSource.USER_INTENT,
+				OperationSource.USER_INTENT,
 				originalSatelliteDomainModel,
 				replacementSatelliteDomainModel);
 	}

@@ -5,8 +5,8 @@ import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDenie
 import de.gupta.clean.crud.template.domain.service.equality.DuplicateDefinition;
 import de.gupta.clean.crud.template.domain.service.equality.KeyBasedDuplicateDefinition;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
-import de.gupta.clean.crud.template.useCases.mutation.aggregate.policy.AggregateMutationPolicies;
-import de.gupta.clean.crud.template.useCases.mutation.domain.model.MutationSource;
+import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
+import de.gupta.clean.crud.template.useCases.operation.mutation.aggregate.policy.AggregateMutationPolicies;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -47,14 +47,14 @@ public final class AggregateMutationValidationSupport
 			final MasterDomainModel original,
 			final MasterDomainModel replacement)
 	{
-		validateSourceAwarePatch(definition, MutationSource.USER_INTENT, original, replacement);
+		validateSourceAwarePatch(definition, OperationSource.USER_INTENT, original, replacement);
 	}
 
 	public <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
 			MasterDomainModelResponse> void validateSourceAwarePatch(
 			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
-			final MutationSource source,
+			final OperationSource source,
 			final MasterDomainModel original,
 			final MasterDomainModel replacement)
 	{

@@ -1,7 +1,7 @@
 package de.gupta.clean.crud.template.useCases.crud.aggregate.engine;
 
 import de.gupta.clean.crud.template.infrastructure.persistence.transaction.PersistenceTransactionRunner;
-import de.gupta.clean.crud.template.useCases.mutation.quarantine.application.recording.MutationQuarantineRecorder;
+import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.recording.MutationQuarantineRecorder;
 import de.gupta.clean.crud.template.useCases.process.application.execution.DurableProcessExecutionNudge;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStarter;
 

@@ -11,16 +11,16 @@ import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateFetchPort;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateMutationPort;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinitionContract;
-import de.gupta.clean.crud.template.useCases.incantation.domain.policy.access.IncantationAccessPolicy;
-import de.gupta.clean.crud.template.useCases.incantation.domain.policy.consistency.IncantationExternalConsistencyPolicy;
-import de.gupta.clean.crud.template.useCases.incantation.domain.policy.creation.IncantationCreationPolicy;
-import de.gupta.clean.crud.template.useCases.incantation.domain.policy.invariant.IncantationInvariantPolicy;
-import de.gupta.clean.crud.template.useCases.incantation.domain.policy.profile.IncantationPolicyProfileResolver;
-import de.gupta.clean.crud.template.useCases.mutation.domain.policy.access.AccessPolicy;
-import de.gupta.clean.crud.template.useCases.mutation.domain.policy.consistency.ExternalConsistencyPolicy;
-import de.gupta.clean.crud.template.useCases.mutation.domain.policy.invariant.DomainInvariantPolicy;
-import de.gupta.clean.crud.template.useCases.mutation.domain.policy.profile.MutationPolicyProfileResolver;
-import de.gupta.clean.crud.template.useCases.mutation.domain.policy.transition.MutationTransitionPolicy;
+import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.access.CreationAccessPolicy;
+import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.consistency.CreationExternalConsistencyPolicy;
+import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.creation.CreationPolicy;
+import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.invariant.CreationInvariantPolicy;
+import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.profile.CreationPolicyProfileResolver;
+import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.access.AccessPolicy;
+import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.consistency.ExternalConsistencyPolicy;
+import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.invariant.DomainInvariantPolicy;
+import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.profile.MutationPolicyProfileResolver;
+import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.transition.MutationTransitionPolicy;
 
 import java.util.Collection;
 import java.util.Optional;
@@ -98,12 +98,12 @@ public interface AggregateCrudDefinition<MasterDomainId, MasterDomainModel, Mast
 		return ExternalConsistencyPolicy.allowing();
 	}
 
-	default IncantationPolicyProfileResolver incantationPolicyProfileResolver()
+	default CreationPolicyProfileResolver creationPolicyProfileResolver()
 	{
-		return IncantationPolicyProfileResolver.defaultResolver();
+		return CreationPolicyProfileResolver.defaultResolver();
 	}
 
-	default IncantationAccessPolicy<MasterDomainModel> incantationAccessPolicy()
+	default CreationAccessPolicy<MasterDomainModel> creationAccessPolicy()
 	{
 		return (_, afterModel) ->
 		{
@@ -114,7 +114,7 @@ public interface AggregateCrudDefinition<MasterDomainId, MasterDomainModel, Mast
 		};
 	}
 
-	default IncantationCreationPolicy<MasterDomainModel> incantationCreationPolicy()
+	default CreationPolicy<MasterDomainModel> creationPolicy()
 	{
 		return (_, afterModel) ->
 		{
@@ -130,13 +130,13 @@ public interface AggregateCrudDefinition<MasterDomainId, MasterDomainModel, Mast
 		};
 	}
 
-	default IncantationInvariantPolicy<MasterDomainModel> incantationInvariantPolicy()
+	default CreationInvariantPolicy<MasterDomainModel> creationInvariantPolicy()
 	{
-		return IncantationInvariantPolicy.allowing();
+		return CreationInvariantPolicy.allowing();
 	}
 
-	default IncantationExternalConsistencyPolicy<MasterDomainModel> incantationExternalConsistencyPolicy()
+	default CreationExternalConsistencyPolicy<MasterDomainModel> creationExternalConsistencyPolicy()
 	{
-		return IncantationExternalConsistencyPolicy.allowing();
+		return CreationExternalConsistencyPolicy.allowing();
 	}
 }
