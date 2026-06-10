@@ -8,6 +8,7 @@ import de.gupta.clean.crud.template.useCases.operation.domain.model.id.Operation
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCorrelationId;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationPolicyViolation;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.id.MutationQuarantineId;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.QuarantineLifecycleRecord;
 
 import java.time.Instant;
 import java.util.List;
@@ -31,6 +32,7 @@ public record MutationQuarantineRecord(
 		Optional<Instant> lastReplayAt,
 		Optional<QuarantineReplayOutcome> lastReplayOutcome,
 		Optional<String> lastReplaySummary)
+		implements QuarantineLifecycleRecord<MutationQuarantineId, MutationQuarantineRecord>
 {
 	public MutationQuarantineRecord
 	{
@@ -55,12 +57,20 @@ public record MutationQuarantineRecord(
 		}
 	}
 
+	@Override
 	public boolean open()
 	{
 		return status == MutationQuarantineStatus.OPEN;
 	}
 
-	public MutationQuarantineRecord dismissed(final Instant dismissedAt)
+	@Override
+	public String statusLabel()
+	{
+		return status.name();
+	}
+
+	@Override
+	public MutationQuarantineRecord dismissed(final Instant at)
 	{
 		return new MutationQuarantineRecord(
 				quarantineId,
@@ -74,14 +84,15 @@ public record MutationQuarantineRecord(
 				MutationQuarantineStatus.DISMISSED,
 				violations,
 				quarantinedAt,
-				dismissedAt,
+				at,
 				replayAttemptCount,
 				lastReplayAt,
 				lastReplayOutcome,
 				lastReplaySummary);
 	}
 
-	public MutationQuarantineRecord replayed(final Instant replayedAt)
+	@Override
+	public MutationQuarantineRecord replayed(final Instant at)
 	{
 		return new MutationQuarantineRecord(
 				quarantineId,
@@ -95,15 +106,16 @@ public record MutationQuarantineRecord(
 				MutationQuarantineStatus.REPLAYED,
 				violations,
 				quarantinedAt,
-				replayedAt,
+				at,
 				replayAttemptCount + 1,
-				Optional.of(replayedAt),
+				Optional.of(at),
 				Optional.of(QuarantineReplayOutcome.APPLIED),
 				Optional.empty());
 	}
 
+	@Override
 	public MutationQuarantineRecord replayAttempted(
-			final Instant replayedAt,
+			final Instant at,
 			final QuarantineReplayOutcome replayOutcome,
 			final Optional<String> replaySummary)
 	{
@@ -119,9 +131,9 @@ public record MutationQuarantineRecord(
 				MutationQuarantineStatus.OPEN,
 				violations,
 				quarantinedAt,
-				replayedAt,
+				at,
 				replayAttemptCount + 1,
-				Optional.of(replayedAt),
+				Optional.of(at),
 				Optional.of(replayOutcome),
 				replaySummary);
 	}

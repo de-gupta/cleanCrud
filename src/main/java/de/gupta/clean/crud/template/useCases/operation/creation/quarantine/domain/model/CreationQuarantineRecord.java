@@ -8,6 +8,7 @@ import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineRe
 import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayOutcome;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCausationId;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCorrelationId;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.QuarantineLifecycleRecord;
 
 import java.time.Instant;
 import java.util.List;
@@ -30,6 +31,7 @@ public record CreationQuarantineRecord(
 		Optional<Instant> lastReplayAt,
 		Optional<QuarantineReplayOutcome> lastReplayOutcome,
 		Optional<String> lastReplaySummary)
+		implements QuarantineLifecycleRecord<CreationQuarantineId, CreationQuarantineRecord>
 {
 	public CreationQuarantineRecord
 	{
@@ -53,12 +55,20 @@ public record CreationQuarantineRecord(
 		}
 	}
 
+	@Override
 	public boolean open()
 	{
 		return status == CreationQuarantineStatus.OPEN;
 	}
 
-	public CreationQuarantineRecord dismissed(final Instant dismissedAt)
+	@Override
+	public String statusLabel()
+	{
+		return status.name();
+	}
+
+	@Override
+	public CreationQuarantineRecord dismissed(final Instant at)
 	{
 		return new CreationQuarantineRecord(
 				quarantineId,
@@ -71,14 +81,15 @@ public record CreationQuarantineRecord(
 				CreationQuarantineStatus.DISMISSED,
 				violations,
 				quarantinedAt,
-				dismissedAt,
+				at,
 				replayAttemptCount,
 				lastReplayAt,
 				lastReplayOutcome,
 				lastReplaySummary);
 	}
 
-	public CreationQuarantineRecord replayed(final Instant replayedAt)
+	@Override
+	public CreationQuarantineRecord replayed(final Instant at)
 	{
 		return new CreationQuarantineRecord(
 				quarantineId,
@@ -91,15 +102,16 @@ public record CreationQuarantineRecord(
 				CreationQuarantineStatus.REPLAYED,
 				violations,
 				quarantinedAt,
-				replayedAt,
+				at,
 				replayAttemptCount + 1,
-				Optional.of(replayedAt),
+				Optional.of(at),
 				Optional.of(QuarantineReplayOutcome.APPLIED),
 				Optional.empty());
 	}
 
+	@Override
 	public CreationQuarantineRecord replayAttempted(
-			final Instant replayedAt,
+			final Instant at,
 			final QuarantineReplayOutcome replayOutcome,
 			final Optional<String> replaySummary)
 	{
@@ -114,9 +126,9 @@ public record CreationQuarantineRecord(
 				CreationQuarantineStatus.OPEN,
 				violations,
 				quarantinedAt,
-				replayedAt,
+				at,
 				replayAttemptCount + 1,
-				Optional.of(replayedAt),
+				Optional.of(at),
 				Optional.of(replayOutcome),
 				replaySummary);
 	}

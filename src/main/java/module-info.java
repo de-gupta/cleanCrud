@@ -117,6 +117,9 @@ module de.gupta.clean.crud
 	exports de.gupta.clean.crud.template.useCases.operation.domain.model;
 	exports de.gupta.clean.crud.template.useCases.operation.domain.model.id;
 	exports de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant;
+	exports de.gupta.clean.crud.template.useCases.operation.quarantine.application;
+	exports de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model;
+	exports de.gupta.clean.crud.template.useCases.operation.quarantine.port.persistence;
 	exports de.gupta.clean.crud.template.useCases.operation.mutation.aggregate.service;
 	exports de.gupta.clean.crud.template.useCases.operation.mutation.api.application;
 	exports de.gupta.clean.crud.template.useCases.operation.mutation.application.service;
