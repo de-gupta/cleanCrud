@@ -86,6 +86,41 @@ class SatelliteCreateIntentResolverTest
 		assertTrue(ids.isEmpty());
 	}
 
+	@Test
+	void usesCustomSatelliteCreateValidatorWhenProvided()
+	{
+		var scenario = new TestScenario(LifecycleSemantics.of(true, false, false, false, false));
+		var resolver = SatelliteCreateIntentResolver.with(
+				new SatelliteRelationshipPlanner(),
+				new SatelliteReferenceResolver(),
+				new SatelliteCreateValidator()
+				{
+					@Override
+					public <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+							SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+					void validate(
+							final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel,
+									MasterDomainModelCreate, MasterDomainModelUpdatePatch, SatelliteDomainId,
+									SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch> relationship,
+							final SatelliteDomainModel satelliteDomainModel)
+					{
+						if (((SatelliteModel) satelliteDomainModel).value().equals("blocked"))
+						{
+							throw new IllegalStateException("blocked by custom validator");
+						}
+					}
+				});
+
+		var exception = assertThrows(
+				IllegalStateException.class,
+				() -> resolver.resolveSatelliteIdsForCreate(
+						scenario.relationship(),
+						new MasterCreate(List.of(new SatelliteCreateIntent.InlineSatelliteCreateIntent<>(
+								new SatelliteCreate("blocked"))))));
+
+		assertEquals("blocked by custom validator", exception.getMessage());
+	}
+
 	private record MasterCreate(Collection<SatelliteCreateIntent<Long, SatelliteCreate>> intents)
 	{
 	}

@@ -3,6 +3,7 @@ package de.gupta.clean.crud.template.useCases.incantation.aggregate.policy;
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDeniedException;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.SatelliteCreateValidator;
 import de.gupta.clean.crud.template.useCases.incantation.domain.model.IncantationSource;
 import de.gupta.clean.crud.template.useCases.incantation.domain.policy.evaluation.IncantationPolicyBundle;
 import de.gupta.clean.crud.template.useCases.incantation.domain.policy.evaluation.IncantationPolicyDecision;
@@ -30,6 +31,23 @@ public final class AggregateIncantationPolicies
 				definition.incantationCreationPolicy(),
 				definition.incantationInvariantPolicy(),
 				definition.incantationExternalConsistencyPolicy()));
+	}
+
+	public static SatelliteCreateValidator satelliteCreateValidator(final IncantationSource source)
+	{
+		return new SatelliteCreateValidator()
+		{
+			@Override
+			public <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+					SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+			void validate(
+					final de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch> relationship,
+					final SatelliteDomainModel satelliteDomainModel)
+			{
+				AggregateIncantationPolicies.sourceAwarePolicy(relationship.satelliteDefinition())
+				                            .validate(source, satelliteDomainModel);
+			}
+		};
 	}
 
 	private AggregateIncantationPolicies()

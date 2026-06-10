@@ -11,12 +11,21 @@ public final class SatelliteCreateIntentResolver
 {
 	private final SatelliteRelationshipPlanner relationshipPlanner;
 	private final SatelliteReferenceResolver referenceResolver;
+	private final SatelliteCreateValidator satelliteCreateValidator;
 
 	public static SatelliteCreateIntentResolver with(
 			final SatelliteRelationshipPlanner relationshipPlanner,
 			final SatelliteReferenceResolver referenceResolver)
 	{
-		return new SatelliteCreateIntentResolver(relationshipPlanner, referenceResolver);
+		return with(relationshipPlanner, referenceResolver, SatelliteCreateIntentResolver::validateSatelliteForCreate);
+	}
+
+	public static SatelliteCreateIntentResolver with(
+			final SatelliteRelationshipPlanner relationshipPlanner,
+			final SatelliteReferenceResolver referenceResolver,
+			final SatelliteCreateValidator satelliteCreateValidator)
+	{
+		return new SatelliteCreateIntentResolver(relationshipPlanner, referenceResolver, satelliteCreateValidator);
 	}
 
 	public <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
@@ -43,6 +52,21 @@ public final class SatelliteCreateIntentResolver
 			}
 		}
 		return satelliteDomainIds;
+	}
+
+	private static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
+	void validateSatelliteForCreate(
+			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
+					SatelliteDomainModelUpdatePatch> relationship,
+			final SatelliteDomainModel satelliteDomainModel)
+	{
+		if (!relationship.satelliteDefinition().securityPolicy().isAccessAllowed(satelliteDomainModel))
+		{
+			throw AccessDeniedException.withMessage("Access not allowed");
+		}
+		relationship.satelliteDefinition().insertionPolicy().validateInsertion(satelliteDomainModel);
 	}
 
 	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
@@ -83,30 +107,17 @@ public final class SatelliteCreateIntentResolver
 	{
 		var satelliteDomainModel =
 				relationship.satelliteDefinition().createBuilder().toModel(satelliteDomainModelCreate);
-		validateSatelliteForCreate(relationship, satelliteDomainModel);
+		satelliteCreateValidator.validate(relationship, satelliteDomainModel);
 		return relationship.satelliteDefinition().mutationPort().create(satelliteDomainModel).id();
-	}
-
-	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
-			SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
-	void validateSatelliteForCreate(
-			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
-					MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate,
-					SatelliteDomainModelUpdatePatch> relationship,
-			final SatelliteDomainModel satelliteDomainModel)
-	{
-		if (!relationship.satelliteDefinition().securityPolicy().isAccessAllowed(satelliteDomainModel))
-		{
-			throw AccessDeniedException.withMessage("Access not allowed");
-		}
-		relationship.satelliteDefinition().insertionPolicy().validateInsertion(satelliteDomainModel);
 	}
 
 	private SatelliteCreateIntentResolver(
 			final SatelliteRelationshipPlanner relationshipPlanner,
-			final SatelliteReferenceResolver referenceResolver)
+			final SatelliteReferenceResolver referenceResolver,
+			final SatelliteCreateValidator satelliteCreateValidator)
 	{
 		this.relationshipPlanner = relationshipPlanner;
 		this.referenceResolver = referenceResolver;
+		this.satelliteCreateValidator = satelliteCreateValidator;
 	}
 }

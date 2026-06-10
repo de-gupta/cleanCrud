@@ -3,6 +3,7 @@ package de.gupta.clean.crud.template.useCases.incantation.aggregate.service;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateDefinitionGuard;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateLifecycleEngine;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateSaveCoordinator;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateServiceSupportFactory;
 import de.gupta.clean.crud.template.useCases.incantation.aggregate.policy.AggregateIncantationPolicies;
 import de.gupta.clean.crud.template.useCases.incantation.application.service.IncantationService;
@@ -30,6 +31,7 @@ public final class AggregateIncantationServices
 				handlerRegistry,
 				_ -> List.of(),
 				AggregateServiceSupportFactory.definitionGuard(),
+				AggregateServiceSupportFactory.saveCoordinator(),
 				AggregateIncantationPolicies.sourceAwarePolicy(definition));
 	}
 
@@ -48,6 +50,7 @@ public final class AggregateIncantationServices
 				handlerRegistry,
 				durableProcessStartRequests,
 				AggregateServiceSupportFactory.definitionGuard(),
+				AggregateServiceSupportFactory.saveCoordinator(),
 				AggregateIncantationPolicies.sourceAwarePolicy(definition));
 	}
 
@@ -60,6 +63,7 @@ public final class AggregateIncantationServices
 			final Function<IncantationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
 					durableProcessStartRequests,
 			final AggregateDefinitionGuard definitionGuard,
+			final AggregateSaveCoordinator saveCoordinator,
 			final SourceAwareIncantationPolicy<DomainModel> sourceAwareIncantationPolicy)
 	{
 		return new DefaultAggregateIncantationService<>(
@@ -68,6 +72,7 @@ public final class AggregateIncantationServices
 				handlerRegistry,
 				durableProcessStartRequests,
 				definitionGuard,
+				saveCoordinator,
 				sourceAwareIncantationPolicy);
 	}
 

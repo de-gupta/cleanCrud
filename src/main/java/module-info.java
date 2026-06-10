@@ -157,6 +157,13 @@ module de.gupta.clean.crud
 	exports de.gupta.clean.crud.template.infrastructure.persistence.history.audit;
 
 	exports de.gupta.clean.crud.template.useCases.incantation.domain.policy.access;
+	exports de.gupta.clean.crud.template.useCases.incantation.aggregate.service;
+	exports de.gupta.clean.crud.template.useCases.incantation.api.application;
+	exports de.gupta.clean.crud.template.useCases.incantation.application.service;
+	exports de.gupta.clean.crud.template.useCases.incantation.domain.handler;
+	exports de.gupta.clean.crud.template.useCases.incantation.domain.model;
+	exports de.gupta.clean.crud.template.useCases.incantation.domain.model.id;
+	exports de.gupta.clean.crud.template.useCases.incantation.domain.plan;
 	exports de.gupta.clean.crud.template.useCases.incantation.domain.policy.consistency;
 	exports de.gupta.clean.crud.template.useCases.incantation.domain.policy.creation;
 	exports de.gupta.clean.crud.template.useCases.incantation.domain.policy.invariant;

@@ -26,10 +26,26 @@ public final class AggregateSaveCoordinator
 			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships,
 			final Collection<MasterDomainModelCreate> models)
 	{
+		return saveAll(
+				definition,
+				relationships,
+				models,
+				masterDomainModel -> validateMasterForSave(definition, masterDomainModel),
+				createIntentResolver);
+	}
+
+	public <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse> Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> saveAll(
+			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships,
+			final Collection<MasterDomainModelCreate> models,
+			final AggregateCreateValidator<MasterDomainModel> masterCreateValidator,
+			final SatelliteCreateIntentResolver satelliteCreateIntentResolver)
+	{
 		var savedModels = new ArrayList<IdentifiedModel<MasterDomainId, MasterDomainModel>>();
 		for (var model : models)
 		{
-			savedModels.add(save(definition, relationships, model));
+			savedModels.add(
+					save(definition, relationships, model, masterCreateValidator, satelliteCreateIntentResolver));
 		}
 		return savedModels;
 	}
@@ -37,14 +53,23 @@ public final class AggregateSaveCoordinator
 	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse> IdentifiedModel<MasterDomainId, MasterDomainModel> save(
 			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships,
-			final MasterDomainModelCreate masterDomainModelCreate)
+			final MasterDomainModelCreate masterDomainModelCreate,
+			final AggregateCreateValidator<MasterDomainModel> masterCreateValidator,
+			final SatelliteCreateIntentResolver satelliteCreateIntentResolver)
 	{
-		var masterDomainModel = applyRelationshipsBeforeMasterPersistence(relationships,
-				definition.createBuilder().toModel(masterDomainModelCreate), masterDomainModelCreate);
-		validateMasterForSave(definition, masterDomainModel);
+		var masterDomainModel = applyRelationshipsBeforeMasterPersistence(
+				relationships,
+				definition.createBuilder().toModel(masterDomainModelCreate),
+				masterDomainModelCreate,
+				satelliteCreateIntentResolver);
+		masterCreateValidator.validate(masterDomainModel);
 		var savedMaster = definition.mutationPort().create(masterDomainModel);
 		var linkedMasterDomainModel =
-				applyRelationshipsAfterMasterPersistence(relationships, savedMaster.model(), masterDomainModelCreate);
+				applyRelationshipsAfterMasterPersistence(
+						relationships,
+						savedMaster.model(),
+						masterDomainModelCreate,
+						satelliteCreateIntentResolver);
 		if (masterWasRelinked(savedMaster, linkedMasterDomainModel))
 		{
 			savedMaster = definition.mutationPort().update(savedMaster.id(), linkedMasterDomainModel);
@@ -54,15 +79,20 @@ public final class AggregateSaveCoordinator
 
 	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch> MasterDomainModel applyRelationshipsBeforeMasterPersistence(
 			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships,
-			final MasterDomainModel masterDomainModel, final MasterDomainModelCreate masterDomainModelCreate)
+			final MasterDomainModel masterDomainModel,
+			final MasterDomainModelCreate masterDomainModelCreate,
+			final SatelliteCreateIntentResolver satelliteCreateIntentResolver)
 	{
 		var linkedMasterDomainModel = masterDomainModel;
 		for (var relationship : relationships)
 		{
 			if (persistsSatellitesBeforeMaster(relationship))
 			{
-				linkedMasterDomainModel =
-						applySaveRelationship(relationship, linkedMasterDomainModel, masterDomainModelCreate);
+				linkedMasterDomainModel = applySaveRelationship(
+						relationship,
+						linkedMasterDomainModel,
+						masterDomainModelCreate,
+						satelliteCreateIntentResolver);
 			}
 		}
 		return linkedMasterDomainModel;
@@ -70,15 +100,20 @@ public final class AggregateSaveCoordinator
 
 	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch> MasterDomainModel applyRelationshipsAfterMasterPersistence(
 			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships,
-			final MasterDomainModel masterDomainModel, final MasterDomainModelCreate masterDomainModelCreate)
+			final MasterDomainModel masterDomainModel,
+			final MasterDomainModelCreate masterDomainModelCreate,
+			final SatelliteCreateIntentResolver satelliteCreateIntentResolver)
 	{
 		var linkedMasterDomainModel = masterDomainModel;
 		for (var relationship : relationships)
 		{
 			if (persistsSatellitesAfterMaster(relationship))
 			{
-				linkedMasterDomainModel =
-						applySaveRelationship(relationship, linkedMasterDomainModel, masterDomainModelCreate);
+				linkedMasterDomainModel = applySaveRelationship(
+						relationship,
+						linkedMasterDomainModel,
+						masterDomainModelCreate,
+						satelliteCreateIntentResolver);
 			}
 		}
 		return linkedMasterDomainModel;
@@ -93,10 +128,12 @@ public final class AggregateSaveCoordinator
 
 	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch> MasterDomainModel applySaveRelationship(
 			final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch> relationship,
-			final MasterDomainModel masterDomainModel, final MasterDomainModelCreate masterDomainModelCreate)
+			final MasterDomainModel masterDomainModel,
+			final MasterDomainModelCreate masterDomainModelCreate,
+			final SatelliteCreateIntentResolver satelliteCreateIntentResolver)
 	{
 		List<SatelliteDomainId> satelliteDomainIds =
-				createIntentResolver.resolveSatelliteIdsForCreate(relationship, masterDomainModelCreate);
+				satelliteCreateIntentResolver.resolveSatelliteIdsForCreate(relationship, masterDomainModelCreate);
 		return relationshipPlanner.replaceLinkedSatelliteDomainIds(relationship, masterDomainModel, satelliteDomainIds);
 	}
 

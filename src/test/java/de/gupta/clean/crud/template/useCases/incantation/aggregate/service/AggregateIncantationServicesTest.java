@@ -18,9 +18,10 @@ import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommi
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationKind;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateLifecycleEngine;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.DefaultAggregateLifecycleEngine;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteCreateIntent;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateFetchPort;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateMutationPort;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinitionContract;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.*;
 import de.gupta.clean.crud.template.useCases.incantation.domain.handler.IncantationHandlerRegistry;
 import de.gupta.clean.crud.template.useCases.incantation.domain.handler.RegisteredIncantationHandler;
 import de.gupta.clean.crud.template.useCases.incantation.domain.model.*;
@@ -220,6 +221,40 @@ class AggregateIncantationServicesTest
 				result.quarantineRequest().orElseThrow().violations().getFirst().message());
 	}
 
+	@Test
+	void incantationServicePersistsOwnedInlineSatellites()
+	{
+		var definition = new AggregateOrderDefinition();
+		var engine = DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
+		var service = AggregateIncantationServices.incantationService(definition, engine, aggregateRegistry());
+
+		var created = service.incant(new IncantationRequest<>(
+				new OpenOrderWithLine("AAPL", "entry"),
+				IncantationSource.INTERNAL_COMMAND));
+
+		assertEquals("order-1", created.domainId());
+		assertEquals(List.of(1L), created.model().lineIds());
+		assertEquals("entry", definition.lineStore.get(1L).value());
+	}
+
+	@Test
+	void incantationServiceCanQuarantineOwnedInlineSatelliteCreation()
+	{
+		var definition = new QuarantiningAggregateOrderDefinition();
+		var engine = DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
+		var service = AggregateIncantationServices.incantationService(definition, engine, aggregateRegistry());
+
+		var result = service.incantWithResult(new IncantationRequest<>(
+				new OpenOrderWithLine("AAPL", "blocked"),
+				IncantationSource.AUTHORITATIVE_EXTERNAL_EVENT));
+
+		assertTrue(result.quarantined());
+		assertTrue(definition.store.isEmpty());
+		assertTrue(definition.lineStore.isEmpty());
+		assertEquals("External line source unavailable",
+				result.quarantineRequest().orElseThrow().violations().getFirst().message());
+	}
+
 	private static DefaultAggregateIncantationService<String, OrderModel, OrderCreate, String, String> incantationService(
 			final AggregateCrudDefinition<String, OrderModel, OrderCreate, String, String> definition,
 			final AggregateLifecycleEngine engine)
@@ -233,6 +268,16 @@ class AggregateIncantationServicesTest
 		return IncantationHandlerRegistry.of(List.of(
 				RegisteredIncantationHandler.of(OpenOrder.class,
 						payload -> new OrderCreate(payload.symbol(), payload.quantity()))));
+	}
+
+	private static IncantationHandlerRegistry<AggregateOrderCreate> aggregateRegistry()
+	{
+		return IncantationHandlerRegistry.of(List.of(
+				RegisteredIncantationHandler.of(OpenOrderWithLine.class,
+						payload -> new AggregateOrderCreate(
+								payload.symbol(),
+								List.of(new SatelliteCreateIntent.InlineSatelliteCreateIntent<>(
+										new OrderLineCreate(payload.lineValue())))))));
 	}
 
 	private record OpenOrder(String symbol, int quantity) implements ApplicationIncantationPayload
@@ -252,6 +297,36 @@ class AggregateIncantationServicesTest
 	}
 
 	private record OrderPayload(String status) implements DurableProcessPayload
+	{
+	}
+
+	private record OpenOrderWithLine(String symbol, String lineValue) implements ApplicationIncantationPayload
+	{
+	}
+
+	private record AggregateOrderCreate(
+			String symbol,
+			Collection<SatelliteCreateIntent<Long, OrderLineCreate>> lineCreateIntents)
+	{
+	}
+
+	private record AggregateOrderModel(String status, List<Long> lineIds)
+	{
+		private AggregateOrderModel withLineIds(final Collection<Long> newLineIds)
+		{
+			return new AggregateOrderModel(status, List.copyOf(newLineIds));
+		}
+	}
+
+	private record OrderLineCreate(String value)
+	{
+	}
+
+	private record OrderLinePatch(String value)
+	{
+	}
+
+	private record OrderLineModel(String value)
 	{
 	}
 
@@ -464,5 +539,549 @@ class AggregateIncantationServicesTest
 			return new DurableProcessTaskId("task-1");
 		}
 
+	}
+
+	private static class AggregateOrderDefinition
+			implements AggregateCrudDefinition<String, AggregateOrderModel, AggregateOrderCreate, String, String>
+	{
+		protected final Map<String, AggregateOrderModel> store = new LinkedHashMap<>();
+		protected final Map<Long, OrderLineModel> lineStore = new LinkedHashMap<>();
+		private int nextId = 1;
+		private long nextLineId = 1L;
+
+		@Override
+		public AggregateMutationPort<String, AggregateOrderModel, AggregateOrderCreate, String> mutationPort()
+		{
+			return new AggregateMutationPort<>()
+			{
+				@Override
+				public IdentifiedModel<String, AggregateOrderModel> create(final AggregateOrderModel model)
+				{
+					var id = "order-" + nextId++;
+					store.put(id, model);
+					return IdentifiedModel.of(id, model);
+				}
+
+				@Override
+				public void put(final String id, final AggregateOrderModel model)
+				{
+					store.put(id, model);
+				}
+
+				@Override
+				public IdentifiedModel<String, AggregateOrderModel> update(
+						final String id,
+						final AggregateOrderModel replacement)
+				{
+					store.put(id, replacement);
+					return IdentifiedModel.of(id, replacement);
+				}
+
+				@Override
+				public void delete(final String id)
+				{
+					store.remove(id);
+				}
+			};
+		}
+
+		@Override
+		public AggregateFetchPort<String, AggregateOrderModel> fetchPort()
+		{
+			return new AggregateFetchPort<>()
+			{
+				@Override
+				public Optional<IdentifiedModel<String, AggregateOrderModel>> findById(final String id)
+				{
+					return Optional.ofNullable(store.get(id)).map(model -> IdentifiedModel.of(id, model));
+				}
+
+				@Override
+				public Collection<IdentifiedModel<String, AggregateOrderModel>> findByIds(final Set<String> ids)
+				{
+					return ids.stream().map(this::findById).flatMap(Optional::stream).toList();
+				}
+
+				@Override
+				public Collection<IdentifiedModel<String, AggregateOrderModel>> findAll()
+				{
+					return store.entrySet().stream().map(entry -> IdentifiedModel.of(entry.getKey(), entry.getValue()))
+					            .toList();
+				}
+
+				@Override
+				public Slice<IdentifiedModel<String, AggregateOrderModel>> findAll(final Pageable pageable)
+				{
+					return new SliceImpl<>(findAll().stream().toList());
+				}
+			};
+		}
+
+		@Override
+		public DomainModelBuilder<AggregateOrderCreate, AggregateOrderModel> createBuilder()
+		{
+			return create -> new AggregateOrderModel(create.symbol(), List.of());
+		}
+
+		@Override
+		public DomainModelPatcher<AggregateOrderModel, String> patcher()
+		{
+			return (_, patch) -> new AggregateOrderModel(patch, List.of());
+		}
+
+		@Override
+		public DomainResponseBuilder<AggregateOrderModel, String> responseBuilder()
+		{
+			return AggregateOrderModel::status;
+		}
+
+		@Override
+		public InsertionPolicy<AggregateOrderModel> insertionPolicy()
+		{
+			return _ ->
+			{
+			};
+		}
+
+		@Override
+		public PatchPolicy<AggregateOrderModel> patchPolicy()
+		{
+			return (_, _) ->
+			{
+			};
+		}
+
+		@Override
+		public DeletionPolicy<AggregateOrderModel> deletionPolicy()
+		{
+			return _ ->
+			{
+			};
+		}
+
+		@Override
+		public DomainSecurityPolicy<AggregateOrderModel> securityPolicy()
+		{
+			return _ -> true;
+		}
+
+		@Override
+		public DuplicateDefinition<AggregateOrderModel> duplicateDefinition()
+		{
+			return AggregateOrderModel::equals;
+		}
+
+		@Override
+		public PostCommitMutation<String, AggregateOrderModel> postCommitMutation()
+		{
+			return _ ->
+			{
+			};
+		}
+
+		@Override
+		public Collection<AggregateRelationshipDefinitionContract<String, AggregateOrderModel, AggregateOrderCreate, String>>
+		relationshipDefinitions()
+		{
+			return List.of(new AggregateOrderLineRelationshipDefinition());
+		}
+
+		protected AggregateCrudDefinition<Long, OrderLineModel, OrderLineCreate, OrderLinePatch, String> lineDefinition()
+		{
+			return new AggregateCrudDefinition<>()
+			{
+				@Override
+				public AggregateMutationPort<Long, OrderLineModel, OrderLineCreate, OrderLinePatch> mutationPort()
+				{
+					return new AggregateMutationPort<>()
+					{
+						@Override
+						public IdentifiedModel<Long, OrderLineModel> create(final OrderLineModel model)
+						{
+							var id = nextLineId++;
+							lineStore.put(id, model);
+							return IdentifiedModel.of(id, model);
+						}
+
+						@Override
+						public void put(final Long id, final OrderLineModel model)
+						{
+							lineStore.put(id, model);
+						}
+
+						@Override
+						public IdentifiedModel<Long, OrderLineModel> update(final Long id,
+						                                                    final OrderLineModel replacement)
+						{
+							lineStore.put(id, replacement);
+							return IdentifiedModel.of(id, replacement);
+						}
+
+						@Override
+						public void delete(final Long id)
+						{
+							lineStore.remove(id);
+						}
+					};
+				}
+
+				@Override
+				public AggregateFetchPort<Long, OrderLineModel> fetchPort()
+				{
+					return new AggregateFetchPort<>()
+					{
+						@Override
+						public Optional<IdentifiedModel<Long, OrderLineModel>> findById(final Long id)
+						{
+							return Optional.ofNullable(lineStore.get(id)).map(model -> IdentifiedModel.of(id, model));
+						}
+
+						@Override
+						public Collection<IdentifiedModel<Long, OrderLineModel>> findByIds(final Set<Long> ids)
+						{
+							return ids.stream().map(this::findById).flatMap(Optional::stream).toList();
+						}
+
+						@Override
+						public Collection<IdentifiedModel<Long, OrderLineModel>> findAll()
+						{
+							return lineStore.entrySet().stream()
+							                .map(entry -> IdentifiedModel.of(entry.getKey(), entry.getValue()))
+							                .toList();
+						}
+
+						@Override
+						public Slice<IdentifiedModel<Long, OrderLineModel>> findAll(final Pageable pageable)
+						{
+							return new SliceImpl<>(findAll().stream().toList());
+						}
+					};
+				}
+
+				@Override
+				public DomainModelBuilder<OrderLineCreate, OrderLineModel> createBuilder()
+				{
+					return create -> new OrderLineModel(create.value());
+				}
+
+				@Override
+				public DomainModelPatcher<OrderLineModel, OrderLinePatch> patcher()
+				{
+					return (_, patch) -> new OrderLineModel(patch.value());
+				}
+
+				@Override
+				public DomainResponseBuilder<OrderLineModel, String> responseBuilder()
+				{
+					return OrderLineModel::value;
+				}
+
+				@Override
+				public InsertionPolicy<OrderLineModel> insertionPolicy()
+				{
+					return _ ->
+					{
+					};
+				}
+
+				@Override
+				public PatchPolicy<OrderLineModel> patchPolicy()
+				{
+					return (_, _) ->
+					{
+					};
+				}
+
+				@Override
+				public DeletionPolicy<OrderLineModel> deletionPolicy()
+				{
+					return _ ->
+					{
+					};
+				}
+
+				@Override
+				public DomainSecurityPolicy<OrderLineModel> securityPolicy()
+				{
+					return _ -> true;
+				}
+
+				@Override
+				public DuplicateDefinition<OrderLineModel> duplicateDefinition()
+				{
+					return OrderLineModel::equals;
+				}
+
+				@Override
+				public PostCommitMutation<Long, OrderLineModel> postCommitMutation()
+				{
+					return _ ->
+					{
+					};
+				}
+
+				@Override
+				public Collection<AggregateRelationshipDefinitionContract<Long, OrderLineModel, OrderLineCreate, OrderLinePatch>>
+				relationshipDefinitions()
+				{
+					return List.of();
+				}
+			};
+		}
+
+		protected class AggregateOrderLineRelationshipDefinition
+				implements
+				AggregateRelationshipDefinition<String, AggregateOrderModel, AggregateOrderCreate, String, Long,
+						OrderLineModel, OrderLineCreate, OrderLinePatch>
+		{
+			@Override
+			public String name()
+			{
+				return "lines";
+			}
+
+			@Override
+			public Cardinality cardinality()
+			{
+				return Cardinality.MANY;
+			}
+
+			@Override
+			public de.gupta.clean.crud.template.domain.relationship.RelationshipKind relationshipKind()
+			{
+				return de.gupta.clean.crud.template.domain.relationship.RelationshipKind.OWNED;
+			}
+
+			@Override
+			public de.gupta.clean.crud.template.domain.relationship.LifecycleSemantics lifecycleSemantics()
+			{
+				return de.gupta.clean.crud.template.domain.relationship.LifecycleSemantics.of(true, true, true, true,
+						true);
+			}
+
+			@Override
+			public de.gupta.clean.crud.template.domain.relationship.ReconciliationStrategy reconciliationStrategy()
+			{
+				return de.gupta.clean.crud.template.domain.relationship.ReconciliationStrategy.REPLACE;
+			}
+
+			@Override
+			public AggregateCrudDefinition<Long, OrderLineModel, OrderLineCreate, OrderLinePatch, ?> satelliteDefinition()
+			{
+				return lineDefinition();
+			}
+
+			@Override
+			public AggregateMutationPort<Long, OrderLineModel, OrderLineCreate, OrderLinePatch> satelliteMutationPort()
+			{
+				return lineDefinition().mutationPort();
+			}
+
+			@Override
+			public AggregateFetchPort<Long, OrderLineModel> satelliteFetchPort()
+			{
+				return lineDefinition().fetchPort();
+			}
+
+			@Override
+			public SatelliteCreateInputResolver<AggregateOrderCreate, Collection<SatelliteCreateIntent<Long, OrderLineCreate>>>
+			createInputResolver()
+			{
+				return AggregateOrderCreate::lineCreateIntents;
+			}
+
+			@Override
+			public SatellitePatchInputResolver<String, Collection<de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMutationIntent<Long, OrderLineCreate, OrderLinePatch>>>
+			patchInputResolver()
+			{
+				return _ -> List.of();
+			}
+
+			@Override
+			public SatelliteIdentityResolver<AggregateOrderModel, OrderLineModel, Long> identityResolver()
+			{
+				return (_, _) -> Optional.empty();
+			}
+
+			@Override
+			public SatelliteLinkStrategy<String, AggregateOrderModel, Long, OrderLineModel> linkStrategy()
+			{
+				return new SatelliteLinkStrategy<>()
+				{
+					@Override
+					public SatellitePersistenceOrder persistenceOrder()
+					{
+						return SatellitePersistenceOrder.SATELLITE_BEFORE_MASTER;
+					}
+
+					@Override
+					public Optional<Long> currentLinkedSatelliteDomainId(final AggregateOrderModel masterDomainModel)
+					{
+						return masterDomainModel.lineIds().stream().findFirst();
+					}
+
+					@Override
+					public Collection<Long> currentLinkedSatelliteDomainIds(final AggregateOrderModel masterDomainModel)
+					{
+						return masterDomainModel.lineIds();
+					}
+
+					@Override
+					public AggregateOrderModel replaceLinkedSatelliteDomainIds(
+							final AggregateOrderModel masterDomainModel,
+							final Collection<Long> satelliteDomainIds)
+					{
+						return masterDomainModel.withLineIds(satelliteDomainIds);
+					}
+
+					@Override
+					public AggregateOrderModel attachHydratedSatellites(
+							final AggregateOrderModel masterDomainModel,
+							final Collection<IdentifiedModel<Long, OrderLineModel>> satellites)
+					{
+						return masterDomainModel;
+					}
+				};
+			}
+
+			@Override
+			public SatelliteHydrationStrategy<String, AggregateOrderModel, Long, OrderLineModel> hydrationStrategy()
+			{
+				return (master, satelliteFetchPort, satelliteLinkStrategy) -> master.model();
+			}
+		}
+	}
+
+	private static final class QuarantiningAggregateOrderDefinition extends AggregateOrderDefinition
+	{
+		@Override
+		public IncantationPolicyProfileResolver incantationPolicyProfileResolver()
+		{
+			return source -> source == IncantationSource.AUTHORITATIVE_EXTERNAL_EVENT
+					? IncantationPolicyProfile.authoritativeExternalEvent()
+					: IncantationPolicyProfileResolver.defaultResolver().resolve(source);
+		}
+
+		@Override
+		public de.gupta.clean.crud.template.useCases.incantation.domain.policy.invariant.IncantationInvariantPolicy<AggregateOrderModel>
+		incantationInvariantPolicy()
+		{
+			return (_, _) -> List.of();
+		}
+
+		@Override
+		public Collection<AggregateRelationshipDefinitionContract<String, AggregateOrderModel, AggregateOrderCreate, String>>
+		relationshipDefinitions()
+		{
+			return List.of(new QuarantiningAggregateOrderLineRelationshipDefinition());
+		}
+
+		private AggregateCrudDefinition<Long, OrderLineModel, OrderLineCreate, OrderLinePatch, String>
+		quarantiningLineDefinition()
+		{
+			var base = lineDefinition();
+			return new AggregateCrudDefinition<>()
+			{
+				@Override
+				public AggregateMutationPort<Long, OrderLineModel, OrderLineCreate, OrderLinePatch> mutationPort()
+				{
+					return base.mutationPort();
+				}
+
+				@Override
+				public AggregateFetchPort<Long, OrderLineModel> fetchPort()
+				{
+					return base.fetchPort();
+				}
+
+				@Override
+				public DomainModelBuilder<OrderLineCreate, OrderLineModel> createBuilder()
+				{
+					return base.createBuilder();
+				}
+
+				@Override
+				public DomainModelPatcher<OrderLineModel, OrderLinePatch> patcher()
+				{
+					return base.patcher();
+				}
+
+				@Override
+				public DomainResponseBuilder<OrderLineModel, String> responseBuilder()
+				{
+					return base.responseBuilder();
+				}
+
+				@Override
+				public InsertionPolicy<OrderLineModel> insertionPolicy()
+				{
+					return base.insertionPolicy();
+				}
+
+				@Override
+				public PatchPolicy<OrderLineModel> patchPolicy()
+				{
+					return base.patchPolicy();
+				}
+
+				@Override
+				public DeletionPolicy<OrderLineModel> deletionPolicy()
+				{
+					return base.deletionPolicy();
+				}
+
+				@Override
+				public DomainSecurityPolicy<OrderLineModel> securityPolicy()
+				{
+					return base.securityPolicy();
+				}
+
+				@Override
+				public DuplicateDefinition<OrderLineModel> duplicateDefinition()
+				{
+					return base.duplicateDefinition();
+				}
+
+				@Override
+				public PostCommitMutation<Long, OrderLineModel> postCommitMutation()
+				{
+					return base.postCommitMutation();
+				}
+
+				@Override
+				public Collection<AggregateRelationshipDefinitionContract<Long, OrderLineModel, OrderLineCreate, OrderLinePatch>>
+				relationshipDefinitions()
+				{
+					return base.relationshipDefinitions();
+				}
+
+				@Override
+				public IncantationPolicyProfileResolver incantationPolicyProfileResolver()
+				{
+					return source -> source == IncantationSource.AUTHORITATIVE_EXTERNAL_EVENT
+							? IncantationPolicyProfile.authoritativeExternalEvent()
+							: IncantationPolicyProfileResolver.defaultResolver().resolve(source);
+				}
+
+				@Override
+				public IncantationInvariantPolicy<OrderLineModel> incantationInvariantPolicy()
+				{
+					return (source, afterModel) -> source == IncantationSource.AUTHORITATIVE_EXTERNAL_EVENT
+							&& afterModel.value().equals("blocked")
+							? List.of(InvariantViolation.hard("External line source unavailable"))
+							: List.of();
+				}
+			};
+		}
+
+		private final class QuarantiningAggregateOrderLineRelationshipDefinition
+				extends AggregateOrderLineRelationshipDefinition
+		{
+			@Override
+			public AggregateCrudDefinition<Long, OrderLineModel, OrderLineCreate, OrderLinePatch, ?> satelliteDefinition()
+			{
+				return quarantiningLineDefinition();
+			}
+		}
 	}
 }

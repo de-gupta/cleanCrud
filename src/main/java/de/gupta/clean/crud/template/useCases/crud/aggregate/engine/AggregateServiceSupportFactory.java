@@ -33,6 +33,12 @@ public final class AggregateServiceSupportFactory
 		return SAVE_COORDINATOR;
 	}
 
+	public static SatelliteCreateIntentResolver satelliteCreateIntentResolver(
+			final SatelliteCreateValidator satelliteCreateValidator)
+	{
+		return SatelliteCreateIntentResolver.with(RELATIONSHIP_PLANNER, REFERENCE_RESOLVER, satelliteCreateValidator);
+	}
+
 	public static AggregateFetchCoordinator fetchCoordinator()
 	{
 		return FETCH_COORDINATOR;
