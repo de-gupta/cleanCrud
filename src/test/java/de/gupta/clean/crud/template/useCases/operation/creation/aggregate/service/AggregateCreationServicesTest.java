@@ -66,7 +66,7 @@ class AggregateCreationServicesTest
 
 		var created = service.create(new CreationRequest<>(
 				new OpenOrder("AAPL", 100),
-				OperationSource.INTERNAL_COMMAND));
+				OperationSource.INTERNAL_COMMAND)).createdOrThrow();
 
 		assertEquals("order-1", created.domainId());
 		assertEquals("AAPL:100", created.model().status());
@@ -202,7 +202,7 @@ class AggregateCreationServicesTest
 
 		var created = service.create(new CreationRequest<>(
 				new OpenOrder("AAPL", 100),
-				OperationSource.AUTHORITATIVE_EXTERNAL_EVENT));
+				OperationSource.AUTHORITATIVE_EXTERNAL_EVENT)).createdOrThrow();
 
 		assertEquals("AAPL:100", created.model().status());
 	}
@@ -234,7 +234,7 @@ class AggregateCreationServicesTest
 
 		var created = service.create(new CreationRequest<>(
 				new OpenOrderWithLine("AAPL", "entry"),
-				OperationSource.INTERNAL_COMMAND));
+				OperationSource.INTERNAL_COMMAND)).createdOrThrow();
 
 		assertEquals("order-1", created.domainId());
 		assertEquals(List.of(1L), created.model().lineIds());

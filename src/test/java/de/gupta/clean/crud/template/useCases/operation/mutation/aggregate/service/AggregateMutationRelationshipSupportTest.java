@@ -51,7 +51,7 @@ class AggregateMutationRelationshipSupportTest
 		var updated = service.mutate(new MutationRequest<>(
 				"order-1",
 				new AcknowledgeWithOwnedNote("printed"),
-				OperationSource.INTERNAL_COMMAND));
+				OperationSource.INTERNAL_COMMAND)).updatedOrThrow();
 
 		assertEquals("ACKNOWLEDGED", updated.model().status());
 		assertEquals(1, updated.model().noteIds().size());

@@ -44,7 +44,7 @@ public record CreationResult<DomainId, DomainModel>(
 		}
 	}
 
-	public boolean creationApplied()
+	public boolean applied()
 	{
 		return created.isPresent();
 	}

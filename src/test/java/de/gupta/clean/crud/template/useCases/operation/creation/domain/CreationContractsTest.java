@@ -1,6 +1,5 @@
 package de.gupta.clean.crud.template.useCases.operation.creation.domain;
 
-import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.handler.CreationHandler;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.model.CreateResult;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.model.CreationContext;
@@ -82,7 +81,7 @@ class CreationContractsTest
 	@Test
 	void resultCarriesCreateOutcome()
 	{
-		var created = new CreateResult<>(IdentifiedModel.of("order-1", new OrderState("SUBMITTED")));
+		var created = CreateResult.of("order-1", new OrderState("SUBMITTED"));
 		var result = CreationResult.created(
 				new CreationContext<>(
 						Optional.of("order-1"),

@@ -23,7 +23,7 @@ class MutationApplicationControllerTest
 		var service = new RecordingMutationService();
 		var controller = MutationApplicationControllers.controller(service);
 
-		controller.applyUserIntent("order-1", new AcknowledgeOrder());
+		controller.mutateUserIntent("order-1", new AcknowledgeOrder());
 
 		assertEquals("order-1", service.lastRequest.domainId());
 		assertEquals(OperationSource.USER_INTENT, service.lastRequest.source());
@@ -35,7 +35,7 @@ class MutationApplicationControllerTest
 		var service = new RecordingMutationService();
 		var controller = MutationApplicationControllers.controller(service);
 
-		controller.applyAuthoritativeExternalEvent("order-1", new AcknowledgeOrder());
+		controller.mutateAuthoritativeExternalEvent("order-1", new AcknowledgeOrder());
 
 		assertEquals(OperationSource.AUTHORITATIVE_EXTERNAL_EVENT, service.lastRequest.source());
 		assertEquals(AcknowledgeOrder.class, service.lastRequest.payloadType());
@@ -47,13 +47,14 @@ class MutationApplicationControllerTest
 		var service = new RecordingMutationService();
 		var controller = MutationApplicationControllers.controller(service);
 
-		controller.apply(
+		var result = controller.mutate(
 				"order-1",
 				new AcknowledgeOrder(),
 				OperationSource.PROCESS_EMITTED_ACTION,
 				Optional.of(new OperationCorrelationId("corr-1")),
 				Optional.of(new OperationCausationId("cause-1")));
 
+		assertEquals("order-1", result.updatedOrThrow().id());
 		assertEquals("corr-1", service.lastRequest.correlationId().orElseThrow().value());
 		assertEquals("cause-1", service.lastRequest.causationId().orElseThrow().value());
 	}
@@ -64,7 +65,7 @@ class MutationApplicationControllerTest
 		var service = new RecordingMutationService();
 		var controller = MutationApplicationControllers.controller(service);
 
-		var result = controller.applyInternalCommandWithResult("order-1", new AcknowledgeOrder());
+		var result = controller.mutateInternalCommandWithResult("order-1", new AcknowledgeOrder());
 
 		assertEquals("order-1", result.updatedOrThrow().id());
 		assertEquals(OperationSource.INTERNAL_COMMAND, result.context().source());

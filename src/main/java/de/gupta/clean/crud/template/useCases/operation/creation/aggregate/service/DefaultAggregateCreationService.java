@@ -111,7 +111,7 @@ public final class DefaultAggregateCreationService<
 				? definition.mutationPort().create(candidateModel)
 				: createAggregateWithRelationships(request, relationships, createInput, policyDecision, baseContext);
 		var context = baseContext.withCreated(created.id(), created.model());
-		return CreationResult.created(context, policyDecision, new CreateResult<>(created));
+		return CreationResult.created(context, policyDecision, CreateResult.of(created.id(), created.model()));
 	}
 
 	private IdentifiedModel<DomainId, DomainModel> createAggregateWithRelationships(
@@ -156,7 +156,7 @@ public final class DefaultAggregateCreationService<
 
 	private void dispatchCreationCompleted(final CreationResult<DomainId, DomainModel> result)
 	{
-		if (!result.creationApplied())
+		if (!result.applied())
 		{
 			return;
 		}

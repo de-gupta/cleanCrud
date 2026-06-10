@@ -10,7 +10,7 @@ public abstract class AbstractMutationApplicationController<DomainId, DomainMode
 	private final MutationService<DomainId, DomainModel> service;
 
 	@Override
-	public MutationResult<DomainId, DomainModel> applyWithResult(final MutationRequest<DomainId, ?> request)
+	public MutationResult<DomainId, DomainModel> mutateWithResult(final MutationRequest<DomainId, ?> request)
 	{
 		return service.mutateWithResult(request);
 	}

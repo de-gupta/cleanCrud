@@ -1,6 +1,5 @@
 package de.gupta.clean.crud.template.useCases.operation.creation.api.application;
 
-import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.useCases.operation.creation.application.service.CreationService;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.model.CreateResult;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.model.CreationContext;
@@ -48,12 +47,13 @@ class CreationApplicationControllerTest
 		var service = new RecordingCreationService();
 		var controller = CreationApplicationControllers.controller(service);
 
-		controller.create(
+		var result = controller.create(
 				new OpenOrder(),
 				OperationSource.PROCESS_EMITTED_ACTION,
 				Optional.of(new OperationCorrelationId("corr-1")),
 				Optional.of(new OperationCausationId("cause-1")));
 
+		assertEquals("order-1", result.createdOrThrow().domainId());
 		assertEquals("corr-1", service.lastRequest.correlationId().orElseThrow().value());
 		assertEquals("cause-1", service.lastRequest.causationId().orElseThrow().value());
 	}
@@ -93,7 +93,7 @@ class CreationApplicationControllerTest
 							Optional.empty(),
 							Optional.of("ok")),
 					CreationPolicyDecision.allow(),
-					new CreateResult<>(IdentifiedModel.of("order-1", "ok")));
+					CreateResult.of("order-1", "ok"));
 		}
 	}
 }

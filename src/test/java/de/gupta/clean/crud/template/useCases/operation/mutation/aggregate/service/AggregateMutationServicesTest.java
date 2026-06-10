@@ -42,7 +42,6 @@ import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.in
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.invariant.InvariantViolation;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.profile.MutationPolicyProfile;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.profile.MutationPolicyProfileResolver;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.quarantine.QuarantinedMutationException;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationViolationHandling;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationViolationKind;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.DefaultMutationQuarantineReplayRegistry;
@@ -87,7 +86,7 @@ class AggregateMutationServicesTest
 		var updated = service.mutate(new MutationRequest<>(
 				"order-1",
 				new AcknowledgeOrder(),
-				OperationSource.AUTHORITATIVE_EXTERNAL_EVENT));
+				OperationSource.AUTHORITATIVE_EXTERNAL_EVENT)).updatedOrThrow();
 
 		assertEquals("order-1", updated.id());
 		assertEquals("ACKNOWLEDGED", updated.model().status());
@@ -228,7 +227,7 @@ class AggregateMutationServicesTest
 		var updated = service.mutate(new MutationRequest<>(
 				"order-1",
 				new AcknowledgeOrder(),
-				OperationSource.AUTHORITATIVE_EXTERNAL_EVENT));
+				OperationSource.AUTHORITATIVE_EXTERNAL_EVENT)).updatedOrThrow();
 
 		assertEquals("ACKNOWLEDGED", updated.model().status());
 	}
@@ -259,15 +258,15 @@ class AggregateMutationServicesTest
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
 		var service = mutationService(definition, engine);
 
-		var exception = assertThrows(
-				QuarantinedMutationException.class,
-				() -> service.mutate(new MutationRequest<>(
-						"order-1",
-						new AcknowledgeOrder(),
-						OperationSource.AUTHORITATIVE_EXTERNAL_EVENT)));
+		var result = service.mutate(new MutationRequest<>(
+				"order-1",
+				new AcknowledgeOrder(),
+				OperationSource.AUTHORITATIVE_EXTERNAL_EVENT));
 
-		assertEquals(1, exception.request().violations().size());
-		assertEquals(MutationViolationKind.INVARIANT, exception.request().violations().getFirst().kind());
+		assertTrue(result.quarantined());
+		assertEquals(1, result.quarantineRequest().orElseThrow().violations().size());
+		assertEquals(MutationViolationKind.INVARIANT,
+				result.quarantineRequest().orElseThrow().violations().getFirst().kind());
 	}
 
 	@Test
@@ -413,7 +412,7 @@ class AggregateMutationServicesTest
 		var updated = service.mutate(new MutationRequest<>(
 				"order-1",
 				new AcknowledgeOrder(),
-				OperationSource.INTERNAL_COMMAND));
+				OperationSource.INTERNAL_COMMAND)).updatedOrThrow();
 
 		assertEquals("ACKNOWLEDGED", updated.model().status());
 	}

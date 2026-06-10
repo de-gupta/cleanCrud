@@ -1,6 +1,5 @@
 package de.gupta.clean.crud.template.useCases.operation.mutation.api.application;
 
-import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.ApplicationOperationPayload;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCausationId;
@@ -13,106 +12,106 @@ import java.util.Optional;
 @FunctionalInterface
 public interface MutationApplicationController<DomainId, DomainModel>
 {
-	default IdentifiedModel<DomainId, DomainModel> apply(final MutationRequest<DomainId, ?> request)
+	default MutationResult<DomainId, DomainModel> mutate(final MutationRequest<DomainId, ?> request)
 	{
-		return applyWithResult(request).updatedOrThrow();
+		return mutateWithResult(request);
 	}
 
-	MutationResult<DomainId, DomainModel> applyWithResult(final MutationRequest<DomainId, ?> request);
+	MutationResult<DomainId, DomainModel> mutateWithResult(final MutationRequest<DomainId, ?> request);
 
-	default <Payload extends ApplicationOperationPayload> IdentifiedModel<DomainId, DomainModel> apply(
+	default <Payload extends ApplicationOperationPayload> MutationResult<DomainId, DomainModel> mutate(
 			final DomainId id,
 			final Payload payload,
 			final OperationSource source)
 	{
-		return apply(new MutationRequest<>(id, payload, source));
+		return mutate(new MutationRequest<>(id, payload, source));
 	}
 
-	default <Payload extends ApplicationOperationPayload> IdentifiedModel<DomainId, DomainModel> apply(
+	default <Payload extends ApplicationOperationPayload> MutationResult<DomainId, DomainModel> mutate(
 			final DomainId id,
 			final Payload payload,
 			final OperationSource source,
 			final Optional<OperationCorrelationId> correlationId,
 			final Optional<OperationCausationId> causationId)
 	{
-		return apply(new MutationRequest<>(id, payload, source, correlationId, causationId));
+		return mutate(new MutationRequest<>(id, payload, source, correlationId, causationId));
 	}
 
-	default <Payload extends ApplicationOperationPayload> IdentifiedModel<DomainId, DomainModel> applyUserIntent(
+	default <Payload extends ApplicationOperationPayload> MutationResult<DomainId, DomainModel> mutateUserIntent(
 			final DomainId id,
 			final Payload payload)
 	{
-		return apply(id, payload, OperationSource.USER_INTENT);
+		return mutate(id, payload, OperationSource.USER_INTENT);
 	}
 
-	default <Payload extends ApplicationOperationPayload> IdentifiedModel<DomainId, DomainModel> applyInternalCommand(
+	default <Payload extends ApplicationOperationPayload> MutationResult<DomainId, DomainModel> mutateInternalCommand(
 			final DomainId id,
 			final Payload payload)
 	{
-		return apply(id, payload, OperationSource.INTERNAL_COMMAND);
+		return mutate(id, payload, OperationSource.INTERNAL_COMMAND);
 	}
 
-	default <Payload extends ApplicationOperationPayload> IdentifiedModel<DomainId, DomainModel>
-	applyAuthoritativeExternalEvent(
+	default <Payload extends ApplicationOperationPayload> MutationResult<DomainId, DomainModel>
+	mutateAuthoritativeExternalEvent(
 			final DomainId id,
 			final Payload payload)
 	{
-		return apply(id, payload, OperationSource.AUTHORITATIVE_EXTERNAL_EVENT);
+		return mutate(id, payload, OperationSource.AUTHORITATIVE_EXTERNAL_EVENT);
 	}
 
-	default <Payload extends ApplicationOperationPayload> IdentifiedModel<DomainId, DomainModel> applyProcessEmittedAction(
+	default <Payload extends ApplicationOperationPayload> MutationResult<DomainId, DomainModel> mutateProcessEmittedAction(
 			final DomainId id,
 			final Payload payload)
 	{
-		return apply(id, payload, OperationSource.PROCESS_EMITTED_ACTION);
+		return mutate(id, payload, OperationSource.PROCESS_EMITTED_ACTION);
 	}
 
-	default <Payload extends ApplicationOperationPayload> MutationResult<DomainId, DomainModel> applyWithResult(
+	default <Payload extends ApplicationOperationPayload> MutationResult<DomainId, DomainModel> mutateWithResult(
 			final DomainId id,
 			final Payload payload,
 			final OperationSource source)
 	{
-		return applyWithResult(new MutationRequest<>(id, payload, source));
+		return mutateWithResult(new MutationRequest<>(id, payload, source));
 	}
 
-	default <Payload extends ApplicationOperationPayload> MutationResult<DomainId, DomainModel> applyWithResult(
+	default <Payload extends ApplicationOperationPayload> MutationResult<DomainId, DomainModel> mutateWithResult(
 			final DomainId id,
 			final Payload payload,
 			final OperationSource source,
 			final Optional<OperationCorrelationId> correlationId,
 			final Optional<OperationCausationId> causationId)
 	{
-		return applyWithResult(new MutationRequest<>(id, payload, source, correlationId, causationId));
+		return mutateWithResult(new MutationRequest<>(id, payload, source, correlationId, causationId));
 	}
 
-	default <Payload extends ApplicationOperationPayload> MutationResult<DomainId, DomainModel> applyUserIntentWithResult(
+	default <Payload extends ApplicationOperationPayload> MutationResult<DomainId, DomainModel> mutateUserIntentWithResult(
 			final DomainId id,
 			final Payload payload)
 	{
-		return applyWithResult(id, payload, OperationSource.USER_INTENT);
-	}
-
-	default <Payload extends ApplicationOperationPayload> MutationResult<DomainId, DomainModel>
-	applyInternalCommandWithResult(
-			final DomainId id,
-			final Payload payload)
-	{
-		return applyWithResult(id, payload, OperationSource.INTERNAL_COMMAND);
+		return mutateWithResult(id, payload, OperationSource.USER_INTENT);
 	}
 
 	default <Payload extends ApplicationOperationPayload> MutationResult<DomainId, DomainModel>
-	applyAuthoritativeExternalEventWithResult(
+	mutateInternalCommandWithResult(
 			final DomainId id,
 			final Payload payload)
 	{
-		return applyWithResult(id, payload, OperationSource.AUTHORITATIVE_EXTERNAL_EVENT);
+		return mutateWithResult(id, payload, OperationSource.INTERNAL_COMMAND);
 	}
 
 	default <Payload extends ApplicationOperationPayload> MutationResult<DomainId, DomainModel>
-	applyProcessEmittedActionWithResult(
+	mutateAuthoritativeExternalEventWithResult(
 			final DomainId id,
 			final Payload payload)
 	{
-		return applyWithResult(id, payload, OperationSource.PROCESS_EMITTED_ACTION);
+		return mutateWithResult(id, payload, OperationSource.AUTHORITATIVE_EXTERNAL_EVENT);
+	}
+
+	default <Payload extends ApplicationOperationPayload> MutationResult<DomainId, DomainModel>
+	mutateProcessEmittedActionWithResult(
+			final DomainId id,
+			final Payload payload)
+	{
+		return mutateWithResult(id, payload, OperationSource.PROCESS_EMITTED_ACTION);
 	}
 }
