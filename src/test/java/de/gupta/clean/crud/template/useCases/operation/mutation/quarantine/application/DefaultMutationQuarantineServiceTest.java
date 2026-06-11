@@ -49,29 +49,31 @@ class DefaultMutationQuarantineServiceTest
 	{
 	}
 
-	private static final class TestMutationQuarantineValueCodec implements MutationQuarantineValueCodec
+	private static final class TestMutationQuarantineValueCodec
+			implements
+			de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.QuarantineReplayCodec
 	{
 		@Override
-		public SerializedMutationValue serialize(final Object value)
+		public QuarantineReplayEnvelope serialize(final Object value)
 		{
 			return switch (value)
 			{
-				case String domainId -> new SerializedMutationValue(String.class.getName(), domainId);
-				case AcknowledgeOrder payload -> new SerializedMutationValue(AcknowledgeOrder.class.getName(),
+				case String domainId -> QuarantineReplayEnvelope.of(String.class.getName(), domainId);
+				case AcknowledgeOrder payload -> QuarantineReplayEnvelope.of(AcknowledgeOrder.class.getName(),
 						payload.value());
 				default -> throw new IllegalArgumentException("Unsupported value " + value);
 			};
 		}
 
 		@Override
-		public <T> T deserialize(final SerializedMutationValue value, final Class<T> expectedType)
+		public <T> T deserialize(final QuarantineReplayEnvelope envelope, final Class<T> expectedType)
 		{
-			Object restored = switch (value.valueType())
+			Object restored = switch (envelope.typeKey())
 			{
-				case "java.lang.String" -> value.valueJson();
+				case "java.lang.String" -> envelope.serialized();
 				case "de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.DefaultMutationQuarantineServiceTest$AcknowledgeOrder" ->
-						new AcknowledgeOrder(value.valueJson());
-				default -> throw new IllegalArgumentException("Unsupported value type " + value.valueType());
+						new AcknowledgeOrder(envelope.serialized());
+				default -> throw new IllegalArgumentException("Unsupported type " + envelope.typeKey());
 			};
 			return expectedType.cast(restored);
 		}

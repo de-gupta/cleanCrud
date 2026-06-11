@@ -13,6 +13,7 @@ import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domai
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.port.persistence.CreationQuarantineRepository;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.*;
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.OperationPolicyViolation;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.QuarantineReplayCodec;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -46,19 +47,19 @@ class DefaultCreationQuarantineServiceTest
 				Optional.empty());
 	}
 
-	private static final class TestCreationQuarantinePayloadCodec implements CreationQuarantinePayloadCodec
+	private static final class TestCreationQuarantinePayloadCodec implements QuarantineReplayCodec
 	{
 		@Override
-		public SerializedCreationPayload serialize(final ApplicationOperationPayload payload)
+		public QuarantineReplayEnvelope serialize(final Object value)
 		{
-			var testPayload = (TestOperationPayload) payload;
-			return new SerializedCreationPayload(TestOperationPayload.class.getName(), testPayload.value());
+			var testPayload = (TestOperationPayload) value;
+			return QuarantineReplayEnvelope.of(TestOperationPayload.class.getName(), testPayload.value());
 		}
 
 		@Override
-		public ApplicationOperationPayload deserialize(final SerializedCreationPayload payload)
+		public <T> T deserialize(final QuarantineReplayEnvelope envelope, final Class<T> expectedType)
 		{
-			return new TestOperationPayload(payload.payloadJson());
+			return expectedType.cast(new TestOperationPayload(envelope.serialized()));
 		}
 	}
 

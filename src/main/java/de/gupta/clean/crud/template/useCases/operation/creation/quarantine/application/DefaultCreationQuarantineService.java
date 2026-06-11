@@ -7,11 +7,8 @@ import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domai
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.CreationQuarantineStatus;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.id.CreationQuarantineId;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.port.persistence.CreationQuarantineRepository;
-import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayEnvelope;
-import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.AbstractQuarantineService;
-import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.QuarantineRecorder;
-import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.QuarantineReplayExecutor;
-import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.ReplayOutcome;
+import de.gupta.clean.crud.template.useCases.operation.domain.model.ApplicationOperationPayload;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.*;
 
 import java.time.Clock;
 import java.util.Optional;
@@ -24,14 +21,14 @@ public final class DefaultCreationQuarantineService
 	public static DefaultCreationQuarantineService with(
 			final CreationQuarantineRepository repository,
 			final CreationQuarantineReplayRegistry replayRegistry,
-			final CreationQuarantinePayloadCodec payloadCodec,
+			final QuarantineReplayCodec replayCodec,
 			final Clock clock)
 	{
-		return new DefaultCreationQuarantineService(repository, replayRegistry, payloadCodec, clock);
+		return new DefaultCreationQuarantineService(repository, replayRegistry, replayCodec, clock);
 	}
 
 	private static QuarantineRecorder<CreationQuarantineSubmission, CreationQuarantineRecord, CreationQuarantineRequest>
-	recorder(final CreationQuarantinePayloadCodec payloadCodec)
+	recorder(final QuarantineReplayCodec replayCodec)
 	{
 		return new QuarantineRecorder<>()
 		{
@@ -41,11 +38,10 @@ public final class DefaultCreationQuarantineService
 					final java.time.Instant now)
 			{
 				var request = submission.creationRequest();
-				var serialized = payloadCodec.serialize(request.payload());
 				return new CreationQuarantineRecord(
 						CreationQuarantineId.random(),
 						submission.aggregateType(),
-						QuarantineReplayEnvelope.of(serialized.payloadType(), serialized.payloadJson()),
+						replayCodec.serialize(request.payload()),
 						request.source(),
 						request.family(),
 						request.correlationId(),
@@ -72,7 +68,7 @@ public final class DefaultCreationQuarantineService
 
 	private static QuarantineReplayExecutor<CreationQuarantineRecord> replayExecutor(
 			final CreationQuarantineReplayRegistry replayRegistry,
-			final CreationQuarantinePayloadCodec payloadCodec)
+			final QuarantineReplayCodec replayCodec)
 	{
 		return record ->
 		{
@@ -82,8 +78,7 @@ public final class DefaultCreationQuarantineService
 														+ record.aggregateType()));
 			var result = gateway.replay(new CreationQuarantineReplayCommand(
 					record.quarantineId(),
-					payloadCodec.deserialize(
-							new SerializedCreationPayload(record.payload().typeKey(), record.payload().serialized())),
+					replayCodec.deserialize(record.payload(), ApplicationOperationPayload.class),
 					record.family(),
 					record.correlationId(),
 					record.causationId()));
@@ -99,11 +94,11 @@ public final class DefaultCreationQuarantineService
 	private DefaultCreationQuarantineService(
 			final CreationQuarantineRepository repository,
 			final CreationQuarantineReplayRegistry replayRegistry,
-			final CreationQuarantinePayloadCodec payloadCodec,
+			final QuarantineReplayCodec replayCodec,
 			final Clock clock)
 	{
 		super(repository, clock,
-				recorder(payloadCodec),
-				replayExecutor(replayRegistry, payloadCodec));
+				recorder(replayCodec),
+				replayExecutor(replayRegistry, replayCodec));
 	}
 }

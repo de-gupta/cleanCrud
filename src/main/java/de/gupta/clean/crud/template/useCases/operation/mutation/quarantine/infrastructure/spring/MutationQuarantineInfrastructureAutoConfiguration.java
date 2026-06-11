@@ -5,13 +5,17 @@ import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.api.a
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.api.application.MutationQuarantineApplicationControllers;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.api.web.DefaultSpringRestMutationQuarantineController;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.api.web.MutationQuarantineWebMapper;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.*;
+import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.DefaultMutationQuarantineService;
+import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.MutationQuarantineReplayGateway;
+import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.MutationQuarantineReplayRegistry;
+import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.MutationQuarantineService;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.recording.MutationQuarantineRecorder;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.policy.MutationQuarantineAccessPolicy;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.infrastructure.persistence.JacksonMutationQuarantineValueCodec;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.infrastructure.persistence.JpaMutationQuarantineStore;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.infrastructure.persistence.model.MutationQuarantinePersistenceModel;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.port.persistence.MutationQuarantineRepository;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.QuarantineReplayCodec;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.infrastructure.persistence.JacksonQuarantineReplayCodec;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import org.springframework.beans.factory.ListableBeanFactory;
@@ -87,9 +91,9 @@ public class MutationQuarantineInfrastructureAutoConfiguration
 
 		@Bean
 		@ConditionalOnMissingBean
-		MutationQuarantineValueCodec mutationQuarantineValueCodec(final ObjectMapper objectMapper)
+		QuarantineReplayCodec mutationQuarantineReplayCodec(final ObjectMapper objectMapper)
 		{
-			return JacksonMutationQuarantineValueCodec.with(objectMapper);
+			return JacksonQuarantineReplayCodec.with(objectMapper);
 		}
 
 		@Bean
@@ -97,10 +101,10 @@ public class MutationQuarantineInfrastructureAutoConfiguration
 		MutationQuarantineService mutationQuarantineService(
 				final MutationQuarantineRepository repository,
 				final MutationQuarantineReplayRegistry replayRegistry,
-				final MutationQuarantineValueCodec valueCodec,
+				final QuarantineReplayCodec replayCodec,
 				final Clock durableProcessClock)
 		{
-			return DefaultMutationQuarantineService.with(repository, replayRegistry, valueCodec, durableProcessClock);
+			return DefaultMutationQuarantineService.with(repository, replayRegistry, replayCodec, durableProcessClock);
 		}
 
 		@Bean

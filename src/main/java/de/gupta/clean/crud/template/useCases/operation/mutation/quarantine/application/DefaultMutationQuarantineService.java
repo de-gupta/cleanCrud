@@ -2,17 +2,13 @@ package de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.appl
 
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.ApplicationOperationPayload;
-import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayEnvelope;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.quarantine.MutationQuarantineRequest;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.recording.MutationQuarantineSubmission;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.MutationQuarantineRecord;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.MutationQuarantineStatus;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.id.MutationQuarantineId;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.port.persistence.MutationQuarantineRepository;
-import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.AbstractQuarantineService;
-import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.QuarantineRecorder;
-import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.QuarantineReplayExecutor;
-import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.ReplayOutcome;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.*;
 
 import java.time.Clock;
 import java.util.Optional;
@@ -25,14 +21,14 @@ public final class DefaultMutationQuarantineService
 	public static DefaultMutationQuarantineService with(
 			final MutationQuarantineRepository repository,
 			final MutationQuarantineReplayRegistry replayRegistry,
-			final MutationQuarantineValueCodec valueCodec,
+			final QuarantineReplayCodec replayCodec,
 			final Clock clock)
 	{
-		return new DefaultMutationQuarantineService(repository, replayRegistry, valueCodec, clock);
+		return new DefaultMutationQuarantineService(repository, replayRegistry, replayCodec, clock);
 	}
 
 	private static QuarantineRecorder<MutationQuarantineSubmission, MutationQuarantineRecord, MutationQuarantineRequest>
-	recorder(final MutationQuarantineValueCodec valueCodec)
+	recorder(final QuarantineReplayCodec replayCodec)
 	{
 		return new QuarantineRecorder<>()
 		{
@@ -42,13 +38,11 @@ public final class DefaultMutationQuarantineService
 					final java.time.Instant now)
 			{
 				var request = submission.mutationRequest();
-				var serializedDomainId = valueCodec.serialize(request.domainId());
-				var serializedPayload = valueCodec.serialize(request.payload());
 				return new MutationQuarantineRecord(
 						MutationQuarantineId.random(),
 						submission.aggregateType(),
-						QuarantineReplayEnvelope.of(serializedDomainId.valueType(), serializedDomainId.valueJson()),
-						QuarantineReplayEnvelope.of(serializedPayload.valueType(), serializedPayload.valueJson()),
+						replayCodec.serialize(request.domainId()),
+						replayCodec.serialize(request.payload()),
 						request.source(),
 						request.family(),
 						request.correlationId(),
@@ -75,7 +69,7 @@ public final class DefaultMutationQuarantineService
 
 	private static QuarantineReplayExecutor<MutationQuarantineRecord> replayExecutor(
 			final MutationQuarantineReplayRegistry replayRegistry,
-			final MutationQuarantineValueCodec valueCodec)
+			final QuarantineReplayCodec replayCodec)
 	{
 		return record ->
 		{
@@ -85,12 +79,8 @@ public final class DefaultMutationQuarantineService
 														+ record.aggregateType()));
 			var result = gateway.replay(new MutationQuarantineReplayCommand(
 					record.quarantineId(),
-					valueCodec.deserialize(
-							new SerializedMutationValue(record.domainId().typeKey(), record.domainId().serialized()),
-							Object.class),
-					valueCodec.deserialize(
-							new SerializedMutationValue(record.payload().typeKey(), record.payload().serialized()),
-							ApplicationOperationPayload.class),
+					replayCodec.deserialize(record.domainId(), Object.class),
+					replayCodec.deserialize(record.payload(), ApplicationOperationPayload.class),
 					record.family(),
 					record.correlationId(),
 					record.causationId()));
@@ -106,11 +96,11 @@ public final class DefaultMutationQuarantineService
 	private DefaultMutationQuarantineService(
 			final MutationQuarantineRepository repository,
 			final MutationQuarantineReplayRegistry replayRegistry,
-			final MutationQuarantineValueCodec valueCodec,
+			final QuarantineReplayCodec replayCodec,
 			final Clock clock)
 	{
 		super(repository, clock,
-				recorder(valueCodec),
-				replayExecutor(replayRegistry, valueCodec));
+				recorder(replayCodec),
+				replayExecutor(replayRegistry, replayCodec));
 	}
 }
