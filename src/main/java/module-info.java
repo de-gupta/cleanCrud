@@ -136,6 +136,7 @@ module de.gupta.clean.crud
 	exports de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.quarantine;
 	exports de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.transition;
 	exports de.gupta.clean.crud.template.useCases.operation.domain.policy.violation;
+	exports de.gupta.clean.crud.template.useCases.operation.quarantine.api.application;
 	exports de.gupta.clean.crud.template.useCases.operation.quarantine.api.web;
 	exports de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.api.application;
 	exports de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.api.web;
@@ -194,6 +195,7 @@ module de.gupta.clean.crud
 	opens de.gupta.clean.crud.template.useCases.process.infrastructure.persistence;
 	opens de.gupta.clean.crud.template.useCases.process.infrastructure.spring;
 	opens de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application;
+	opens de.gupta.clean.crud.template.useCases.operation.quarantine.api.web;
 	opens de.gupta.clean.crud.template.useCases.operation.creation.quarantine.api.web;
 	opens de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infrastructure.persistence.model;
 	opens de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infrastructure.persistence;
