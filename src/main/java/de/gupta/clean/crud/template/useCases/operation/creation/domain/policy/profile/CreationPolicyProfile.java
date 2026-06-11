@@ -1,60 +1,60 @@
 package de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.profile;
 
-import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.violation.CreationViolationHandling;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.ViolationHandling;
 
 import java.util.Objects;
 
 public record CreationPolicyProfile(
-		CreationViolationHandling accessViolationHandling,
-		CreationViolationHandling creationViolationHandling,
-		CreationViolationHandling hardInvariantViolationHandling,
-		CreationViolationHandling softInvariantViolationHandling,
-		CreationViolationHandling externalConsistencyViolationHandling)
+		ViolationHandling accessViolationHandling,
+		ViolationHandling coreViolationHandling,
+		ViolationHandling hardInvariantViolationHandling,
+		ViolationHandling softInvariantViolationHandling,
+		ViolationHandling externalConsistencyViolationHandling)
 {
 	public static CreationPolicyProfile userIntent()
 	{
 		return new CreationPolicyProfile(
-				CreationViolationHandling.REJECT,
-				CreationViolationHandling.REJECT,
-				CreationViolationHandling.REJECT,
-				CreationViolationHandling.REJECT,
-				CreationViolationHandling.REJECT);
+				ViolationHandling.REJECT,
+				ViolationHandling.REJECT,
+				ViolationHandling.REJECT,
+				ViolationHandling.REJECT,
+				ViolationHandling.REJECT);
 	}
 
 	public static CreationPolicyProfile internalCommand()
 	{
 		return new CreationPolicyProfile(
-				CreationViolationHandling.REJECT,
-				CreationViolationHandling.REJECT,
-				CreationViolationHandling.REJECT,
-				CreationViolationHandling.ALLOW,
-				CreationViolationHandling.REJECT);
+				ViolationHandling.REJECT,
+				ViolationHandling.REJECT,
+				ViolationHandling.REJECT,
+				ViolationHandling.ALLOW,
+				ViolationHandling.REJECT);
 	}
 
 	public static CreationPolicyProfile authoritativeExternalEvent()
 	{
 		return new CreationPolicyProfile(
-				CreationViolationHandling.ALLOW,
-				CreationViolationHandling.REJECT,
-				CreationViolationHandling.QUARANTINE,
-				CreationViolationHandling.ALLOW,
-				CreationViolationHandling.QUARANTINE);
+				ViolationHandling.ALLOW,
+				ViolationHandling.REJECT,
+				ViolationHandling.QUARANTINE,
+				ViolationHandling.ALLOW,
+				ViolationHandling.QUARANTINE);
 	}
 
 	public static CreationPolicyProfile rejectingAll()
 	{
 		return new CreationPolicyProfile(
-				CreationViolationHandling.REJECT,
-				CreationViolationHandling.REJECT,
-				CreationViolationHandling.REJECT,
-				CreationViolationHandling.REJECT,
-				CreationViolationHandling.REJECT);
+				ViolationHandling.REJECT,
+				ViolationHandling.REJECT,
+				ViolationHandling.REJECT,
+				ViolationHandling.REJECT,
+				ViolationHandling.REJECT);
 	}
 
 	public CreationPolicyProfile
 	{
 		Objects.requireNonNull(accessViolationHandling, "accessViolationHandling");
-		Objects.requireNonNull(creationViolationHandling, "creationViolationHandling");
+		Objects.requireNonNull(coreViolationHandling, "coreViolationHandling");
 		Objects.requireNonNull(hardInvariantViolationHandling, "hardInvariantViolationHandling");
 		Objects.requireNonNull(softInvariantViolationHandling, "softInvariantViolationHandling");
 		Objects.requireNonNull(externalConsistencyViolationHandling, "externalConsistencyViolationHandling");

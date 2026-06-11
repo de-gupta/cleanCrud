@@ -6,7 +6,8 @@ import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSou
 import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayEnvelope;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayOutcome;
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantSeverity;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationPolicyViolation;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.OperationPolicyViolation;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.ViolationKind;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.MutationQuarantineRecord;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.MutationQuarantineStatus;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.id.MutationQuarantineId;
@@ -98,8 +99,8 @@ class JpaMutationQuarantineStoreTest
 				Optional.empty(),
 				Optional.empty(),
 				MutationQuarantineStatus.OPEN,
-				java.util.List.of(new MutationPolicyViolation(
-						de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationViolationKind.INVARIANT,
+				java.util.List.of(new OperationPolicyViolation(
+						ViolationKind.INVARIANT,
 						"hard violation",
 						Optional.of(InvariantSeverity.HARD))),
 				quarantinedAt,

@@ -3,8 +3,6 @@ package de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infr
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.violation.CreationPolicyViolation;
-import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.violation.CreationViolationKind;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.CreationQuarantineRecord;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.CreationQuarantineStatus;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.id.CreationQuarantineId;
@@ -15,7 +13,8 @@ import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineRe
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCausationId;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCorrelationId;
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantSeverity;
-import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantViolation;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.OperationPolicyViolation;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.ViolationKind;
 import jakarta.persistence.EntityManager;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -88,7 +87,7 @@ public class JpaCreationQuarantineStore implements CreationQuarantineRepository
 		                    .toList();
 	}
 
-	private String serializeViolations(final List<CreationPolicyViolation> violations)
+	private String serializeViolations(final List<OperationPolicyViolation> violations)
 	{
 		try
 		{
@@ -145,7 +144,7 @@ public class JpaCreationQuarantineStore implements CreationQuarantineRepository
 				Optional.ofNullable(persistenceModel.lastReplaySummary()));
 	}
 
-	private List<CreationPolicyViolation> deserializeViolations(final String violationsJson)
+	private List<OperationPolicyViolation> deserializeViolations(final String violationsJson)
 	{
 		try
 		{
@@ -171,26 +170,24 @@ public class JpaCreationQuarantineStore implements CreationQuarantineRepository
 	}
 
 	private record StoredViolation(
-			CreationViolationKind kind,
+			ViolationKind kind,
 			String message,
 			String invariantSeverity)
 	{
-		static StoredViolation of(final CreationPolicyViolation violation)
+		static StoredViolation of(final OperationPolicyViolation violation)
 		{
 			return new StoredViolation(
 					violation.kind(),
 					violation.message(),
-					violation.invariantViolation().map(invariant -> invariant.severity().name()).orElse(null));
+					violation.severity().map(Enum::name).orElse(null));
 		}
 
-		CreationPolicyViolation toDomain()
+		OperationPolicyViolation toDomain()
 		{
-			return new CreationPolicyViolation(
+			return new OperationPolicyViolation(
 					kind,
 					message,
-					Optional.ofNullable(invariantSeverity)
-					        .map(InvariantSeverity::valueOf)
-					        .map(severity -> new InvariantViolation(message, severity)));
+					Optional.ofNullable(invariantSeverity).map(InvariantSeverity::valueOf));
 		}
 	}
 }

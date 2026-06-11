@@ -3,12 +3,12 @@ package de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantSeverity;
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantViolation;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.OperationPolicyViolation;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.ViolationHandling;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.ViolationKind;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.evaluation.MutationPolicyDecision;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.profile.MutationPolicyProfileResolver;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.quarantine.MutationQuarantineRequest;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationPolicyViolation;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationViolationHandling;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationViolationKind;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -25,13 +25,13 @@ class MutationPolicyContractsTest
 
 		assertThat(profile.accessViolationHandling())
 				.as("authoritative events should allow access violations")
-				.isEqualTo(MutationViolationHandling.ALLOW);
+				.isEqualTo(ViolationHandling.ALLOW);
 		assertThat(profile.hardInvariantViolationHandling())
 				.as("authoritative events should quarantine hard invariant violations")
-				.isEqualTo(MutationViolationHandling.QUARANTINE);
+				.isEqualTo(ViolationHandling.QUARANTINE);
 		assertThat(profile.externalConsistencyViolationHandling())
 				.as("authoritative events should quarantine external consistency violations")
-				.isEqualTo(MutationViolationHandling.QUARANTINE);
+				.isEqualTo(ViolationHandling.QUARANTINE);
 	}
 
 	@Test
@@ -39,7 +39,7 @@ class MutationPolicyContractsTest
 	{
 		var request = new MutationQuarantineRequest(
 				OperationSource.AUTHORITATIVE_EXTERNAL_EVENT,
-				List.of(MutationPolicyViolation.externalConsistency("Broker state inconsistent")));
+				List.of(OperationPolicyViolation.externalConsistency("Broker state inconsistent")));
 		var decision = MutationPolicyDecision.quarantine(request);
 
 		assertThat(decision.allowed())
@@ -50,7 +50,7 @@ class MutationPolicyContractsTest
 				.isTrue();
 		assertThat(decision.quarantineRequest().orElseThrow().violations().getFirst().kind())
 				.as("quarantine request should carry the violation kind")
-				.isEqualTo(MutationViolationKind.EXTERNAL_CONSISTENCY);
+				.isEqualTo(ViolationKind.EXTERNAL_CONSISTENCY);
 	}
 
 	@Test

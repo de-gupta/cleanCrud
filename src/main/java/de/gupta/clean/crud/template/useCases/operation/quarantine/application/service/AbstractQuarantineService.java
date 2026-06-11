@@ -1,10 +1,10 @@
-package de.gupta.clean.crud.template.useCases.operation.quarantine.application;
+package de.gupta.clean.crud.template.useCases.operation.quarantine.application.service;
 
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayOutcome;
-import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.QuarantineLifecycleRecord;
-import de.gupta.clean.crud.template.useCases.operation.quarantine.port.persistence.QuarantineRepositoryPort;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.QuarantineLifecycleRecord;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.port.QuarantineRepositoryPort;
 
 import java.time.Clock;
 import java.time.Instant;

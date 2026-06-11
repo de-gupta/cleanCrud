@@ -4,13 +4,13 @@ import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidReq
 import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDeniedException;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.OperationPolicyViolation;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.ViolationHandling;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.evaluation.MutationPolicyBundle;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.evaluation.MutationPolicyDecision;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.evaluation.SourceAwareMutationPolicy;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.quarantine.MutationQuarantineRequest;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.quarantine.QuarantinedMutationException;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationPolicyViolation;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationViolationHandling;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,20 +57,20 @@ public final class AggregateMutationPolicies
 				final DomainModel afterModel)
 		{
 			var profile = policyBundle.profileResolver().resolve(source);
-			var toleratedViolations = new ArrayList<MutationPolicyViolation>();
-			var quarantiningViolations = new ArrayList<MutationPolicyViolation>();
-			var rejectingViolations = new ArrayList<MutationPolicyViolation>();
+			var toleratedViolations = new ArrayList<OperationPolicyViolation>();
+			var quarantiningViolations = new ArrayList<OperationPolicyViolation>();
+			var rejectingViolations = new ArrayList<OperationPolicyViolation>();
 			collect(
 					policyBundle.accessPolicy().accessViolationFor(source, beforeModel, afterModel)
-					            .map(MutationPolicyViolation::access),
+					            .map(OperationPolicyViolation::access),
 					profile.accessViolationHandling(),
 					toleratedViolations,
 					quarantiningViolations,
 					rejectingViolations);
 			collect(
 					policyBundle.transitionPolicy().transitionViolationFor(source, beforeModel, afterModel)
-					            .map(MutationPolicyViolation::transition),
-					profile.transitionViolationHandling(),
+					            .map(OperationPolicyViolation::core),
+					profile.coreViolationHandling(),
 					toleratedViolations,
 					quarantiningViolations,
 					rejectingViolations);
@@ -83,7 +83,7 @@ public final class AggregateMutationPolicies
 					case SOFT -> profile.softInvariantViolationHandling();
 				};
 				collect(
-						Optional.of(MutationPolicyViolation.invariant(invariantViolation)),
+						Optional.of(OperationPolicyViolation.invariant(invariantViolation)),
 						handling,
 						toleratedViolations,
 						quarantiningViolations,
@@ -92,7 +92,7 @@ public final class AggregateMutationPolicies
 			collect(
 					policyBundle.externalConsistencyPolicy()
 					            .consistencyViolationFor(source, beforeModel, afterModel)
-					            .map(MutationPolicyViolation::externalConsistency),
+					            .map(OperationPolicyViolation::externalConsistency),
 					profile.externalConsistencyViolationHandling(),
 					toleratedViolations,
 					quarantiningViolations,
@@ -127,11 +127,11 @@ public final class AggregateMutationPolicies
 		}
 
 		private void collect(
-				final Optional<MutationPolicyViolation> violation,
-				final MutationViolationHandling handling,
-				final ArrayList<MutationPolicyViolation> toleratedViolations,
-				final ArrayList<MutationPolicyViolation> quarantiningViolations,
-				final ArrayList<MutationPolicyViolation> rejectingViolations)
+				final Optional<OperationPolicyViolation> violation,
+				final ViolationHandling handling,
+				final ArrayList<OperationPolicyViolation> toleratedViolations,
+				final ArrayList<OperationPolicyViolation> quarantiningViolations,
+				final ArrayList<OperationPolicyViolation> rejectingViolations)
 		{
 			violation.ifPresent(candidate ->
 			{
@@ -144,12 +144,12 @@ public final class AggregateMutationPolicies
 			});
 		}
 
-		private RuntimeException rejectionFor(final MutationPolicyViolation violation)
+		private RuntimeException rejectionFor(final OperationPolicyViolation violation)
 		{
 			return switch (violation.kind())
 			{
 				case ACCESS -> AccessDeniedException.withMessage(violation.message());
-				case TRANSITION, INVARIANT, EXTERNAL_CONSISTENCY ->
+				case CORE, INVARIANT, EXTERNAL_CONSISTENCY ->
 						InvalidRequestException.withMessage(violation.message());
 			};
 		}

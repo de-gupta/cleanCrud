@@ -117,9 +117,9 @@ module de.gupta.clean.crud
 	exports de.gupta.clean.crud.template.useCases.operation.domain.model;
 	exports de.gupta.clean.crud.template.useCases.operation.domain.model.id;
 	exports de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant;
-	exports de.gupta.clean.crud.template.useCases.operation.quarantine.application;
-	exports de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model;
-	exports de.gupta.clean.crud.template.useCases.operation.quarantine.port.persistence;
+	exports de.gupta.clean.crud.template.useCases.operation.quarantine.application.service;
+	exports de.gupta.clean.crud.template.useCases.operation.quarantine.domain;
+	exports de.gupta.clean.crud.template.useCases.operation.quarantine.domain.port;
 	exports de.gupta.clean.crud.template.useCases.operation.mutation.aggregate.service;
 	exports de.gupta.clean.crud.template.useCases.operation.mutation.api.application;
 	exports de.gupta.clean.crud.template.useCases.operation.mutation.application.service;
@@ -133,7 +133,8 @@ module de.gupta.clean.crud
 	exports de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.profile;
 	exports de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.quarantine;
 	exports de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.transition;
-	exports de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation;
+	exports de.gupta.clean.crud.template.useCases.operation.domain.policy.violation;
+	exports de.gupta.clean.crud.template.useCases.operation.quarantine.api.web;
 	exports de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.api.application;
 	exports de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.api.web;
 	exports de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application;
@@ -174,7 +175,7 @@ module de.gupta.clean.crud
 	exports de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.evaluation;
 	exports de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.profile;
 	exports de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.quarantine;
-	exports de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.violation;
+	// violation types moved to operation.domain.policy.violation (see above)
 	exports de.gupta.clean.crud.template.useCases.operation.creation.quarantine.api.application;
 	exports de.gupta.clean.crud.template.useCases.operation.creation.quarantine.api.web;
 	exports de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application;

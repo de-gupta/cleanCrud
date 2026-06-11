@@ -3,7 +3,7 @@ package de.gupta.clean.crud.template.useCases.operation.creation.domain.model;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.evaluation.CreationPolicyDecision;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.quarantine.CreationQuarantineRequest;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.quarantine.QuarantinedCreationException;
-import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.violation.CreationPolicyViolation;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.OperationPolicyViolation;
 
 import java.util.List;
 import java.util.Objects;
@@ -59,7 +59,7 @@ public record CreationResult<DomainId, DomainModel>(
 		return policyDecision.quarantineRequest();
 	}
 
-	public List<CreationPolicyViolation> toleratedViolations()
+	public List<OperationPolicyViolation> toleratedViolations()
 	{
 		return policyDecision.toleratedViolations();
 	}

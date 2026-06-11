@@ -6,9 +6,9 @@ import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineRe
 import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayOutcome;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCausationId;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCorrelationId;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationPolicyViolation;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.OperationPolicyViolation;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.id.MutationQuarantineId;
-import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.QuarantineLifecycleRecord;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.QuarantineLifecycleRecord;
 
 import java.time.Instant;
 import java.util.List;
@@ -25,7 +25,7 @@ public record MutationQuarantineRecord(
 		Optional<OperationCorrelationId> correlationId,
 		Optional<OperationCausationId> causationId,
 		MutationQuarantineStatus status,
-		List<MutationPolicyViolation> violations,
+		List<OperationPolicyViolation> violations,
 		Instant quarantinedAt,
 		Instant updatedAt,
 		int replayAttemptCount,

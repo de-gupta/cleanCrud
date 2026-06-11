@@ -1,4 +1,4 @@
-package de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model;
+package de.gupta.clean.crud.template.useCases.operation.quarantine.domain;
 
 import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayOutcome;
 

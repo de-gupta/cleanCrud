@@ -1,10 +1,10 @@
 package de.gupta.clean.crud.template.useCases.operation.mutation.domain.model;
 
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.OperationPolicyViolation;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.evaluation.MutationPolicyDecision;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.quarantine.MutationQuarantineRequest;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.quarantine.QuarantinedMutationException;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationPolicyViolation;
 
 import java.util.List;
 import java.util.Objects;
@@ -60,7 +60,7 @@ public record MutationResult<DomainId, DomainModel>(
 		return policyDecision.quarantineRequest();
 	}
 
-	public List<MutationPolicyViolation> toleratedViolations()
+	public List<OperationPolicyViolation> toleratedViolations()
 	{
 		return policyDecision.toleratedViolations();
 	}

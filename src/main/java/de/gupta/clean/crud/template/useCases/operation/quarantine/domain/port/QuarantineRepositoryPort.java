@@ -1,4 +1,4 @@
-package de.gupta.clean.crud.template.useCases.operation.quarantine.port.persistence;
+package de.gupta.clean.crud.template.useCases.operation.quarantine.domain.port;
 
 import java.util.Collection;
 import java.util.Optional;

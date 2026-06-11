@@ -9,10 +9,10 @@ import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domai
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.MutationQuarantineStatus;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.id.MutationQuarantineId;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.port.persistence.MutationQuarantineRepository;
-import de.gupta.clean.crud.template.useCases.operation.quarantine.application.AbstractQuarantineService;
-import de.gupta.clean.crud.template.useCases.operation.quarantine.application.QuarantineRecorder;
-import de.gupta.clean.crud.template.useCases.operation.quarantine.application.QuarantineReplayExecutor;
-import de.gupta.clean.crud.template.useCases.operation.quarantine.application.ReplayOutcome;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.AbstractQuarantineService;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.QuarantineRecorder;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.QuarantineReplayExecutor;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.ReplayOutcome;
 
 import java.time.Clock;
 import java.util.Optional;

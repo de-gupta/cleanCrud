@@ -8,8 +8,8 @@ import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineRe
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCausationId;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCorrelationId;
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantSeverity;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationPolicyViolation;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationViolationKind;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.OperationPolicyViolation;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.ViolationKind;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.MutationQuarantineRecord;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.MutationQuarantineStatus;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.id.MutationQuarantineId;
@@ -87,7 +87,7 @@ public class JpaMutationQuarantineStore implements MutationQuarantineRepository
 		                    .toList();
 	}
 
-	private String serializeViolations(final List<MutationPolicyViolation> violations)
+	private String serializeViolations(final List<OperationPolicyViolation> violations)
 	{
 		try
 		{
@@ -147,7 +147,7 @@ public class JpaMutationQuarantineStore implements MutationQuarantineRepository
 				Optional.ofNullable(persistenceModel.lastReplaySummary()));
 	}
 
-	private List<MutationPolicyViolation> deserializeViolations(final String violationsJson)
+	private List<OperationPolicyViolation> deserializeViolations(final String violationsJson)
 	{
 		try
 		{
@@ -173,11 +173,11 @@ public class JpaMutationQuarantineStore implements MutationQuarantineRepository
 	}
 
 	private record StoredViolation(
-			MutationViolationKind kind,
+			ViolationKind kind,
 			String message,
 			String invariantSeverity)
 	{
-		static StoredViolation of(final MutationPolicyViolation violation)
+		static StoredViolation of(final OperationPolicyViolation violation)
 		{
 			return new StoredViolation(
 					violation.kind(),
@@ -185,9 +185,9 @@ public class JpaMutationQuarantineStore implements MutationQuarantineRepository
 					violation.severity().map(Enum::name).orElse(null));
 		}
 
-		MutationPolicyViolation toDomain()
+		OperationPolicyViolation toDomain()
 		{
-			return new MutationPolicyViolation(
+			return new OperationPolicyViolation(
 					kind,
 					message,
 					Optional.ofNullable(invariantSeverity).map(InvariantSeverity::valueOf));

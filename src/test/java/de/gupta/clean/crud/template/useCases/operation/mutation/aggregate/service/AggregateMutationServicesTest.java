@@ -33,6 +33,8 @@ import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSou
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCausationId;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCorrelationId;
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantViolation;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.ViolationHandling;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.ViolationKind;
 import de.gupta.clean.crud.template.useCases.operation.mutation.application.service.MutationService;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.handler.MutationHandlerRegistry;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.handler.RegisteredMutationHandler;
@@ -43,8 +45,6 @@ import de.gupta.clean.crud.template.useCases.operation.mutation.domain.plan.Aggr
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.invariant.DomainInvariantPolicy;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.profile.MutationPolicyProfile;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.profile.MutationPolicyProfileResolver;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationViolationHandling;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationViolationKind;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.DefaultMutationQuarantineReplayRegistry;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.MutationQuarantineReplayCommand;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.MutationQuarantineReplayGateway;
@@ -269,7 +269,7 @@ class AggregateMutationServicesTest
 
 		assertTrue(result.quarantined());
 		assertEquals(1, result.quarantineRequest().orElseThrow().violations().size());
-		assertEquals(MutationViolationKind.INVARIANT,
+		assertEquals(ViolationKind.INVARIANT,
 				result.quarantineRequest().orElseThrow().violations().getFirst().kind());
 	}
 
@@ -384,7 +384,7 @@ class AggregateMutationServicesTest
 		assertTrue(result.applied());
 		assertEquals("ACKNOWLEDGED", result.updatedOrThrow().model().status());
 		assertEquals(1, result.toleratedViolations().size());
-		assertEquals(MutationViolationKind.INVARIANT, result.toleratedViolations().getFirst().kind());
+		assertEquals(ViolationKind.INVARIANT, result.toleratedViolations().getFirst().kind());
 	}
 
 	@Test
@@ -666,11 +666,11 @@ class AggregateMutationServicesTest
 			return source -> switch (source)
 			{
 				case AUTHORITATIVE_EXTERNAL_EVENT -> new MutationPolicyProfile(
-						MutationViolationHandling.ALLOW,
-						MutationViolationHandling.REJECT,
-						MutationViolationHandling.QUARANTINE,
-						MutationViolationHandling.ALLOW,
-						MutationViolationHandling.QUARANTINE);
+						ViolationHandling.ALLOW,
+						ViolationHandling.REJECT,
+						ViolationHandling.QUARANTINE,
+						ViolationHandling.ALLOW,
+						ViolationHandling.QUARANTINE);
 				case USER_INTENT -> MutationPolicyProfile.userIntent();
 				case INTERNAL_COMMAND, PROCESS_EMITTED_ACTION, ADMINISTRATIVE_REPLAY ->
 						MutationPolicyProfile.internalCommand();

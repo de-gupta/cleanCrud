@@ -3,7 +3,7 @@ package de.gupta.clean.crud.template.useCases.operation.creation.quarantine.api.
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.CreationQuarantineRecord;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCausationId;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCorrelationId;
-import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantViolation;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.api.web.OperationPolicyViolationResponse;
 
 public final class CreationQuarantineWebMapper
 {
@@ -19,10 +19,10 @@ public final class CreationQuarantineWebMapper
 				record.causationId().map(OperationCausationId::value),
 				record.status(),
 				record.violations().stream()
-				      .map(violation -> new CreationPolicyViolationResponse(
+				      .map(violation -> new OperationPolicyViolationResponse(
 							  violation.kind(),
 							  violation.message(),
-							  violation.invariantViolation().map(InvariantViolation::severity)))
+							  violation.severity()))
 				      .toList(),
 				record.quarantinedAt(),
 				record.updatedAt(),

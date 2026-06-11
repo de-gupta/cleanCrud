@@ -4,7 +4,7 @@ import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDenie
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationFamily;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayEnvelope;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationPolicyViolation;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.OperationPolicyViolation;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.MutationQuarantineService;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.MutationQuarantineRecord;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.MutationQuarantineStatus;
@@ -36,7 +36,7 @@ class MutationQuarantineApplicationControllerTest
 				Optional.empty(),
 				Optional.empty(),
 				MutationQuarantineStatus.OPEN,
-				List.of(MutationPolicyViolation.externalConsistency("broker mismatch")),
+				List.of(OperationPolicyViolation.externalConsistency("broker mismatch")),
 				Instant.parse("2026-06-09T10:15:00Z"),
 				Instant.parse("2026-06-09T10:15:00Z"),
 				0,

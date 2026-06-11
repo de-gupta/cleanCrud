@@ -9,9 +9,9 @@ import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.ev
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.evaluation.SourceAwareCreationPolicy;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.quarantine.CreationQuarantineRequest;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.quarantine.QuarantinedCreationException;
-import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.violation.CreationPolicyViolation;
-import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.violation.CreationViolationHandling;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.OperationPolicyViolation;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.ViolationHandling;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,20 +67,20 @@ public final class AggregateCreationPolicies
 				final DomainModel afterModel)
 		{
 			var profile = policyBundle.profileResolver().resolve(source);
-			var toleratedViolations = new ArrayList<CreationPolicyViolation>();
-			var quarantiningViolations = new ArrayList<CreationPolicyViolation>();
-			var rejectingViolations = new ArrayList<CreationPolicyViolation>();
+			var toleratedViolations = new ArrayList<OperationPolicyViolation>();
+			var quarantiningViolations = new ArrayList<OperationPolicyViolation>();
+			var rejectingViolations = new ArrayList<OperationPolicyViolation>();
 			collect(
 					policyBundle.accessPolicy().accessViolationFor(source, afterModel)
-					            .map(CreationPolicyViolation::access),
+					            .map(OperationPolicyViolation::access),
 					profile.accessViolationHandling(),
 					toleratedViolations,
 					quarantiningViolations,
 					rejectingViolations);
 			collect(
 					policyBundle.creationPolicy().creationViolationFor(source, afterModel)
-					            .map(CreationPolicyViolation::creation),
-					profile.creationViolationHandling(),
+					            .map(OperationPolicyViolation::core),
+					profile.coreViolationHandling(),
 					toleratedViolations,
 					quarantiningViolations,
 					rejectingViolations);
@@ -92,7 +92,7 @@ public final class AggregateCreationPolicies
 					case SOFT -> profile.softInvariantViolationHandling();
 				};
 				collect(
-						Optional.of(CreationPolicyViolation.invariant(invariantViolation)),
+						Optional.of(OperationPolicyViolation.invariant(invariantViolation)),
 						handling,
 						toleratedViolations,
 						quarantiningViolations,
@@ -100,7 +100,7 @@ public final class AggregateCreationPolicies
 			}
 			collect(
 					policyBundle.externalConsistencyPolicy().consistencyViolationFor(source, afterModel)
-					            .map(CreationPolicyViolation::externalConsistency),
+					            .map(OperationPolicyViolation::externalConsistency),
 					profile.externalConsistencyViolationHandling(),
 					toleratedViolations,
 					quarantiningViolations,
@@ -131,11 +131,11 @@ public final class AggregateCreationPolicies
 		}
 
 		private void collect(
-				final Optional<CreationPolicyViolation> violation,
-				final CreationViolationHandling handling,
-				final ArrayList<CreationPolicyViolation> toleratedViolations,
-				final ArrayList<CreationPolicyViolation> quarantiningViolations,
-				final ArrayList<CreationPolicyViolation> rejectingViolations)
+				final Optional<OperationPolicyViolation> violation,
+				final ViolationHandling handling,
+				final ArrayList<OperationPolicyViolation> toleratedViolations,
+				final ArrayList<OperationPolicyViolation> quarantiningViolations,
+				final ArrayList<OperationPolicyViolation> rejectingViolations)
 		{
 			violation.ifPresent(candidate ->
 			{
@@ -148,12 +148,12 @@ public final class AggregateCreationPolicies
 			});
 		}
 
-		private RuntimeException rejectionFor(final CreationPolicyViolation violation)
+		private RuntimeException rejectionFor(final OperationPolicyViolation violation)
 		{
 			return switch (violation.kind())
 			{
 				case ACCESS -> AccessDeniedException.withMessage(violation.message());
-				case CREATION, INVARIANT, EXTERNAL_CONSISTENCY ->
+				case CORE, INVARIANT, EXTERNAL_CONSISTENCY ->
 						InvalidRequestException.withMessage(violation.message());
 			};
 		}

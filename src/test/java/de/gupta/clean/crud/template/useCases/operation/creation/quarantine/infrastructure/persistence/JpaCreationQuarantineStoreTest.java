@@ -1,7 +1,6 @@
 package de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infrastructure.persistence;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.violation.CreationPolicyViolation;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.CreationQuarantineRecord;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.CreationQuarantineStatus;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.id.CreationQuarantineId;
@@ -10,7 +9,9 @@ import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationFam
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayEnvelope;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayOutcome;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantSeverity;
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantViolation;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.OperationPolicyViolation;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,9 +66,9 @@ class JpaCreationQuarantineStoreTest
 		assertThat(reloaded.lastReplayOutcome())
 				.as("last replay outcome should reflect FAILED result")
 				.contains(QuarantineReplayOutcome.FAILED);
-		assertThat(reloaded.violations().getFirst().invariantViolation())
+		assertThat(reloaded.violations().getFirst().severity())
 				.as("reloaded violations should round-trip the invariant violation")
-				.contains(InvariantViolation.hard("hard violation"));
+				.contains(InvariantSeverity.HARD);
 	}
 
 	@Test
@@ -97,7 +98,7 @@ class JpaCreationQuarantineStoreTest
 				Optional.empty(),
 				Optional.empty(),
 				CreationQuarantineStatus.OPEN,
-				java.util.List.of(CreationPolicyViolation.invariant(InvariantViolation.hard("hard violation"))),
+				java.util.List.of(OperationPolicyViolation.invariant(InvariantViolation.hard("hard violation"))),
 				quarantinedAt,
 				quarantinedAt,
 				0,

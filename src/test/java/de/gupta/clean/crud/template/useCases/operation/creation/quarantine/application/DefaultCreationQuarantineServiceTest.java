@@ -6,13 +6,13 @@ import de.gupta.clean.crud.template.useCases.operation.creation.domain.model.Cre
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.model.CreationResult;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.evaluation.CreationPolicyDecision;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.quarantine.CreationQuarantineRequest;
-import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.violation.CreationPolicyViolation;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application.recording.CreationQuarantineSubmission;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.CreationQuarantineRecord;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.CreationQuarantineStatus;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.id.CreationQuarantineId;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.port.persistence.CreationQuarantineRepository;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.*;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.OperationPolicyViolation;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -37,7 +37,7 @@ class DefaultCreationQuarantineServiceTest
 				Optional.empty(),
 				Optional.empty(),
 				CreationQuarantineStatus.OPEN,
-				List.of(CreationPolicyViolation.externalConsistency("broker mismatch")),
+				List.of(OperationPolicyViolation.externalConsistency("broker mismatch")),
 				Instant.parse("2026-06-09T10:15:00Z"),
 				Instant.parse("2026-06-09T10:15:00Z"),
 				0,
@@ -152,7 +152,7 @@ class DefaultCreationQuarantineServiceTest
 							OperationSource.AUTHORITATIVE_EXTERNAL_EVENT),
 					new CreationQuarantineRequest(
 							OperationSource.AUTHORITATIVE_EXTERNAL_EVENT,
-							List.of(CreationPolicyViolation.externalConsistency("broker mismatch")))));
+							List.of(OperationPolicyViolation.externalConsistency("broker mismatch")))));
 
 			assertThat(persisted.quarantineId())
 					.as("recorded submission should carry a persisted quarantine id")

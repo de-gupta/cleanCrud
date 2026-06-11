@@ -1,7 +1,7 @@
 package de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.evaluation;
 
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.quarantine.CreationQuarantineRequest;
-import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.violation.CreationPolicyViolation;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.OperationPolicyViolation;
 
 import java.util.List;
 import java.util.Objects;
@@ -9,7 +9,7 @@ import java.util.Optional;
 
 public record CreationPolicyDecision(
 		boolean allowed,
-		List<CreationPolicyViolation> toleratedViolations,
+		List<OperationPolicyViolation> toleratedViolations,
 		Optional<CreationQuarantineRequest> quarantineRequest)
 {
 	public static CreationPolicyDecision allow()
@@ -17,7 +17,7 @@ public record CreationPolicyDecision(
 		return allow(List.of());
 	}
 
-	public static CreationPolicyDecision allow(final List<CreationPolicyViolation> toleratedViolations)
+	public static CreationPolicyDecision allow(final List<OperationPolicyViolation> toleratedViolations)
 	{
 		return new CreationPolicyDecision(true, toleratedViolations, Optional.empty());
 	}
@@ -29,7 +29,7 @@ public record CreationPolicyDecision(
 
 	public static CreationPolicyDecision quarantine(
 			final CreationQuarantineRequest quarantineRequest,
-			final List<CreationPolicyViolation> toleratedViolations)
+			final List<OperationPolicyViolation> toleratedViolations)
 	{
 		return new CreationPolicyDecision(false, toleratedViolations, Optional.of(quarantineRequest));
 	}

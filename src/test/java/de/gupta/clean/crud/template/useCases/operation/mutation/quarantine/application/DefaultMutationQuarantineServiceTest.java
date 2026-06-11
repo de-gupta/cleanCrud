@@ -1,11 +1,11 @@
 package de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application;
 
 import de.gupta.clean.crud.template.useCases.operation.domain.model.*;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.OperationPolicyViolation;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.model.MutationRequest;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.model.MutationResult;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.evaluation.MutationPolicyDecision;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.quarantine.MutationQuarantineRequest;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.violation.MutationPolicyViolation;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.recording.MutationQuarantineSubmission;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.MutationQuarantineRecord;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.MutationQuarantineStatus;
@@ -36,7 +36,7 @@ class DefaultMutationQuarantineServiceTest
 				Optional.empty(),
 				Optional.empty(),
 				MutationQuarantineStatus.OPEN,
-				List.of(MutationPolicyViolation.externalConsistency("broker mismatch")),
+				List.of(OperationPolicyViolation.externalConsistency("broker mismatch")),
 				Instant.parse("2026-06-09T10:15:00Z"),
 				Instant.parse("2026-06-09T10:15:00Z"),
 				0,
@@ -169,7 +169,7 @@ class DefaultMutationQuarantineServiceTest
 							OperationSource.AUTHORITATIVE_EXTERNAL_EVENT),
 					new MutationQuarantineRequest(
 							OperationSource.AUTHORITATIVE_EXTERNAL_EVENT,
-							List.of(MutationPolicyViolation.externalConsistency("broker mismatch")))));
+							List.of(OperationPolicyViolation.externalConsistency("broker mismatch")))));
 
 			assertThat(persisted.quarantineId())
 					.as("recorded submission should carry a persisted quarantine id")

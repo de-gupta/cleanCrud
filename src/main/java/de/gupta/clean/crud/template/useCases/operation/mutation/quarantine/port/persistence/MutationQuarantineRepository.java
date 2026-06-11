@@ -2,7 +2,7 @@ package de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.port
 
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.MutationQuarantineRecord;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.id.MutationQuarantineId;
-import de.gupta.clean.crud.template.useCases.operation.quarantine.port.persistence.QuarantineRepositoryPort;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.port.QuarantineRepositoryPort;
 
 import java.util.Collection;
 import java.util.Optional;

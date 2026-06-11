@@ -1,4 +1,4 @@
-package de.gupta.clean.crud.template.useCases.operation.quarantine.application;
+package de.gupta.clean.crud.template.useCases.operation.quarantine.application.service;
 
 import java.time.Instant;
 

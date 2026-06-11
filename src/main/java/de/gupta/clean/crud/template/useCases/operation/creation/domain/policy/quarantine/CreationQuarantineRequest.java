@@ -1,8 +1,8 @@
 package de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.quarantine;
 
-import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.violation.CreationPolicyViolation;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.id.CreationQuarantineId;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
+import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.OperationPolicyViolation;
 
 import java.util.List;
 import java.util.Objects;
@@ -10,12 +10,12 @@ import java.util.Optional;
 
 public record CreationQuarantineRequest(
 		OperationSource source,
-		List<CreationPolicyViolation> violations,
+		List<OperationPolicyViolation> violations,
 		Optional<CreationQuarantineId> quarantineId)
 {
 	public CreationQuarantineRequest(
 			final OperationSource source,
-			final List<CreationPolicyViolation> violations)
+			final List<OperationPolicyViolation> violations)
 	{
 		this(source, violations, Optional.empty());
 	}
