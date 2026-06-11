@@ -17,6 +17,11 @@ public record ReplayOutcome(
 		return new ReplayOutcome(false, violationSummary);
 	}
 
+	public boolean quarantined()
+	{
+		return !applied;
+	}
+
 	public ReplayOutcome
 	{
 		Objects.requireNonNull(quarantinedViolationSummary, "quarantinedViolationSummary");

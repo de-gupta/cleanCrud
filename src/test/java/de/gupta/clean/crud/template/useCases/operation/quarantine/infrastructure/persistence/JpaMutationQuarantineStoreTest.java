@@ -1,4 +1,4 @@
-package de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.infrastructure.persistence;
+package de.gupta.clean.crud.template.useCases.operation.quarantine.infrastructure.persistence;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationFamily;
@@ -8,10 +8,8 @@ import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineRe
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantSeverity;
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.OperationPolicyViolation;
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.ViolationKind;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.MutationQuarantineRecord;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.MutationQuarantineStatus;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.id.MutationQuarantineId;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.infrastructure.persistence.model.MutationQuarantinePersistenceModel;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.*;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.infrastructure.persistence.model.MutationQuarantineEntity;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,6 +20,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,12 +33,13 @@ class JpaMutationQuarantineStoreTest
 	@jakarta.annotation.Resource
 	private EntityManager entityManager;
 
-	private JpaMutationQuarantineStore quarantineStore;
+	private JpaQuarantineStore<MutationReplayInputs> quarantineStore;
 
 	@BeforeEach
 	void setUp()
 	{
-		quarantineStore = JpaMutationQuarantineStore.with(entityManager, new ObjectMapper());
+		quarantineStore = JpaQuarantineStore.with(entityManager, new ObjectMapper(),
+				MutationQuarantineEntity.class, MutationReplayInputs.class);
 	}
 
 	@Test
@@ -59,7 +59,7 @@ class JpaMutationQuarantineStoreTest
 
 		assertThat(reloaded.status())
 				.as("status should remain OPEN after failed replay attempt")
-				.isEqualTo(MutationQuarantineStatus.OPEN);
+				.isEqualTo(QuarantineStatus.OPEN);
 		assertThat(reloaded.replayAttemptCount())
 				.as("replay attempt count should be 1 after one attempt")
 				.isEqualTo(1);
@@ -83,26 +83,28 @@ class JpaMutationQuarantineStoreTest
 
 		assertThat(quarantineStore.findOpen(10))
 				.as("findOpen should return only open records in quarantinedAt order")
-				.extracting(MutationQuarantineRecord::quarantineId)
-				.containsExactly(new MutationQuarantineId("open-1"), new MutationQuarantineId("open-2"));
+				.extracting(QuarantineRecord::quarantineId)
+				.containsExactly(new QuarantineId("open-1"), new QuarantineId("open-2"));
 	}
 
-	private MutationQuarantineRecord record(final String id, final Instant quarantinedAt)
+	private QuarantineRecord<MutationReplayInputs> record(final String id, final Instant quarantinedAt)
 	{
-		return new MutationQuarantineRecord(
-				new MutationQuarantineId(id),
+		return new QuarantineRecord<>(
+				new QuarantineId(id),
 				"aggregate.OrderDefinition",
-				QuarantineReplayEnvelope.of(String.class.getName(), "\"order-1\""),
-				QuarantineReplayEnvelope.of("payload.Type", "{\"command\":\"ack\"}"),
-				OperationSource.AUTHORITATIVE_EXTERNAL_EVENT,
-				OperationFamily.APPLICATION,
-				Optional.empty(),
-				Optional.empty(),
-				MutationQuarantineStatus.OPEN,
-				java.util.List.of(new OperationPolicyViolation(
+				new OperationInvocationMetadata(
+						OperationSource.AUTHORITATIVE_EXTERNAL_EVENT,
+						OperationFamily.APPLICATION,
+						Optional.empty(),
+						Optional.empty()),
+				new MutationReplayInputs(
+						QuarantineReplayEnvelope.of(String.class.getName(), "\"order-1\""),
+						QuarantineReplayEnvelope.of("payload.Type", "{\"command\":\"ack\"}")),
+				List.of(new OperationPolicyViolation(
 						ViolationKind.INVARIANT,
 						"hard violation",
 						Optional.of(InvariantSeverity.HARD))),
+				QuarantineStatus.OPEN,
 				quarantinedAt,
 				quarantinedAt,
 				0,
@@ -113,7 +115,7 @@ class JpaMutationQuarantineStoreTest
 
 	@org.springframework.boot.SpringBootConfiguration
 	@EnableAutoConfiguration
-	@EntityScan(basePackageClasses = MutationQuarantinePersistenceModel.class)
+	@EntityScan(basePackageClasses = MutationQuarantineEntity.class)
 	static class JpaEntityConfiguration
 	{
 	}

@@ -1,8 +1,8 @@
 package de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.quarantine;
 
-import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.id.CreationQuarantineId;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.OperationPolicyViolation;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.QuarantineId;
 
 import java.util.List;
 import java.util.Objects;
@@ -11,7 +11,7 @@ import java.util.Optional;
 public record CreationQuarantineRequest(
 		OperationSource source,
 		List<OperationPolicyViolation> violations,
-		Optional<CreationQuarantineId> quarantineId)
+		Optional<QuarantineId> quarantineId)
 {
 	public CreationQuarantineRequest(
 			final OperationSource source,
@@ -27,7 +27,7 @@ public record CreationQuarantineRequest(
 		quarantineId = Objects.requireNonNull(quarantineId, "quarantineId");
 	}
 
-	public CreationQuarantineRequest persistedAs(final CreationQuarantineId quarantineId)
+	public CreationQuarantineRequest persistedAs(final QuarantineId quarantineId)
 	{
 		return new CreationQuarantineRequest(source, violations, Optional.of(quarantineId));
 	}

@@ -1,10 +1,6 @@
-package de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infrastructure.persistence;
+package de.gupta.clean.crud.template.useCases.operation.quarantine.infrastructure.persistence;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.CreationQuarantineRecord;
-import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.CreationQuarantineStatus;
-import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.id.CreationQuarantineId;
-import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infrastructure.persistence.model.CreationQuarantinePersistenceModel;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationFamily;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayEnvelope;
@@ -12,6 +8,8 @@ import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineRe
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantSeverity;
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantViolation;
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.OperationPolicyViolation;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.*;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.infrastructure.persistence.model.CreationQuarantineEntity;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,6 +20,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,12 +33,13 @@ class JpaCreationQuarantineStoreTest
 	@jakarta.annotation.Resource
 	private EntityManager entityManager;
 
-	private JpaCreationQuarantineStore quarantineStore;
+	private JpaQuarantineStore<CreationReplayInputs> quarantineStore;
 
 	@BeforeEach
 	void setUp()
 	{
-		quarantineStore = JpaCreationQuarantineStore.with(entityManager, new ObjectMapper());
+		quarantineStore = JpaQuarantineStore.with(entityManager, new ObjectMapper(),
+				CreationQuarantineEntity.class, CreationReplayInputs.class);
 	}
 
 	@Test
@@ -59,7 +59,7 @@ class JpaCreationQuarantineStoreTest
 
 		assertThat(reloaded.status())
 				.as("status should remain OPEN after failed replay attempt")
-				.isEqualTo(CreationQuarantineStatus.OPEN);
+				.isEqualTo(QuarantineStatus.OPEN);
 		assertThat(reloaded.replayAttemptCount())
 				.as("replay attempt count should be 1 after one attempt")
 				.isEqualTo(1);
@@ -83,22 +83,24 @@ class JpaCreationQuarantineStoreTest
 
 		assertThat(quarantineStore.findOpen(10))
 				.as("findOpen should return only open records in quarantinedAt order")
-				.extracting(CreationQuarantineRecord::quarantineId)
-				.containsExactly(new CreationQuarantineId("open-1"), new CreationQuarantineId("open-2"));
+				.extracting(QuarantineRecord::quarantineId)
+				.containsExactly(new QuarantineId("open-1"), new QuarantineId("open-2"));
 	}
 
-	private CreationQuarantineRecord record(final String id, final Instant quarantinedAt)
+	private QuarantineRecord<CreationReplayInputs> record(final String id, final Instant quarantinedAt)
 	{
-		return new CreationQuarantineRecord(
-				new CreationQuarantineId(id),
+		return new QuarantineRecord<>(
+				new QuarantineId(id),
 				"aggregate.OrderDefinition",
-				QuarantineReplayEnvelope.of("payload.Type", "{\"command\":\"register\"}"),
-				OperationSource.AUTHORITATIVE_EXTERNAL_EVENT,
-				OperationFamily.APPLICATION,
-				Optional.empty(),
-				Optional.empty(),
-				CreationQuarantineStatus.OPEN,
-				java.util.List.of(OperationPolicyViolation.invariant(InvariantViolation.hard("hard violation"))),
+				new OperationInvocationMetadata(
+						OperationSource.AUTHORITATIVE_EXTERNAL_EVENT,
+						OperationFamily.APPLICATION,
+						Optional.empty(),
+						Optional.empty()),
+				new CreationReplayInputs(
+						QuarantineReplayEnvelope.of("payload.Type", "{\"command\":\"register\"}")),
+				List.of(OperationPolicyViolation.invariant(InvariantViolation.hard("hard violation"))),
+				QuarantineStatus.OPEN,
 				quarantinedAt,
 				quarantinedAt,
 				0,
@@ -109,7 +111,7 @@ class JpaCreationQuarantineStoreTest
 
 	@org.springframework.boot.SpringBootConfiguration
 	@EnableAutoConfiguration
-	@EntityScan(basePackageClasses = CreationQuarantinePersistenceModel.class)
+	@EntityScan(basePackageClasses = CreationQuarantineEntity.class)
 	static class JpaEntityConfiguration
 	{
 	}

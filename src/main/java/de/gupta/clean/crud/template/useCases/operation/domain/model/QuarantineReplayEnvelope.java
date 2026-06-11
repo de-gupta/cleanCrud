@@ -1,11 +1,13 @@
 package de.gupta.clean.crud.template.useCases.operation.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import de.gupta.commons.utility.string.StringSanitizationUtility;
 
 import java.util.Objects;
 
+@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.NONE)
 public final class QuarantineReplayEnvelope
 {
 	private final String typeKey;
@@ -19,11 +21,13 @@ public final class QuarantineReplayEnvelope
 		return new QuarantineReplayEnvelope(typeKey, serialized);
 	}
 
+	@JsonProperty("typeKey")
 	public String typeKey()
 	{
 		return typeKey;
 	}
 
+	@JsonProperty("serialized")
 	public String serialized()
 	{
 		return serialized;

@@ -3,14 +3,11 @@ package de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.appl
 import de.gupta.clean.crud.template.useCases.operation.domain.model.*;
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.OperationPolicyViolation;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.model.MutationRequest;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.model.MutationResult;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.evaluation.MutationPolicyDecision;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.quarantine.MutationQuarantineRequest;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.recording.MutationQuarantineSubmission;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.MutationQuarantineRecord;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.MutationQuarantineStatus;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.id.MutationQuarantineId;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.port.persistence.MutationQuarantineRepository;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.*;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.*;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.port.QuarantineRepository;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -24,19 +21,21 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class DefaultMutationQuarantineServiceTest
 {
-	private MutationQuarantineRecord openRecord(final String aggregateType)
+	private QuarantineRecord<MutationReplayInputs> openRecord(final String aggregateType)
 	{
-		return new MutationQuarantineRecord(
-				new MutationQuarantineId("quarantine-1"),
+		return new QuarantineRecord<>(
+				new QuarantineId("quarantine-1"),
 				aggregateType,
-				QuarantineReplayEnvelope.of(String.class.getName(), "\"order-1\""),
-				QuarantineReplayEnvelope.of(AcknowledgeOrder.class.getName(), "{\"value\":\"ack\"}"),
-				OperationSource.AUTHORITATIVE_EXTERNAL_EVENT,
-				OperationFamily.APPLICATION,
-				Optional.empty(),
-				Optional.empty(),
-				MutationQuarantineStatus.OPEN,
+				new OperationInvocationMetadata(
+						OperationSource.AUTHORITATIVE_EXTERNAL_EVENT,
+						OperationFamily.APPLICATION,
+						Optional.empty(),
+						Optional.empty()),
+				new MutationReplayInputs(
+						QuarantineReplayEnvelope.of(String.class.getName(), "\"order-1\""),
+						QuarantineReplayEnvelope.of(AcknowledgeOrder.class.getName(), "{\"value\":\"ack\"}")),
 				List.of(OperationPolicyViolation.externalConsistency("broker mismatch")),
+				QuarantineStatus.OPEN,
 				Instant.parse("2026-06-09T10:15:00Z"),
 				Instant.parse("2026-06-09T10:15:00Z"),
 				0,
@@ -49,9 +48,7 @@ class DefaultMutationQuarantineServiceTest
 	{
 	}
 
-	private static final class TestMutationQuarantineValueCodec
-			implements
-			de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.QuarantineReplayCodec
+	private static final class TestMutationQuarantineValueCodec implements QuarantineReplayCodec
 	{
 		@Override
 		public QuarantineReplayEnvelope serialize(final Object value)
@@ -59,8 +56,8 @@ class DefaultMutationQuarantineServiceTest
 			return switch (value)
 			{
 				case String domainId -> QuarantineReplayEnvelope.of(String.class.getName(), domainId);
-				case AcknowledgeOrder payload -> QuarantineReplayEnvelope.of(AcknowledgeOrder.class.getName(),
-						payload.value());
+				case AcknowledgeOrder payload ->
+						QuarantineReplayEnvelope.of(AcknowledgeOrder.class.getName(), payload.value());
 				default -> throw new IllegalArgumentException("Unsupported value " + value);
 			};
 		}
@@ -79,75 +76,63 @@ class DefaultMutationQuarantineServiceTest
 		}
 	}
 
-	private static final class InMemoryMutationQuarantineRepository implements MutationQuarantineRepository
+	private static final class InMemoryMutationQuarantineRepository
+			implements QuarantineRepository<MutationReplayInputs>
 	{
-		private final Map<MutationQuarantineId, MutationQuarantineRecord> records = new LinkedHashMap<>();
+		private final Map<QuarantineId, QuarantineRecord<MutationReplayInputs>> records = new LinkedHashMap<>();
 
 		@Override
-		public MutationQuarantineRecord save(final MutationQuarantineRecord record)
+		public QuarantineRecord<MutationReplayInputs> save(final QuarantineRecord<MutationReplayInputs> record)
 		{
 			records.put(record.quarantineId(), record);
 			return record;
 		}
 
 		@Override
-		public MutationQuarantineRecord update(final MutationQuarantineRecord record)
+		public QuarantineRecord<MutationReplayInputs> update(final QuarantineRecord<MutationReplayInputs> record)
 		{
 			records.put(record.quarantineId(), record);
 			return record;
 		}
 
 		@Override
-		public Optional<MutationQuarantineRecord> findById(final MutationQuarantineId quarantineId)
+		public Optional<QuarantineRecord<MutationReplayInputs>> findById(final QuarantineId quarantineId)
 		{
 			return Optional.ofNullable(records.get(quarantineId));
 		}
 
 		@Override
-		public Collection<MutationQuarantineRecord> findOpen(final int limit)
+		public Collection<QuarantineRecord<MutationReplayInputs>> findOpen(final int limit)
 		{
-			return records.values().stream().filter(MutationQuarantineRecord::open).limit(limit).toList();
+			return records.values().stream().filter(QuarantineRecord::open).limit(limit).toList();
 		}
 	}
 
-	private static final class SuccessfulReplayGateway implements MutationQuarantineReplayGateway
+	private static final class SuccessfulReplayGateway implements QuarantineReplayGateway<MutationReplayData>
 	{
 		@Override
-		public String aggregateType()
+		public String aggregateKey()
 		{
 			return "aggregate.OrderDefinition";
 		}
 
 		@Override
-		public MutationResult<?, ?> replay(final MutationQuarantineReplayCommand command)
+		public ReplayOutcome replay(final QuarantineReplayCommand<MutationReplayData> command)
 		{
-			return MutationResult.applied(
-					new de.gupta.clean.crud.template.useCases.operation.mutation.domain.model.MutationContext<>(
-							command.domainId(),
-							OperationSource.ADMINISTRATIVE_REPLAY,
-							command.family(),
-							command.payload().getClass(),
-							command.correlationId(),
-							command.causationId(),
-							Optional.empty(),
-							Optional.of("ACKNOWLEDGED")),
-					MutationPolicyDecision.allow(),
-					de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel.of(
-							command.domainId(),
-							"ACKNOWLEDGED"));
+			return ReplayOutcome.success();
 		}
 	}
 
-	private static final class FailingReplayGateway implements MutationQuarantineReplayGateway
+	private static final class FailingReplayGateway implements QuarantineReplayGateway<MutationReplayData>
 	{
 		@Override
-		public String aggregateType()
+		public String aggregateKey()
 		{
 			return "aggregate.OrderDefinition";
 		}
 
 		@Override
-		public MutationResult<?, ?> replay(final MutationQuarantineReplayCommand command)
+		public ReplayOutcome replay(final QuarantineReplayCommand<MutationReplayData> command)
 		{
 			throw new IllegalStateException("still inconsistent");
 		}
@@ -161,7 +146,7 @@ class DefaultMutationQuarantineServiceTest
 		{
 			var service = DefaultMutationQuarantineService.with(
 					new InMemoryMutationQuarantineRepository(),
-					DefaultMutationQuarantineReplayRegistry.of(List.of()),
+					DefaultQuarantineReplayRegistry.of(List.of()),
 					new TestMutationQuarantineValueCodec(),
 					Clock.fixed(Instant.parse("2026-06-09T10:15:30Z"), ZoneOffset.UTC));
 
@@ -188,7 +173,7 @@ class DefaultMutationQuarantineServiceTest
 			var repository = new InMemoryMutationQuarantineRepository();
 			var service = DefaultMutationQuarantineService.with(
 					repository,
-					DefaultMutationQuarantineReplayRegistry.of(List.of(new SuccessfulReplayGateway())),
+					DefaultQuarantineReplayRegistry.of(List.of(new SuccessfulReplayGateway())),
 					new TestMutationQuarantineValueCodec(),
 					Clock.fixed(Instant.parse("2026-06-09T10:15:30Z"), ZoneOffset.UTC));
 			var record = repository.save(openRecord("aggregate.OrderDefinition"));
@@ -197,7 +182,7 @@ class DefaultMutationQuarantineServiceTest
 
 			assertThat(replayed.status())
 					.as("status should be REPLAYED after successful gateway replay")
-					.isEqualTo(MutationQuarantineStatus.REPLAYED);
+					.isEqualTo(QuarantineStatus.REPLAYED);
 			assertThat(replayed.replayAttemptCount())
 					.as("replay attempt count should increment after replay")
 					.isEqualTo(1);
@@ -209,7 +194,7 @@ class DefaultMutationQuarantineServiceTest
 			var repository = new InMemoryMutationQuarantineRepository();
 			var service = DefaultMutationQuarantineService.with(
 					repository,
-					DefaultMutationQuarantineReplayRegistry.of(List.of(new FailingReplayGateway())),
+					DefaultQuarantineReplayRegistry.of(List.of(new FailingReplayGateway())),
 					new TestMutationQuarantineValueCodec(),
 					Clock.fixed(Instant.parse("2026-06-09T10:15:30Z"), ZoneOffset.UTC));
 			var record = repository.save(openRecord("aggregate.OrderDefinition"));
@@ -218,7 +203,7 @@ class DefaultMutationQuarantineServiceTest
 
 			assertThat(replayed.status())
 					.as("status should remain OPEN when gateway throws")
-					.isEqualTo(MutationQuarantineStatus.OPEN);
+					.isEqualTo(QuarantineStatus.OPEN);
 			assertThat(replayed.lastReplayOutcome())
 					.as("last replay outcome should contain FAILED when gateway throws")
 					.contains(QuarantineReplayOutcome.FAILED);
@@ -234,7 +219,7 @@ class DefaultMutationQuarantineServiceTest
 			var repository = new InMemoryMutationQuarantineRepository();
 			var service = DefaultMutationQuarantineService.with(
 					repository,
-					DefaultMutationQuarantineReplayRegistry.of(List.of()),
+					DefaultQuarantineReplayRegistry.of(List.of()),
 					new TestMutationQuarantineValueCodec(),
 					Clock.fixed(Instant.parse("2026-06-09T10:15:30Z"), ZoneOffset.UTC));
 			var dismissed = repository.save(openRecord("aggregate.OrderDefinition")

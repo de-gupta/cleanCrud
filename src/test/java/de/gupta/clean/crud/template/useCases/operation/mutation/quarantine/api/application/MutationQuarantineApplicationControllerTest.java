@@ -5,11 +5,10 @@ import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationFam
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineReplayEnvelope;
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.OperationPolicyViolation;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.MutationQuarantineService;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.MutationQuarantineRecord;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.MutationQuarantineStatus;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.id.MutationQuarantineId;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.policy.MutationQuarantineAccessPolicy;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.api.application.QuarantineApplicationControllers;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.QuarantineService;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.*;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.policy.QuarantineAccessPolicy;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -24,19 +23,21 @@ import static org.mockito.Mockito.*;
 
 class MutationQuarantineApplicationControllerTest
 {
-	private MutationQuarantineRecord quarantineRecord()
+	private QuarantineRecord<MutationReplayInputs> quarantineRecord()
 	{
-		return new MutationQuarantineRecord(
-				new MutationQuarantineId("quarantine-1"),
+		return new QuarantineRecord<>(
+				new QuarantineId("quarantine-1"),
 				"aggregate.OrderDefinition",
-				QuarantineReplayEnvelope.of(String.class.getName(), "\"order-1\""),
-				QuarantineReplayEnvelope.of("payload.Type", "{\"name\":\"value\"}"),
-				OperationSource.AUTHORITATIVE_EXTERNAL_EVENT,
-				OperationFamily.APPLICATION,
-				Optional.empty(),
-				Optional.empty(),
-				MutationQuarantineStatus.OPEN,
+				new OperationInvocationMetadata(
+						OperationSource.AUTHORITATIVE_EXTERNAL_EVENT,
+						OperationFamily.APPLICATION,
+						Optional.empty(),
+						Optional.empty()),
+				new MutationReplayInputs(
+						QuarantineReplayEnvelope.of(String.class.getName(), "\"order-1\""),
+						QuarantineReplayEnvelope.of("payload.Type", "{\"name\":\"value\"}")),
 				List.of(OperationPolicyViolation.externalConsistency("broker mismatch")),
+				QuarantineStatus.OPEN,
 				Instant.parse("2026-06-09T10:15:00Z"),
 				Instant.parse("2026-06-09T10:15:00Z"),
 				0,
@@ -51,17 +52,18 @@ class MutationQuarantineApplicationControllerTest
 		@Test
 		void delegatesToServiceForOpenRecordsAndDismissal()
 		{
-			var service = mock(MutationQuarantineService.class);
+			@SuppressWarnings("unchecked")
+			var service = (QuarantineService<MutationReplayInputs>) mock(QuarantineService.class);
 			var record = quarantineRecord();
 			when(service.findOpen(5)).thenReturn(List.of(record));
 			when(service.findById(record.quarantineId())).thenReturn(Optional.of(record));
 			when(service.dismiss(record.quarantineId())).thenReturn(
 					record.dismissed(Instant.parse("2026-06-09T10:16:00Z")));
-			var controller = MutationQuarantineApplicationControllers.controller(
+			var controller = QuarantineApplicationControllers.controller(
 					service,
-					MutationQuarantineAccessPolicy.allowing());
+					QuarantineAccessPolicy.allowing());
 
-			Collection<MutationQuarantineRecord> open = controller.findOpen(5);
+			Collection<QuarantineRecord<MutationReplayInputs>> open = controller.findOpen(5);
 			var dismissed = controller.dismiss(record.quarantineId());
 
 			assertThat(open)
@@ -69,7 +71,7 @@ class MutationQuarantineApplicationControllerTest
 					.hasSize(1);
 			assertThat(dismissed.status())
 					.as("dismissed record should have DISMISSED status")
-					.isEqualTo(MutationQuarantineStatus.DISMISSED);
+					.isEqualTo(QuarantineStatus.DISMISSED);
 			verify(service).findOpen(5);
 			verify(service).findById(record.quarantineId());
 			verify(service).dismiss(record.quarantineId());
@@ -82,15 +84,16 @@ class MutationQuarantineApplicationControllerTest
 		@Test
 		void rejectsReplayWhenAccessPolicyDenies()
 		{
-			var service = mock(MutationQuarantineService.class);
+			@SuppressWarnings("unchecked")
+			var service = (QuarantineService<MutationReplayInputs>) mock(QuarantineService.class);
 			var record = quarantineRecord();
 			when(service.findById(record.quarantineId())).thenReturn(Optional.of(record));
-			var controller = MutationQuarantineApplicationControllers.controller(
+			var controller = QuarantineApplicationControllers.controller(
 					service,
-					new MutationQuarantineAccessPolicy()
+					new QuarantineAccessPolicy<>()
 					{
 						@Override
-						public void validateReplay(final MutationQuarantineRecord candidate)
+						public void validateReplay(final QuarantineRecord<MutationReplayInputs> candidate)
 						{
 							throw AccessDeniedException.withMessage("No replay permission");
 						}

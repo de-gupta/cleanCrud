@@ -20,9 +20,11 @@ import de.gupta.clean.crud.template.useCases.operation.mutation.domain.model.Mut
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.model.MutationResult;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.plan.AggregateMutationPlan;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.evaluation.SourceAwareMutationPolicy;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.MutationQuarantineReplayCommand;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.recording.MutationQuarantineSubmission;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.id.MutationQuarantineId;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.QuarantineReplayCommand;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.ReplayOutcome;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.MutationReplayData;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.QuarantineId;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,30 +85,41 @@ public final class DefaultAggregateMutationService<
 		return mutateWithResult(request, Optional.empty());
 	}
 
-	@Override
 	public String aggregateType()
 	{
 		return aggregateType;
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
-	public MutationResult<?, ?> replay(final MutationQuarantineReplayCommand command)
+	public String aggregateKey()
 	{
-		return mutateWithResult(
+		return aggregateType;
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public ReplayOutcome replay(final QuarantineReplayCommand<MutationReplayData> command)
+	{
+		var data = command.replayInputs();
+		var result = mutateWithResult(
 				new MutationRequest<>(
-						(DomainId) command.domainId(),
-						command.payload(),
+						(DomainId) data.domainId(),
+						data.payload(),
 						OperationSource.ADMINISTRATIVE_REPLAY,
-						command.family(),
-						command.correlationId(),
-						command.causationId()),
+						command.metadata().family(),
+						command.metadata().correlationId(),
+						command.metadata().causationId()),
 				Optional.of(command.quarantineId()));
+		if (result.applied())
+		{
+			return ReplayOutcome.success();
+		}
+		return ReplayOutcome.quarantined(result.quarantineRequest().map(r -> r.violations().toString()));
 	}
 
 	private MutationResult<DomainId, DomainModel> mutateWithResult(
 			final MutationRequest<DomainId, ?> request,
-			final Optional<MutationQuarantineId> replayQuarantineId)
+			final Optional<QuarantineId> replayQuarantineId)
 	{
 		return engine.execute(
 				CrudWorkflowBuilder.writeFlow(() -> applyMutation(request, replayQuarantineId))
@@ -120,7 +133,7 @@ public final class DefaultAggregateMutationService<
 
 	private MutationResult<DomainId, DomainModel> applyMutation(
 			final MutationRequest<DomainId, ?> request,
-			final Optional<MutationQuarantineId> replayQuarantineId)
+			final Optional<QuarantineId> replayQuarantineId)
 	{
 		var relationships = definitionGuard.satelliteRelationships(definition);
 		var current = definition.fetchPort()

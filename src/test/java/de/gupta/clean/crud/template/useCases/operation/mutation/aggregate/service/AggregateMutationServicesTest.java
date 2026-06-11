@@ -45,12 +45,14 @@ import de.gupta.clean.crud.template.useCases.operation.mutation.domain.plan.Aggr
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.invariant.DomainInvariantPolicy;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.profile.MutationPolicyProfile;
 import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.profile.MutationPolicyProfileResolver;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.DefaultMutationQuarantineReplayRegistry;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.MutationQuarantineReplayCommand;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.MutationQuarantineReplayGateway;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.recording.MutationQuarantineRecorder;
 import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.recording.MutationQuarantineSubmission;
-import de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.domain.model.id.MutationQuarantineId;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.DefaultQuarantineReplayRegistry;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.QuarantineReplayCommand;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.QuarantineReplayGateway;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.MutationReplayData;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.OperationInvocationMetadata;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.QuarantineId;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStarter;
 import de.gupta.clean.crud.template.useCases.process.domain.definition.DurableProcessDefinition;
@@ -324,15 +326,17 @@ class AggregateMutationServicesTest
 				new InlineTransactionRunner(),
 				recorder);
 		var service = mutationService("test-aggregate", definition, engine);
-		var replayGateway = (MutationQuarantineReplayGateway) service;
+		@SuppressWarnings("unchecked")
+		var replayGateway = (QuarantineReplayGateway<MutationReplayData>) service;
 
-		var result = replayGateway.replay(new MutationQuarantineReplayCommand(
-				new MutationQuarantineId("quarantine-1"),
-				"order-1",
-				new AcknowledgeOrder(),
-				OperationFamily.APPLICATION,
-				Optional.empty(),
-				Optional.empty()));
+		var result = replayGateway.replay(new QuarantineReplayCommand<>(
+				new QuarantineId("quarantine-1"),
+				new MutationReplayData("order-1", new AcknowledgeOrder()),
+				new OperationInvocationMetadata(
+						OperationSource.ADMINISTRATIVE_REPLAY,
+						OperationFamily.APPLICATION,
+						Optional.empty(),
+						Optional.empty())));
 
 		assertTrue(result.quarantined());
 		assertEquals(0, recorder.submissions.size());
@@ -349,9 +353,11 @@ class AggregateMutationServicesTest
 		var secondService =
 				AggregateMutationServices.mutationService("test-aggregate-2", secondDefinition, engine, registry());
 
-		assertDoesNotThrow(() -> DefaultMutationQuarantineReplayRegistry.of(List.of(
-				(MutationQuarantineReplayGateway) firstService,
-				secondService)));
+		@SuppressWarnings("unchecked")
+		var gateways = List.of(
+				(de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.QuarantineReplayGateway<de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.MutationReplayData>) firstService,
+				(de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.QuarantineReplayGateway<de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.MutationReplayData>) secondService);
+		assertDoesNotThrow(() -> DefaultQuarantineReplayRegistry.of(gateways));
 	}
 
 	@Test
@@ -360,10 +366,13 @@ class AggregateMutationServicesTest
 		var definition = new TestAggregateDefinition();
 		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
-		var service = (MutationQuarantineReplayGateway) mutationService("order-mutation", definition, engine);
+		@SuppressWarnings("unchecked")
+		var gateway =
+				(QuarantineReplayGateway<MutationReplayData>) mutationService("order-mutation", definition,
+						engine);
 
-		assertThat(service.aggregateType())
-				.as("aggregateType should return the explicit key passed at construction")
+		assertThat(gateway.aggregateKey())
+				.as("aggregateKey should return the explicit key passed at construction")
 				.isEqualTo("order-mutation");
 	}
 
@@ -1010,7 +1019,9 @@ class AggregateMutationServicesTest
 		{
 			submissions.add(submission);
 			return submission.quarantineRequest()
-			                 .persistedAs(new MutationQuarantineId("stored-" + submissions.size()));
+			                 .persistedAs(
+									 new de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.QuarantineId(
+											 "stored-" + submissions.size()));
 		}
 	}
 }

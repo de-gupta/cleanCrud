@@ -32,11 +32,9 @@ public class JpaQuarantineStore<P> implements QuarantineRepository<P>
 	private final Class<P> replayInputsType;
 	private final JavaType violationValueType;
 
-	public static <P> JpaQuarantineStore<P> with(
-			final EntityManager entityManager,
-			final ObjectMapper objectMapper,
-			final Class<? extends QuarantinePersistenceModel> entityClass,
-			final Class<P> replayInputsType)
+	public static <P> JpaQuarantineStore<P> with(final EntityManager entityManager, final ObjectMapper objectMapper,
+	                                             final Class<? extends QuarantinePersistenceModel> entityClass,
+	                                             final Class<P> replayInputsType)
 	{
 		return new JpaQuarantineStore<>(entityManager, objectMapper, entityClass, replayInputsType);
 	}
@@ -61,8 +59,7 @@ public class JpaQuarantineStore<P> implements QuarantineRepository<P>
 	@Transactional(readOnly = true)
 	public Optional<QuarantineRecord<P>> findById(final QuarantineId quarantineId)
 	{
-		return Optional.ofNullable(entityManager.find(entityClass, quarantineId.value()))
-		               .map(this::toDomainModel);
+		return Optional.ofNullable(entityManager.find(entityClass, quarantineId.value())).map(this::toDomainModel);
 	}
 
 	@Override
@@ -74,15 +71,9 @@ public class JpaQuarantineStore<P> implements QuarantineRepository<P>
 			throw new IllegalArgumentException("limit");
 		}
 		return entityManager.createQuery(
-									"select q from " + entityClass.getSimpleName()
-											+ " q where q.status = :status order by q.quarantinedAt",
-									entityClass)
-		                    .setParameter("status", QuarantineStatus.OPEN)
-		                    .setMaxResults(limit)
-		                    .getResultList()
-		                    .stream()
-		                    .map(this::toDomainModel)
-		                    .toList();
+									"select q from " + entityClass.getSimpleName() + " q where q.status = :status order by q.quarantinedAt",
+									entityClass).setParameter("status", QuarantineStatus.OPEN).setMaxResults(limit).getResultList().stream()
+		                    .map(this::toDomainModel).toList();
 	}
 
 	private QuarantinePersistenceModel toPersistenceModel(final QuarantineRecord<P> record)
@@ -116,20 +107,12 @@ public class JpaQuarantineStore<P> implements QuarantineRepository<P>
 
 	private QuarantineRecord<P> toDomainModel(final QuarantinePersistenceModel model)
 	{
-		return new QuarantineRecord<>(
-				new QuarantineId(model.quarantineId()),
-				model.aggregateKey(),
-				new OperationInvocationMetadata(
-						model.source(),
-						model.family(),
+		return new QuarantineRecord<>(new QuarantineId(model.quarantineId()), model.aggregateKey(),
+				new OperationInvocationMetadata(model.source(), model.family(),
 						Optional.ofNullable(model.correlationId()).map(OperationCorrelationId::new),
 						Optional.ofNullable(model.causationId()).map(OperationCausationId::new)),
-				deserializeReplayInputs(model.replayInputsJson()),
-				deserializeViolations(model.violationsJson()),
-				model.status(),
-				model.quarantinedAt(),
-				model.updatedAt(),
-				model.replayAttemptCount(),
+				deserializeReplayInputs(model.replayInputsJson()), deserializeViolations(model.violationsJson()),
+				model.status(), model.quarantinedAt(), model.updatedAt(), model.replayAttemptCount(),
 				Optional.ofNullable(model.lastReplayAt()),
 				Optional.ofNullable(model.lastReplayOutcome()).map(QuarantineReplayOutcome::valueOf),
 				Optional.ofNullable(model.lastReplaySummary()));
@@ -163,8 +146,7 @@ public class JpaQuarantineStore<P> implements QuarantineRepository<P>
 	{
 		try
 		{
-			return objectMapper.writeValueAsString(
-					violations.stream().map(StoredViolation::of).toList());
+			return objectMapper.writeValueAsString(violations.stream().map(StoredViolation::of).toList());
 		}
 		catch (JsonProcessingException caught)
 		{
@@ -185,35 +167,28 @@ public class JpaQuarantineStore<P> implements QuarantineRepository<P>
 		}
 	}
 
-	private JpaQuarantineStore(
-			final EntityManager entityManager,
-			final ObjectMapper objectMapper,
-			final Class<? extends QuarantinePersistenceModel> entityClass,
-			final Class<P> replayInputsType)
+	JpaQuarantineStore(final EntityManager entityManager, final ObjectMapper objectMapper,
+	                   final Class<? extends QuarantinePersistenceModel> entityClass, final Class<P> replayInputsType)
 	{
 		this.entityManager = Objects.requireNonNull(entityManager, "entityManager");
 		this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
 		this.entityClass = Objects.requireNonNull(entityClass, "entityClass");
 		this.replayInputsType = Objects.requireNonNull(replayInputsType, "replayInputsType");
-		this.violationValueType = objectMapper.getTypeFactory()
-		                                      .constructCollectionType(List.class, StoredViolation.class);
+		this.violationValueType =
+				objectMapper.getTypeFactory().constructCollectionType(List.class, StoredViolation.class);
 	}
 
 	private record StoredViolation(ViolationKind kind, String message, String invariantSeverity)
 	{
 		static StoredViolation of(final OperationPolicyViolation violation)
 		{
-			return new StoredViolation(
-					violation.kind(),
-					violation.message(),
+			return new StoredViolation(violation.kind(), violation.message(),
 					violation.severity().map(Enum::name).orElse(null));
 		}
 
 		OperationPolicyViolation toDomain()
 		{
-			return new OperationPolicyViolation(
-					kind,
-					message,
+			return new OperationPolicyViolation(kind, message,
 					Optional.ofNullable(invariantSeverity).map(InvariantSeverity::valueOf));
 		}
 	}

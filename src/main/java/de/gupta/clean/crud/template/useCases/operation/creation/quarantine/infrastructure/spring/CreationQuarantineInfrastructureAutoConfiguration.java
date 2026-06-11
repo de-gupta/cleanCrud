@@ -1,24 +1,26 @@
 package de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infrastructure.spring;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.api.application.CreationQuarantineApplicationController;
-import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.api.application.CreationQuarantineApplicationControllers;
-import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.api.web.CreationQuarantineWebMapper;
-import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.api.web.DefaultSpringRestCreationQuarantineController;
-import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application.CreationQuarantineReplayGateway;
-import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application.CreationQuarantineReplayRegistry;
-import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application.CreationQuarantineService;
+import de.gupta.clean.crud.template.useCases.operation.creation.application.service.QuarantinableCreationService;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application.DefaultCreationQuarantineService;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application.recording.CreationQuarantineRecorder;
-import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.policy.CreationQuarantineAccessPolicy;
-import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infrastructure.persistence.JpaCreationQuarantineStore;
-import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.infrastructure.persistence.model.CreationQuarantinePersistenceModel;
-import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.port.persistence.CreationQuarantineRepository;
+import de.gupta.clean.crud.template.useCases.operation.domain.model.ApplicationOperationPayload;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.api.application.QuarantineApplicationController;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.api.application.QuarantineApplicationControllers;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.api.web.DefaultSpringRestCreationQuarantineController;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.api.web.QuarantineWebMapper;
 import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.QuarantineReplayCodec;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.QuarantineReplayGateway;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.QuarantineService;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.CreationReplayInputs;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.policy.QuarantineAccessPolicy;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.port.QuarantineRepository;
 import de.gupta.clean.crud.template.useCases.operation.quarantine.infrastructure.persistence.JacksonQuarantineReplayCodec;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.infrastructure.persistence.JpaQuarantineStore;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.infrastructure.persistence.model.CreationQuarantineEntity;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
-import org.springframework.beans.factory.ListableBeanFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -31,44 +33,18 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.time.Clock;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.Objects;
 
 @AutoConfiguration(after = HibernateJpaAutoConfiguration.class)
-@EntityScan(basePackageClasses = CreationQuarantinePersistenceModel.class)
+@EntityScan(basePackageClasses = CreationQuarantineEntity.class)
 @EnableConfigurationProperties(CreationQuarantineInfrastructureProperties.class)
 public class CreationQuarantineInfrastructureAutoConfiguration
 {
 	@Bean
 	@ConditionalOnMissingBean
-	CreationQuarantineReplayRegistry creationQuarantineReplayRegistry(
-			final ListableBeanFactory beanFactory)
+	QuarantineAccessPolicy<CreationReplayInputs> creationQuarantineAccessPolicy()
 	{
-		return aggregateType -> Optional.ofNullable(discoverReplayGateways(beanFactory).get(aggregateType));
-	}
-
-	@Bean
-	@ConditionalOnMissingBean
-	CreationQuarantineAccessPolicy creationQuarantineAccessPolicy()
-	{
-		return CreationQuarantineAccessPolicy.allowing();
-	}
-
-	private static Map<String, CreationQuarantineReplayGateway> discoverReplayGateways(
-			final ListableBeanFactory beanFactory)
-	{
-		var discovered = new LinkedHashMap<String, CreationQuarantineReplayGateway>();
-		for (var gateway : beanFactory.getBeansOfType(CreationQuarantineReplayGateway.class).values())
-		{
-			var duplicate = discovered.putIfAbsent(gateway.aggregateType(), gateway);
-			if (duplicate != null)
-			{
-				throw new IllegalArgumentException(
-						"Duplicate creation quarantine replay gateway for aggregate type " + gateway.aggregateType());
-			}
-		}
-		return discovered;
+		return QuarantineAccessPolicy.allowing();
 	}
 
 	@Configuration
@@ -82,11 +58,12 @@ public class CreationQuarantineInfrastructureAutoConfiguration
 	{
 		@Bean
 		@ConditionalOnMissingBean
-		CreationQuarantineRepository creationQuarantineRepository(
+		QuarantineRepository<CreationReplayInputs> creationQuarantineRepository(
 				final EntityManager entityManager,
 				final ObjectMapper objectMapper)
 		{
-			return JpaCreationQuarantineStore.with(entityManager, objectMapper);
+			return JpaQuarantineStore.with(entityManager, objectMapper,
+					CreationQuarantineEntity.class, CreationReplayInputs.class);
 		}
 
 		@Bean
@@ -98,38 +75,43 @@ public class CreationQuarantineInfrastructureAutoConfiguration
 
 		@Bean
 		@ConditionalOnMissingBean
-		CreationQuarantineService creationQuarantineService(
-				final CreationQuarantineRepository repository,
-				final CreationQuarantineReplayRegistry replayRegistry,
+		@SuppressWarnings("unchecked")
+		DefaultCreationQuarantineService creationQuarantineService(
+				final QuarantineRepository<CreationReplayInputs> repository,
+				final ObjectProvider<QuarantinableCreationService> services,
 				final QuarantineReplayCodec replayCodec,
 				final Clock durableProcessClock)
 		{
-			return DefaultCreationQuarantineService.with(repository, replayRegistry, replayCodec, durableProcessClock);
+			return DefaultCreationQuarantineService.with(repository,
+					aggregateKey -> services.stream()
+					                        .map(service -> (QuarantineReplayGateway<ApplicationOperationPayload>) service)
+					                        .filter(gateway -> Objects.equals(gateway.aggregateKey(), aggregateKey))
+					                        .findFirst(),
+					replayCodec, durableProcessClock);
 		}
 
 		@Bean
 		@ConditionalOnMissingBean
-		CreationQuarantineRecorder creationQuarantineRecorder(final CreationQuarantineService creationQuarantineService)
+		CreationQuarantineRecorder creationQuarantineRecorder(
+				final DefaultCreationQuarantineService creationQuarantineService)
 		{
-			return creationQuarantineService;
+			return creationQuarantineService::record;
 		}
 
 		@Bean
 		@ConditionalOnMissingBean
-		CreationQuarantineApplicationController creationQuarantineApplicationController(
-				final CreationQuarantineService creationQuarantineService,
-				final CreationQuarantineAccessPolicy creationQuarantineAccessPolicy)
+		QuarantineApplicationController<CreationReplayInputs> creationQuarantineApplicationController(
+				final QuarantineService<CreationReplayInputs> service,
+				final QuarantineAccessPolicy<CreationReplayInputs> accessPolicy)
 		{
-			return CreationQuarantineApplicationControllers.controller(
-					creationQuarantineService,
-					creationQuarantineAccessPolicy);
+			return QuarantineApplicationControllers.controller(service, accessPolicy);
 		}
 
 		@Bean
 		@ConditionalOnMissingBean
-		CreationQuarantineWebMapper creationQuarantineWebMapper()
+		QuarantineWebMapper quarantineWebMapper()
 		{
-			return new CreationQuarantineWebMapper();
+			return new QuarantineWebMapper();
 		}
 
 		@Bean
@@ -137,8 +119,8 @@ public class CreationQuarantineInfrastructureAutoConfiguration
 		@ConditionalOnProperty(prefix = "clean-crud.creation.quarantine", name = "api-enabled", havingValue = "true")
 		@ConditionalOnMissingBean
 		DefaultSpringRestCreationQuarantineController springRestCreationQuarantineController(
-				final CreationQuarantineApplicationController applicationController,
-				final CreationQuarantineWebMapper webMapper)
+				final QuarantineApplicationController<CreationReplayInputs> applicationController,
+				final QuarantineWebMapper webMapper)
 		{
 			return new DefaultSpringRestCreationQuarantineController(applicationController, webMapper);
 		}

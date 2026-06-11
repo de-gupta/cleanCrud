@@ -20,11 +20,12 @@ import de.gupta.clean.crud.template.useCases.operation.creation.domain.model.Cre
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.plan.AggregateCreationPlan;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.evaluation.SourceAwareCreationPolicy;
 import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.quarantine.QuarantinedCreationException;
-import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application.CreationQuarantineReplayCommand;
 import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.application.recording.CreationQuarantineSubmission;
-import de.gupta.clean.crud.template.useCases.operation.creation.quarantine.domain.model.id.CreationQuarantineId;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.ApplicationOperationPayload;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.OperationSource;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.QuarantineReplayCommand;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.ReplayOutcome;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.QuarantineId;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 
 import java.util.Collection;
@@ -81,28 +82,38 @@ public final class DefaultAggregateCreationService<
 		return createWithResult(request, Optional.empty());
 	}
 
-	@Override
 	public String aggregateType()
 	{
 		return aggregateType;
 	}
 
 	@Override
-	public CreationResult<?, ?> replay(final CreationQuarantineReplayCommand command)
+	public String aggregateKey()
 	{
-		return createWithResult(
+		return aggregateType;
+	}
+
+	@Override
+	public ReplayOutcome replay(final QuarantineReplayCommand<ApplicationOperationPayload> command)
+	{
+		var result = createWithResult(
 				new CreationRequest<>(
-						command.payload(),
+						command.replayInputs(),
 						OperationSource.ADMINISTRATIVE_REPLAY,
-						command.family(),
-						command.correlationId(),
-						command.causationId()),
+						command.metadata().family(),
+						command.metadata().correlationId(),
+						command.metadata().causationId()),
 				Optional.of(command.quarantineId()));
+		if (result.applied())
+		{
+			return ReplayOutcome.success();
+		}
+		return ReplayOutcome.quarantined(result.quarantineRequest().map(r -> r.violations().toString()));
 	}
 
 	private CreationResult<DomainId, DomainModel> createWithResult(
 			final CreationRequest<?> request,
-			final Optional<CreationQuarantineId> replayQuarantineId)
+			final Optional<QuarantineId> replayQuarantineId)
 	{
 		try
 		{
@@ -123,7 +134,7 @@ public final class DefaultAggregateCreationService<
 
 	private CreationResult<DomainId, DomainModel> applyCreation(
 			final CreationRequest<?> request,
-			final Optional<CreationQuarantineId> replayQuarantineId)
+			final Optional<QuarantineId> replayQuarantineId)
 	{
 		var plan = applyRegisteredHandler(request.payload());
 		var createInput = plan.rootCreate().orElseThrow(() -> InvalidRequestException.withMessage(
@@ -169,7 +180,7 @@ public final class DefaultAggregateCreationService<
 			final DomainModelCreate createInput,
 			final de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.evaluation.CreationPolicyDecision policyDecision,
 			final CreationContext<DomainId, DomainModel> baseContext,
-			final Optional<CreationQuarantineId> replayQuarantineId)
+			final Optional<QuarantineId> replayQuarantineId)
 	{
 		var satelliteCreateIntentResolver = AggregateServiceSupportFactory.satelliteCreateIntentResolver(
 				AggregateCreationPolicies.satelliteCreateValidator(request.source()));
@@ -196,7 +207,7 @@ public final class DefaultAggregateCreationService<
 			final CreationRequest<?> request,
 			final CreationContext<DomainId, DomainModel> baseContext,
 			final de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.evaluation.CreationPolicyDecision policyDecision,
-			final Optional<CreationQuarantineId> replayQuarantineId)
+			final Optional<QuarantineId> replayQuarantineId)
 	{
 		var quarantineDecision =
 				de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.evaluation.CreationPolicyDecision.quarantine(
