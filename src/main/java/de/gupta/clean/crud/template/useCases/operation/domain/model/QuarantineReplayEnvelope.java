@@ -1,5 +1,7 @@
 package de.gupta.clean.crud.template.useCases.operation.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import de.gupta.commons.utility.string.StringSanitizationUtility;
 
 import java.util.Objects;
@@ -9,7 +11,10 @@ public final class QuarantineReplayEnvelope
 	private final String typeKey;
 	private final String serialized;
 
-	public static QuarantineReplayEnvelope of(final String typeKey, final String serialized)
+	@JsonCreator
+	public static QuarantineReplayEnvelope of(
+			@JsonProperty("typeKey") final String typeKey,
+			@JsonProperty("serialized") final String serialized)
 	{
 		return new QuarantineReplayEnvelope(typeKey, serialized);
 	}
