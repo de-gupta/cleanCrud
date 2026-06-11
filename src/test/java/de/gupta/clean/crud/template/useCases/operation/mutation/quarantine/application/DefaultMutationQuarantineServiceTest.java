@@ -168,6 +168,17 @@ class DefaultMutationQuarantineServiceTest
 	class WhenReplaying
 	{
 		@Test
+		void registryRejectsDuplicateAggregateKeys()
+		{
+			assertThatThrownBy(() -> DefaultMutationQuarantineService.replayRegistry(List.of(
+					new SuccessfulReplayGateway(),
+					new SuccessfulReplayGateway())))
+					.as("replay registry should reject duplicate aggregate keys")
+					.isInstanceOf(IllegalArgumentException.class)
+					.hasMessageContaining("Duplicate quarantine replay gateway");
+		}
+
+		@Test
 		void marksRecordReplayedWhenGatewayAppliesMutation()
 		{
 			var repository = new InMemoryMutationQuarantineRepository();

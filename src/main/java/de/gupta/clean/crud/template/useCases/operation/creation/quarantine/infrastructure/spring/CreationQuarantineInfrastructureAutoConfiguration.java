@@ -33,7 +33,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.time.Clock;
-import java.util.Objects;
 
 @AutoConfiguration(after = HibernateJpaAutoConfiguration.class)
 @EntityScan(basePackageClasses = CreationQuarantineEntity.class)
@@ -83,10 +82,10 @@ public class CreationQuarantineInfrastructureAutoConfiguration
 				final Clock durableProcessClock)
 		{
 			return DefaultCreationQuarantineService.with(repository,
-					aggregateKey -> services.stream()
-					                        .map(service -> (QuarantineReplayGateway<ApplicationOperationPayload>) service)
-					                        .filter(gateway -> Objects.equals(gateway.aggregateKey(), aggregateKey))
-					                        .findFirst(),
+					DefaultCreationQuarantineService.replayRegistry(
+							services.stream()
+							        .map(service -> (QuarantineReplayGateway<ApplicationOperationPayload>) service)
+							        .toList()),
 					replayCodec, durableProcessClock);
 		}
 
