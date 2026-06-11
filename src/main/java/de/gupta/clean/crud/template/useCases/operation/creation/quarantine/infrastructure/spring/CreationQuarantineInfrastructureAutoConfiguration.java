@@ -20,6 +20,7 @@ import de.gupta.clean.crud.template.useCases.operation.quarantine.infrastructure
 import de.gupta.clean.crud.template.useCases.operation.quarantine.infrastructure.persistence.model.CreationQuarantineEntity;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
+import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -77,24 +78,27 @@ public class CreationQuarantineInfrastructureAutoConfiguration
 		@SuppressWarnings("unchecked")
 		DefaultCreationQuarantineService creationQuarantineService(
 				final QuarantineRepository<CreationReplayInputs> repository,
-				final ObjectProvider<QuarantinableCreationService> services,
+				final ListableBeanFactory beanFactory,
 				final QuarantineReplayCodec replayCodec,
 				final Clock durableProcessClock)
 		{
 			return DefaultCreationQuarantineService.with(repository,
-					DefaultCreationQuarantineService.replayRegistry(
-							services.stream()
-							        .map(service -> (QuarantineReplayGateway<ApplicationOperationPayload>) service)
-							        .toList()),
+					aggregateKey -> DefaultCreationQuarantineService.replayRegistry(
+																			beanFactory.getBeansOfType(QuarantinableCreationService.class)
+							                                                           .values()
+							                                                           .stream()
+							                                                           .map(service -> (QuarantineReplayGateway<ApplicationOperationPayload>) service)
+							                                                           .toList())
+					                                                .findGateway(aggregateKey),
 					replayCodec, durableProcessClock);
 		}
 
 		@Bean
 		@ConditionalOnMissingBean
 		CreationQuarantineRecorder creationQuarantineRecorder(
-				final DefaultCreationQuarantineService creationQuarantineService)
+				final ObjectProvider<DefaultCreationQuarantineService> creationQuarantineService)
 		{
-			return creationQuarantineService::record;
+			return submission -> creationQuarantineService.getObject().record(submission);
 		}
 
 		@Bean

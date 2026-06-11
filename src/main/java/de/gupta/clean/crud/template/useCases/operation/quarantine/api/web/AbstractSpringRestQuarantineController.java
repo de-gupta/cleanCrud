@@ -1,6 +1,7 @@
 package de.gupta.clean.crud.template.useCases.operation.quarantine.api.web;
 
 import de.gupta.clean.crud.template.useCases.operation.quarantine.api.application.QuarantineApplicationController;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.PayloadReplayInputs;
 import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.QuarantineId;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
@@ -11,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.Collection;
 
-public abstract class AbstractSpringRestQuarantineController<P>
+public abstract class AbstractSpringRestQuarantineController<P extends PayloadReplayInputs>
 		implements SpringRestQuarantineController
 {
 	private final QuarantineApplicationController<P> applicationController;

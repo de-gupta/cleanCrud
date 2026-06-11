@@ -2,13 +2,14 @@ package de.gupta.clean.crud.template.useCases.operation.quarantine.api.applicati
 
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.useCases.operation.quarantine.application.service.QuarantineService;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.PayloadReplayInputs;
 import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.QuarantineId;
 import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.QuarantineRecord;
 import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.policy.QuarantineAccessPolicy;
 
 import java.util.Collection;
 
-public abstract class AbstractQuarantineApplicationController<P>
+public abstract class AbstractQuarantineApplicationController<P extends PayloadReplayInputs>
 		implements QuarantineApplicationController<P>
 {
 	private final QuarantineService<P> service;

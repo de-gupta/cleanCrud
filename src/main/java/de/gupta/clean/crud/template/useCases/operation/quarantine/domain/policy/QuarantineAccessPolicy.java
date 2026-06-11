@@ -1,11 +1,12 @@
 package de.gupta.clean.crud.template.useCases.operation.quarantine.domain.policy;
 
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.PayloadReplayInputs;
 import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.QuarantineId;
 import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.QuarantineRecord;
 
-public interface QuarantineAccessPolicy<P>
+public interface QuarantineAccessPolicy<P extends PayloadReplayInputs>
 {
-	static <P> QuarantineAccessPolicy<P> allowing()
+	static <P extends PayloadReplayInputs> QuarantineAccessPolicy<P> allowing()
 	{
 		return new QuarantineAccessPolicy<>()
 		{

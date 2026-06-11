@@ -127,6 +127,14 @@ class DefaultCreationQuarantineServiceTest
 	class WhenRecordingSubmission
 	{
 		@Test
+		void exposesPayloadTypeNameWithoutLaneSpecificCast()
+		{
+			assertThat(openRecord("aggregate.OrderDefinition").payloadTypeName())
+					.as("generic quarantine record should expose payload type visibility")
+					.isEqualTo(TestOperationPayload.class.getName());
+		}
+
+		@Test
 		void assignsPersistentQuarantineId()
 		{
 			var service = DefaultCreationQuarantineService.with(

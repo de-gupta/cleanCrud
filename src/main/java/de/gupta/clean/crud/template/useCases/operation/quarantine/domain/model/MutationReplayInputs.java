@@ -7,6 +7,7 @@ import java.util.Objects;
 public record MutationReplayInputs(
 		QuarantineReplayEnvelope domainId,
 		QuarantineReplayEnvelope payload)
+		implements PayloadReplayInputs
 {
 	public MutationReplayInputs
 	{

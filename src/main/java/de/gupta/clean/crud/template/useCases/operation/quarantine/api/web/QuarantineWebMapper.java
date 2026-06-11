@@ -2,11 +2,12 @@ package de.gupta.clean.crud.template.useCases.operation.quarantine.api.web;
 
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCausationId;
 import de.gupta.clean.crud.template.useCases.operation.domain.model.id.OperationCorrelationId;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.PayloadReplayInputs;
 import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.QuarantineRecord;
 
 public final class QuarantineWebMapper
 {
-	public QuarantineResponse toResponse(final QuarantineRecord<?> record)
+	public QuarantineResponse toResponse(final QuarantineRecord<? extends PayloadReplayInputs> record)
 	{
 		return new QuarantineResponse(
 				record.quarantineId().value(),

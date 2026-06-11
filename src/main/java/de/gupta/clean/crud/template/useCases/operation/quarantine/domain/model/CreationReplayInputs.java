@@ -5,6 +5,7 @@ import de.gupta.clean.crud.template.useCases.operation.domain.model.QuarantineRe
 import java.util.Objects;
 
 public record CreationReplayInputs(QuarantineReplayEnvelope payload)
+		implements PayloadReplayInputs
 {
 	public CreationReplayInputs
 	{

@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-public record QuarantineRecord<P>(
+public record QuarantineRecord<P extends PayloadReplayInputs>(
 		QuarantineId quarantineId,
 		String aggregateKey,
 		OperationInvocationMetadata metadata,
@@ -59,6 +59,11 @@ public record QuarantineRecord<P>(
 	public String statusLabel()
 	{
 		return status.name();
+	}
+
+	public String payloadTypeName()
+	{
+		return replayInputs.payload().typeKey();
 	}
 
 	@Override

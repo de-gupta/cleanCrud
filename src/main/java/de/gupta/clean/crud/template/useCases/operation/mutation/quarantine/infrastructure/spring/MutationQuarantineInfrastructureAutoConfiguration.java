@@ -20,6 +20,7 @@ import de.gupta.clean.crud.template.useCases.operation.quarantine.infrastructure
 import de.gupta.clean.crud.template.useCases.operation.quarantine.infrastructure.persistence.model.MutationQuarantineEntity;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
+import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -77,24 +78,27 @@ public class MutationQuarantineInfrastructureAutoConfiguration
 		@SuppressWarnings("unchecked")
 		DefaultMutationQuarantineService mutationQuarantineService(
 				final QuarantineRepository<MutationReplayInputs> repository,
-				final ObjectProvider<QuarantinableMutationService> services,
+				final ListableBeanFactory beanFactory,
 				final QuarantineReplayCodec replayCodec,
 				final Clock durableProcessClock)
 		{
 			return DefaultMutationQuarantineService.with(repository,
-					DefaultMutationQuarantineService.replayRegistry(
-							services.stream()
-							        .map(service -> (QuarantineReplayGateway<MutationReplayData>) service)
-							        .toList()),
+					aggregateKey -> DefaultMutationQuarantineService.replayRegistry(
+																			beanFactory.getBeansOfType(QuarantinableMutationService.class)
+							                                                           .values()
+							                                                           .stream()
+							                                                           .map(service -> (QuarantineReplayGateway<MutationReplayData>) service)
+							                                                           .toList())
+					                                                .findGateway(aggregateKey),
 					replayCodec, durableProcessClock);
 		}
 
 		@Bean
 		@ConditionalOnMissingBean
 		MutationQuarantineRecorder mutationQuarantineRecorder(
-				final DefaultMutationQuarantineService mutationQuarantineService)
+				final ObjectProvider<DefaultMutationQuarantineService> mutationQuarantineService)
 		{
-			return mutationQuarantineService::record;
+			return submission -> mutationQuarantineService.getObject().record(submission);
 		}
 
 		@Bean

@@ -9,10 +9,7 @@ import de.gupta.clean.crud.template.useCases.operation.domain.model.id.Operation
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.invariant.InvariantSeverity;
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.OperationPolicyViolation;
 import de.gupta.clean.crud.template.useCases.operation.domain.policy.violation.ViolationKind;
-import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.OperationInvocationMetadata;
-import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.QuarantineId;
-import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.QuarantineRecord;
-import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.QuarantineStatus;
+import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.model.*;
 import de.gupta.clean.crud.template.useCases.operation.quarantine.domain.port.QuarantineRepository;
 import de.gupta.clean.crud.template.useCases.operation.quarantine.infrastructure.persistence.model.QuarantinePersistenceModel;
 import jakarta.persistence.EntityManager;
@@ -24,7 +21,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-public class JpaQuarantineStore<P> implements QuarantineRepository<P>
+public class JpaQuarantineStore<P extends PayloadReplayInputs> implements QuarantineRepository<P>
 {
 	private final EntityManager entityManager;
 	private final ObjectMapper objectMapper;
@@ -32,9 +29,11 @@ public class JpaQuarantineStore<P> implements QuarantineRepository<P>
 	private final Class<P> replayInputsType;
 	private final JavaType violationValueType;
 
-	public static <P> JpaQuarantineStore<P> with(final EntityManager entityManager, final ObjectMapper objectMapper,
-	                                             final Class<? extends QuarantinePersistenceModel> entityClass,
-	                                             final Class<P> replayInputsType)
+	public static <P extends PayloadReplayInputs> JpaQuarantineStore<P> with(
+			final EntityManager entityManager,
+			final ObjectMapper objectMapper,
+			final Class<? extends QuarantinePersistenceModel> entityClass,
+			final Class<P> replayInputsType)
 	{
 		return new JpaQuarantineStore<>(entityManager, objectMapper, entityClass, replayInputsType);
 	}
