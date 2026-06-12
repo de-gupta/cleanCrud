@@ -11,16 +11,16 @@ import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateFetchPort;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateMutationPort;
 import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinitionContract;
-import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.access.CreationAccessPolicy;
-import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.consistency.CreationExternalConsistencyPolicy;
-import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.creation.CreationPolicy;
-import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.invariant.CreationInvariantPolicy;
-import de.gupta.clean.crud.template.useCases.operation.creation.domain.policy.profile.CreationPolicyProfileResolver;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.access.AccessPolicy;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.consistency.ExternalConsistencyPolicy;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.invariant.DomainInvariantPolicy;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.profile.MutationPolicyProfileResolver;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.transition.MutationTransitionPolicy;
+import de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.policy.access.CreationAccessPolicy;
+import de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.policy.consistency.CreationExternalConsistencyPolicy;
+import de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.policy.creation.CreationPolicy;
+import de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.policy.invariant.CreationInvariantPolicy;
+import de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.policy.profile.CreationPolicyProfileResolver;
+import de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.policy.access.AccessPolicy;
+import de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.policy.consistency.ExternalConsistencyPolicy;
+import de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.policy.invariant.DomainInvariantPolicy;
+import de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.policy.profile.MutationPolicyProfileResolver;
+import de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.policy.transition.MutationTransitionPolicy;
 
 import java.util.Collection;
 import java.util.Optional;

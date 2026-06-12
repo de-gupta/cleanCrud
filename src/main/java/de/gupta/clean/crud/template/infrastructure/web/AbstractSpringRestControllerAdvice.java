@@ -8,7 +8,7 @@ import de.gupta.clean.crud.template.domain.model.exceptions.validation.FieldVali
 import de.gupta.clean.crud.template.domain.model.exceptions.validation.RequiredFieldNotSetException;
 import de.gupta.clean.crud.template.domain.model.exceptions.validation.ResourceConstraintViolationException;
 import de.gupta.clean.crud.template.domain.model.exceptions.validation.ValidationFailedException;
-import de.gupta.clean.crud.template.useCases.operation.mutation.domain.policy.quarantine.QuarantinedMutationException;
+import de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.policy.quarantine.QuarantinedMutationException;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
