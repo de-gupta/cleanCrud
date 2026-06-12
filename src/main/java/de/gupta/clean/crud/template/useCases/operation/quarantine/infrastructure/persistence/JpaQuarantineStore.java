@@ -157,7 +157,7 @@ public class JpaQuarantineStore<P extends PayloadReplayInputs> implements Quaran
 	{
 		try
 		{
-			var stored = (List<StoredViolation>) objectMapper.readValue(json, violationValueType);
+			List<StoredViolation> stored = objectMapper.readValue(json, violationValueType);
 			return stored.stream().map(StoredViolation::toDomain).toList();
 		}
 		catch (IOException caught)
