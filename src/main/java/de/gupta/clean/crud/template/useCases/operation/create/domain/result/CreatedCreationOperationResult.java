@@ -3,7 +3,7 @@ package de.gupta.clean.crud.template.useCases.operation.create.domain.result;
 import java.util.Objects;
 
 public record CreatedCreationOperationResult<Model>(Model createdModel)
-		implements CreationOperationResult
+		implements CreationOperationResult<Model>
 {
 	public CreatedCreationOperationResult
 	{

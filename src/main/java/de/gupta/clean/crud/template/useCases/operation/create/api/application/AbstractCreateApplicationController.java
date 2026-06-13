@@ -5,18 +5,18 @@ import de.gupta.clean.crud.template.useCases.operation.create.domain.model.Creat
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationRequest;
 import de.gupta.clean.crud.template.useCases.operation.create.facade.CreateApplicationServiceFacade;
 
-public abstract class AbstractCreateApplicationController<Payload extends CreateOperationPayload>
-		implements CreateApplicationController<Payload>
+public abstract class AbstractCreateApplicationController<Payload extends CreateOperationPayload, APIModel>
+		implements CreateApplicationController<Payload, APIModel>
 {
-	private final CreateApplicationServiceFacade<Payload> serviceFacade;
+	private final CreateApplicationServiceFacade<Payload, APIModel> serviceFacade;
 
 	@Override
-	public CreateAPIResult create(final CreationOperationRequest<Payload> request)
+	public CreateAPIResult<APIModel> create(final CreationOperationRequest<Payload> request)
 	{
 		return serviceFacade.create(request);
 	}
 
-	protected AbstractCreateApplicationController(final CreateApplicationServiceFacade<Payload> serviceFacade)
+	protected AbstractCreateApplicationController(final CreateApplicationServiceFacade<Payload, APIModel> serviceFacade)
 	{
 		this.serviceFacade = serviceFacade;
 	}

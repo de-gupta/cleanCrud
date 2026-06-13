@@ -2,8 +2,8 @@ package de.gupta.clean.crud.template.useCases.operation.create.api.result;
 
 import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreationOperationStatus;
 
-public record RejectedCreateAPIResult()
-		implements CreateAPIResult
+public record RejectedCreateAPIResult<Model>()
+		implements CreateAPIResult<Model>
 {
 	@Override
 	public CreationOperationStatus status()

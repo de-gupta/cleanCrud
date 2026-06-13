@@ -2,7 +2,7 @@ package de.gupta.clean.crud.template.useCases.operation.create.application.servi
 
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationPayload;
 
-public abstract class AbstractCreateApplicationService<Payload extends CreateOperationPayload>
-		implements CreateApplicationService<Payload>
+public abstract class AbstractCreateApplicationService<Payload extends CreateOperationPayload, DomainModel>
+		implements CreateApplicationService<Payload, DomainModel>
 {
 }

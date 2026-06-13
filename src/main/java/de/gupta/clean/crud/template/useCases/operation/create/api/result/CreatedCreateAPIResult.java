@@ -5,7 +5,7 @@ import de.gupta.clean.crud.template.useCases.operation.create.domain.result.Crea
 import java.util.Objects;
 
 public record CreatedCreateAPIResult<Model>(Model createdModel)
-		implements CreateAPIResult
+		implements CreateAPIResult<Model>
 {
 	public CreatedCreateAPIResult
 	{

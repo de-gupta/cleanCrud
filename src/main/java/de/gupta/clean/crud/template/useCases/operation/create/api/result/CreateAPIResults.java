@@ -2,19 +2,19 @@ package de.gupta.clean.crud.template.useCases.operation.create.api.result;
 
 public final class CreateAPIResults
 {
-	public static <Model> CreateAPIResult created(final Model createdModel)
+	public static <Model> CreateAPIResult<Model> created(final Model createdModel)
 	{
 		return new CreatedCreateAPIResult<>(createdModel);
 	}
 
-	public static CreateAPIResult rejected()
+	public static <Model> CreateAPIResult<Model> rejected()
 	{
-		return new RejectedCreateAPIResult();
+		return new RejectedCreateAPIResult<>();
 	}
 
-	public static CreateAPIResult quarantined()
+	public static <Model> CreateAPIResult<Model> quarantined()
 	{
-		return new QuarantinedCreateAPIResult();
+		return new QuarantinedCreateAPIResult<>();
 	}
 
 	private CreateAPIResults()
