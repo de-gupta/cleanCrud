@@ -1,10 +1,11 @@
 package de.gupta.clean.crud.template.useCases.operation.create.application.service;
 
-import de.gupta.clean.crud.template.useCases.operation.domain.metadata.request.OperationRequestMetadata;
-import de.gupta.clean.crud.template.useCases.operation.domain.metadata.result.CreationOperationResult;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationPayload;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationRequest;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreationOperationResult;
 
-public interface CreateApplicationService<DomainID, DomainModelCreate, DomainModelResponse>
+public interface CreateApplicationService<Payload extends CreateOperationPayload>
 {
-	CreationOperationResult<DomainID, DomainModelResponse> create(final DomainModelCreate model,
-	                                                              final OperationRequestMetadata requestMetadata);
+	CreationOperationResult create(
+			final CreationOperationRequest<Payload> request);
 }

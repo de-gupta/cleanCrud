@@ -1,35 +1,62 @@
 package de.gupta.clean.crud.template.useCases.operation.create.facade;
 
+import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.useCases.crud.common.adapter.model.APIToDomainCreateAdapter;
 import de.gupta.clean.crud.template.useCases.crud.common.adapter.model.DomainToAPIResponseAdapter;
-import de.gupta.clean.crud.template.useCases.operation.create.api.application.CreateOperationPayload;
-import de.gupta.clean.crud.template.useCases.operation.create.api.application.CreationOperationRequest;
+import de.gupta.clean.crud.template.useCases.operation.create.api.result.CreateAPIResult;
+import de.gupta.clean.crud.template.useCases.operation.create.api.result.CreateAPIResults;
 import de.gupta.clean.crud.template.useCases.operation.create.application.service.CreateApplicationService;
-import de.gupta.clean.crud.template.useCases.operation.domain.metadata.request.OperationRequestMetadata;
-import de.gupta.clean.crud.template.useCases.operation.domain.metadata.result.CreationOperationResult;
-import de.gupta.clean.crud.template.useCases.operation.domain.metadata.result.CreationOperationResultFactory;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationPayload;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationRequest;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreatedCreationOperationResult;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreationOperationResult;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.result.QuarantinedCreationOperationResult;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.result.RejectedCreationOperationResult;
 
-public abstract class AbstractCreateApplicationServiceFacade<Payload extends CreateOperationPayload, APIModelID, APIModelResponse,
-		CreateAPIResult extends CreationOperationResult<APIModelID, APIModelResponse>, DomainID, DomainModelCreate, DomainModelResponse>
-		implements CreateApplicationServiceFacade<Payload, APIModelID, APIModelResponse, CreateAPIResult>
+public abstract class AbstractCreateApplicationServiceFacade<ApiPayload extends CreateOperationPayload, DomainPayload extends CreateOperationPayload, APIModelResponse, DomainID, DomainModelResponse>
+		implements CreateApplicationServiceFacade<ApiPayload>
 {
-	private final CreateApplicationService<DomainID, DomainModelCreate, DomainModelResponse> service;
-	private final APIToDomainCreateAdapter<Payload, DomainModelCreate> requestAdapter;
+	private final CreateApplicationService<DomainPayload> service;
+	private final APIToDomainCreateAdapter<ApiPayload, DomainPayload> requestAdapter;
 	private final DomainToAPIResponseAdapter<APIModelResponse, DomainID, DomainModelResponse> responseAdapter;
 
 	@Override
-	public CreateAPIResult create(final CreationOperationRequest<Payload> request,
-	                              final OperationRequestMetadata requestMetadata)
+	public CreateAPIResult create(final CreationOperationRequest<ApiPayload> request)
 	{
-		return CreationOperationResultFactory.create(
-				responseAdapter.mapToAPIModelResponse(
-						service.create(
-								requestAdapter.mapToDomainModelCreate(request.payload()), requestMetadata).model()));
+		final var domainRequest = request.withPayload(requestAdapter.mapToDomainModelCreate(request.payload()));
+		return mapResult(service.create(domainRequest));
+	}
+
+	// TODO: NO NO NO! use type safe adapters and use pattern matching switch - we're in java 25!!! and no ? wildcards
+	protected CreateAPIResult mapResult(final CreationOperationResult domainResult)
+	{
+		if (domainResult instanceof CreatedCreationOperationResult<?>(Object model))
+		{
+			@SuppressWarnings("unchecked") final var createdModel =
+					(IdentifiedModel<DomainID, DomainModelResponse>) model;
+			return CreateAPIResults.created(mapToAPIModelResponse(createdModel));
+		}
+		if (domainResult instanceof QuarantinedCreationOperationResult)
+		{
+			return CreateAPIResults.quarantined();
+		}
+		if (domainResult instanceof RejectedCreationOperationResult)
+		{
+			return CreateAPIResults.rejected();
+		}
+		throw new IllegalStateException(
+				"Unsupported creation operation result type: " + domainResult.getClass().getName());
+	}
+
+	protected final APIModelResponse mapToAPIModelResponse(
+			final IdentifiedModel<DomainID, DomainModelResponse> createdModel)
+	{
+		return responseAdapter.mapToAPIModelResponse(createdModel);
 	}
 
 	protected AbstractCreateApplicationServiceFacade(
-			final CreateApplicationService<DomainID, DomainModelCreate, DomainModelResponse> service,
-			final APIToDomainCreateAdapter<Payload, DomainModelCreate> requestAdapter,
+			final CreateApplicationService<DomainPayload> service,
+			final APIToDomainCreateAdapter<ApiPayload, DomainPayload> requestAdapter,
 			final DomainToAPIResponseAdapter<APIModelResponse, DomainID, DomainModelResponse> responseAdapter)
 	{
 		this.service = service;

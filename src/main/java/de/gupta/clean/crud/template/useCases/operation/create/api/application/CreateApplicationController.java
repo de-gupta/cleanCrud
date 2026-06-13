@@ -1,11 +1,10 @@
 package de.gupta.clean.crud.template.useCases.operation.create.api.application;
 
-import de.gupta.clean.crud.template.useCases.operation.domain.metadata.request.OperationRequestMetadata;
-import de.gupta.clean.crud.template.useCases.operation.domain.metadata.result.CreationOperationResult;
+import de.gupta.clean.crud.template.useCases.operation.create.api.result.CreateAPIResult;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationPayload;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationRequest;
 
-public interface CreateApplicationController<Payload extends CreateOperationPayload, APIModelID, APIModelResponse,
-		CreateAPIResult extends CreationOperationResult<APIModelID, APIModelResponse>>
+public interface CreateApplicationController<Payload extends CreateOperationPayload>
 {
-	CreateAPIResult create(final CreationOperationRequest<Payload> request,
-	                       final OperationRequestMetadata requestMetadata);
+	CreateAPIResult create(final CreationOperationRequest<Payload> request);
 }
