@@ -1,9 +1,9 @@
 package de.gupta.clean.crud.template.useCases.operation.create.application.adapter;
 
-import de.gupta.clean.crud.template.useCases.operation.create.application.model.CreateAPIResult;
 import de.gupta.clean.crud.template.useCases.operation.create.application.model.CreateAPIResults;
 import de.gupta.clean.crud.template.useCases.operation.create.application.model.CreateAPIViolation;
 import de.gupta.clean.crud.template.useCases.operation.create.application.model.CreateAPIViolationKind;
+import de.gupta.clean.crud.template.useCases.operation.create.application.model.CreateApplicationResult;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.result.*;
 
 import java.util.Collection;
@@ -13,7 +13,7 @@ public abstract class AbstractCreationOperationResultAdapter<DomainModel, APIMod
 		implements CreationOperationResultAdapter<DomainModel, APIModel>
 {
 	@Override
-	public CreateAPIResult<APIModel> mapToAPIResult(final CreationOperationResult<DomainModel> domainResult)
+	public CreateApplicationResult<APIModel> mapToAPIResult(final CreationOperationResult<DomainModel> domainResult)
 	{
 		return switch (domainResult)
 		{

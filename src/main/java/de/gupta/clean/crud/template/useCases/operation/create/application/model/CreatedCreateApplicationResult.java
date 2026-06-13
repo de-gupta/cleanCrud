@@ -5,12 +5,12 @@ import de.gupta.clean.crud.template.useCases.operation.create.domain.result.Crea
 import java.util.List;
 import java.util.Objects;
 
-public record CreatedCreateAPIResult<Model>(
+public record CreatedCreateApplicationResult<Model>(
 		Model createdModel,
 		List<CreateAPIViolation> toleratedViolations)
-		implements CreateAPIResult<Model>
+		implements CreateApplicationResult<Model>
 {
-	public CreatedCreateAPIResult
+	public CreatedCreateApplicationResult
 	{
 		Objects.requireNonNull(createdModel, "createdModel");
 		toleratedViolations = List.copyOf(Objects.requireNonNull(toleratedViolations, "toleratedViolations"));

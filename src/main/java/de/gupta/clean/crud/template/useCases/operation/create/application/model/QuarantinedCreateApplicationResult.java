@@ -7,13 +7,13 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-public record QuarantinedCreateAPIResult<Model>(
+public record QuarantinedCreateApplicationResult<Model>(
 		Collection<CreateAPIViolation> blockingViolations,
 		Collection<CreateAPIViolation> toleratedViolations,
 		Optional<String> quarantineReference)
-		implements CreateAPIResult<Model>
+		implements CreateApplicationResult<Model>
 {
-	public QuarantinedCreateAPIResult
+	public QuarantinedCreateApplicationResult
 	{
 		blockingViolations = List.copyOf(Objects.requireNonNull(blockingViolations, "blockingViolations"));
 		toleratedViolations = List.copyOf(Objects.requireNonNull(toleratedViolations, "toleratedViolations"));

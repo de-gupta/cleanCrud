@@ -2,7 +2,7 @@ package de.gupta.clean.crud.template.useCases.operation.create.application.facad
 
 import de.gupta.clean.crud.template.useCases.crud.common.adapter.model.APIToDomainCreateAdapter;
 import de.gupta.clean.crud.template.useCases.operation.create.application.adapter.CreationOperationResultAdapter;
-import de.gupta.clean.crud.template.useCases.operation.create.application.model.CreateAPIResult;
+import de.gupta.clean.crud.template.useCases.operation.create.application.model.CreateApplicationResult;
 import de.gupta.clean.crud.template.useCases.operation.create.application.service.CreateApplicationService;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationPayload;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationRequest;
@@ -15,7 +15,7 @@ public abstract class AbstractCreateApplicationServiceFacade<ApiPayload extends 
 	private final CreationOperationResultAdapter<DomainModel, APIModel> resultAdapter;
 
 	@Override
-	public CreateAPIResult<APIModel> create(final CreationOperationRequest<ApiPayload> request)
+	public CreateApplicationResult<APIModel> create(final CreationOperationRequest<ApiPayload> request)
 	{
 		return resultAdapter.mapToAPIResult(
 				service.create(request.withPayload(requestAdapter.mapToDomainModelCreate(request.payload()))));

@@ -1,6 +1,6 @@
 package de.gupta.clean.crud.template.useCases.operation.create.application.facade;
 
-import de.gupta.clean.crud.template.useCases.operation.create.application.model.CreateAPIResult;
+import de.gupta.clean.crud.template.useCases.operation.create.application.model.CreateApplicationResult;
 import de.gupta.clean.crud.template.useCases.operation.create.application.port.in.CreateApplicationController;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationPayload;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationRequest;
@@ -11,7 +11,7 @@ public abstract class AbstractCreateApplicationController<Payload extends Create
 	private final CreateApplicationServiceFacade<Payload, APIModel> serviceFacade;
 
 	@Override
-	public CreateAPIResult<APIModel> create(final CreationOperationRequest<Payload> request)
+	public CreateApplicationResult<APIModel> create(final CreationOperationRequest<Payload> request)
 	{
 		return serviceFacade.create(request);
 	}
