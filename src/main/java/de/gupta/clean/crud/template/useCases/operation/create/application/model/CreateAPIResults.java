@@ -1,4 +1,4 @@
-package de.gupta.clean.crud.template.useCases.operation.create.api.result;
+package de.gupta.clean.crud.template.useCases.operation.create.application.model;
 
 public final class CreateAPIResults
 {

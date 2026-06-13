@@ -1,7 +1,8 @@
-package de.gupta.clean.crud.template.useCases.operation.create.adapter.result;
+package de.gupta.clean.crud.template.useCases.operation.create.adapter.out.result;
 
-import de.gupta.clean.crud.template.useCases.operation.create.api.result.CreateAPIResult;
-import de.gupta.clean.crud.template.useCases.operation.create.api.result.CreateAPIResults;
+import de.gupta.clean.crud.template.useCases.operation.create.application.model.CreateAPIResult;
+import de.gupta.clean.crud.template.useCases.operation.create.application.model.CreateAPIResults;
+import de.gupta.clean.crud.template.useCases.operation.create.application.port.out.CreationOperationResultAdapter;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreatedCreationOperationResult;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreationOperationResult;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.result.QuarantinedCreationOperationResult;

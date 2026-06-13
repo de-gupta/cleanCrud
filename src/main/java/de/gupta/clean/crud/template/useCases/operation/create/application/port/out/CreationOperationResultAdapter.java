@@ -1,6 +1,6 @@
-package de.gupta.clean.crud.template.useCases.operation.create.adapter.result;
+package de.gupta.clean.crud.template.useCases.operation.create.application.port.out;
 
-import de.gupta.clean.crud.template.useCases.operation.create.api.result.CreateAPIResult;
+import de.gupta.clean.crud.template.useCases.operation.create.application.model.CreateAPIResult;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreationOperationResult;
 
 @FunctionalInterface
