@@ -1,11 +1,11 @@
-package de.gupta.clean.crud.template.useCases.operation.create.application.usecase;
+package de.gupta.clean.crud.template.useCases.operation.create.application.facade;
 
 import de.gupta.clean.crud.template.useCases.crud.common.adapter.model.APIToDomainCreateAdapter;
-import de.gupta.clean.crud.template.useCases.operation.create.application.internal.CreateApplicationService;
 import de.gupta.clean.crud.template.useCases.operation.create.application.model.CreateAPIResult;
 import de.gupta.clean.crud.template.useCases.operation.create.application.port.out.CreationOperationResultAdapter;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationPayload;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationRequest;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.service.CreateApplicationService;
 
 public abstract class AbstractCreateApplicationServiceFacade<ApiPayload extends CreateOperationPayload, DomainPayload extends CreateOperationPayload, DomainModel, APIModel>
 		implements CreateApplicationServiceFacade<ApiPayload, APIModel>

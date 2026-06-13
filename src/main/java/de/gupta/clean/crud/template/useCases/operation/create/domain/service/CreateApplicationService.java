@@ -1,4 +1,4 @@
-package de.gupta.clean.crud.template.useCases.operation.create.application.internal;
+package de.gupta.clean.crud.template.useCases.operation.create.domain.service;
 
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationPayload;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationRequest;
