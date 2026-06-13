@@ -1,22 +1,26 @@
 package de.gupta.clean.crud.template.useCases.operation.create.domain.result;
 
+import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationContext;
+
 import java.util.List;
 import java.util.Objects;
 
-public record CreatedCreationOperationResult<Model>(
+public record CreatedCreateOperationResult<Model>(
+		CreationOperationContext context,
 		Model createdModel,
 		List<CreationOperationViolation> toleratedViolations)
-		implements CreationOperationResult<Model>
+		implements CreateOperationResult<Model>
 {
-	public CreatedCreationOperationResult
+	public CreatedCreateOperationResult
 	{
+		Objects.requireNonNull(context, "context");
 		Objects.requireNonNull(createdModel, "createdModel");
 		toleratedViolations = List.copyOf(Objects.requireNonNull(toleratedViolations, "toleratedViolations"));
 	}
 
 	@Override
-	public CreationOperationStatus status()
+	public CreateOperationStatus status()
 	{
-		return CreationOperationStatus.CREATED;
+		return CreateOperationStatus.CREATED;
 	}
 }

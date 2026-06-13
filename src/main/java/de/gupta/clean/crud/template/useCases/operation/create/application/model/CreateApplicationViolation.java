@@ -2,9 +2,9 @@ package de.gupta.clean.crud.template.useCases.operation.create.application.model
 
 import java.util.Objects;
 
-public record CreateAPIViolation(CreateAPIViolationKind kind, String message)
+public record CreateApplicationViolation(CreateApplicationViolationKind kind, String message)
 {
-	public CreateAPIViolation
+	public CreateApplicationViolation
 	{
 		Objects.requireNonNull(kind, "kind");
 		Objects.requireNonNull(message, "message");
