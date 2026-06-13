@@ -2,10 +2,12 @@ package de.gupta.clean.crud.template.useCases.operation.create.application.adapt
 
 import de.gupta.clean.crud.template.useCases.operation.create.application.model.CreateAPIResult;
 import de.gupta.clean.crud.template.useCases.operation.create.application.model.CreateAPIResults;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreatedCreationOperationResult;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreationOperationResult;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.result.QuarantinedCreationOperationResult;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.result.RejectedCreationOperationResult;
+import de.gupta.clean.crud.template.useCases.operation.create.application.model.CreateAPIViolation;
+import de.gupta.clean.crud.template.useCases.operation.create.application.model.CreateAPIViolationKind;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.result.*;
+
+import java.util.Collection;
+import java.util.List;
 
 public abstract class AbstractCreationOperationResultAdapter<DomainModel, APIModel>
 		implements CreationOperationResultAdapter<DomainModel, APIModel>
@@ -15,11 +17,32 @@ public abstract class AbstractCreationOperationResultAdapter<DomainModel, APIMod
 	{
 		return switch (domainResult)
 		{
-			case CreatedCreationOperationResult(var model) -> CreateAPIResults.created(mapCreatedModel(model));
-			case RejectedCreationOperationResult<DomainModel> _ -> CreateAPIResults.rejected();
-			case QuarantinedCreationOperationResult<DomainModel> _ -> CreateAPIResults.quarantined();
+			case CreatedCreationOperationResult(var model, var toleratedViolations) ->
+					CreateAPIResults.created(mapCreatedModel(model), mapViolations(toleratedViolations));
+
+			case RejectedCreationOperationResult(var blockingViolations, var toleratedViolations) ->
+					CreateAPIResults.rejected(mapViolations(blockingViolations), mapViolations(toleratedViolations));
+
+			case QuarantinedCreationOperationResult(
+					var blockingViolations, var toleratedViolations, var quarantineReference
+			) -> CreateAPIResults.quarantined(
+					mapViolations(blockingViolations),
+					mapViolations(toleratedViolations),
+					quarantineReference);
 		};
 	}
 
 	protected abstract APIModel mapCreatedModel(DomainModel domainModel);
+
+	private CreateAPIViolation mapViolation(final CreationOperationViolation violation)
+	{
+		return new CreateAPIViolation(CreateAPIViolationKind.valueOf(violation.kind().name()), violation.message());
+	}
+
+	private List<CreateAPIViolation> mapViolations(final Collection<CreationOperationViolation> violations)
+	{
+		return violations.stream()
+		                 .map(this::mapViolation)
+		                 .toList();
+	}
 }
