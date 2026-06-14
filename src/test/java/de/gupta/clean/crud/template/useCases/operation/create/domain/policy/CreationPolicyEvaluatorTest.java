@@ -19,7 +19,7 @@ class CreationPolicyEvaluatorTest
 	@Test
 	void evaluate_returnsAllowDecision_whenNoBlockingViolationsExist()
 	{
-		var evaluation = CreationPolicyEvaluator.of(List.of((request, plan) -> CreationPolicyEvaluation.allow()))
+		var evaluation = CreationPolicyEvaluator.of(List.of((_, _) -> CreationPolicyEvaluation.allow()))
 		                                        .evaluate(request(), plan());
 
 		assertThat(evaluation.decision()).isEqualTo(CreationDecision.ALLOW);
@@ -33,7 +33,7 @@ class CreationPolicyEvaluatorTest
 	{
 		var tolerated = CreationOperationViolation.invariant("soft invariant warning");
 		var evaluation = CreationPolicyEvaluator.of(List.of(
-														(request, plan) -> CreationPolicyEvaluation.allow(List.of(
+														(_, _) -> CreationPolicyEvaluation.allow(List.of(
 																tolerated))))
 		                                        .evaluate(request(), plan());
 
@@ -48,7 +48,7 @@ class CreationPolicyEvaluatorTest
 		var blocking = CreationOperationViolation.core("core rule failed");
 		var tolerated = CreationOperationViolation.invariant("soft warning");
 		var evaluation = CreationPolicyEvaluator.of(List.of(
-														(request, plan) -> CreationPolicyEvaluation.reject(
+														(_, _) -> CreationPolicyEvaluation.reject(
 																List.of(blocking),
 																List.of(tolerated))))
 		                                        .evaluate(request(), plan());
@@ -65,7 +65,7 @@ class CreationPolicyEvaluatorTest
 		var blocking = CreationOperationViolation.access("manual review needed");
 		var tolerated = CreationOperationViolation.externalConsistency("eventual consistency risk");
 		var evaluation = CreationPolicyEvaluator.of(List.of(
-														(request, plan) -> CreationPolicyEvaluation.quarantine(
+														(_, _) -> CreationPolicyEvaluation.quarantine(
 																List.of(blocking),
 																List.of(tolerated),
 																Optional.of("Q-9"))))

@@ -145,8 +145,8 @@ class AbstractCreateApplicationServiceTest
 	void registry_failsFast_whenDuplicateHandlerRegistrationExists()
 	{
 		assertThatThrownBy(() -> CreationHandlerRegistry.of(List.of(
-				RegisteredCreationHandler.of(TestPayload.class, request -> CreationPlan.of("aggregate.Task", "a")),
-				RegisteredCreationHandler.of(TestPayload.class, request -> CreationPlan.of("aggregate.Task", "b")))))
+				RegisteredCreationHandler.of(TestPayload.class, _ -> CreationPlan.of("aggregate.Task", "a")),
+				RegisteredCreationHandler.of(TestPayload.class, _ -> CreationPlan.of("aggregate.Task", "b")))))
 				.isInstanceOf(IllegalArgumentException.class)
 				.hasMessageContaining(TestPayload.class.getName());
 	}
