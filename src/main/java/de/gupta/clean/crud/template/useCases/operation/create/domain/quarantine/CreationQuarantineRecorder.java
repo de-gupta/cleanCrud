@@ -1,5 +1,7 @@
 package de.gupta.clean.crud.template.useCases.operation.create.domain.quarantine;
 
+import de.gupta.clean.crud.template.useCases.operation.create.domain.attempt.EvaluatedCreationAttempt;
+
 import java.util.Optional;
 
 @FunctionalInterface
@@ -10,5 +12,5 @@ public interface CreationQuarantineRecorder
 		return _ -> Optional.empty();
 	}
 
-	Optional<String> record(CreationQuarantineRecordRequest request);
+	Optional<String> record(EvaluatedCreationAttempt<?, ?> evaluatedAttempt);
 }

@@ -12,6 +12,6 @@ public interface CreationHandlerRegistry<DomainCreateModel>
 		return new DefaultCreationHandlerRegistry<>(handlers);
 	}
 
-	RegisteredCreationHandler<? extends CreateOperationPayload, DomainCreateModel> resolveHandlerFor(
-			Class<? extends CreateOperationPayload> payloadType);
+	<Payload extends CreateOperationPayload> RegisteredCreationHandler<Payload, DomainCreateModel> resolveHandlerFor(
+			Class<Payload> payloadType);
 }

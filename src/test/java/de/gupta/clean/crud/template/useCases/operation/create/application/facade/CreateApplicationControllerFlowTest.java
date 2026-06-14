@@ -5,6 +5,7 @@ import de.gupta.clean.crud.template.useCases.operation.common.domain.model.Opera
 import de.gupta.clean.crud.template.useCases.operation.create.application.adapter.AbstractCreationOperationResultAdapter;
 import de.gupta.clean.crud.template.useCases.operation.create.application.model.CreatedCreateApplicationResult;
 import de.gupta.clean.crud.template.useCases.operation.create.application.service.AbstractCreateApplicationService;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.attempt.PreparedCreationAttempt;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.execution.CreationExecutor;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.handler.CreationHandlerRegistry;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.handler.RegisteredCreationHandler;
@@ -27,15 +28,20 @@ class CreateApplicationControllerFlowTest
 	void create_routesThroughControllerFacadeAndService_withHandlerSelectionAndStableResultShape()
 	{
 		var selectedPayloadName = new AtomicReference<String>();
+		var executedAttempt = new AtomicReference<PreparedCreationAttempt<DomainPayload, String>>();
 		var registry = CreationHandlerRegistry.of(List.of(
 				RegisteredCreationHandler.of(DomainPayload.class, request ->
 				{
 					selectedPayloadName.set(request.payload().name());
 					return CreationPlan.of("aggregate.Task", "domain:" + request.payload().name());
 				})));
-		var evaluator = CreationPolicyEvaluator.of(List.of((_, _) -> CreationPolicyEvaluation.allow(List.of(
+		var evaluator = CreationPolicyEvaluator.of(List.of(_ -> CreationPolicyEvaluation.allow(List.of(
 				CreationOperationViolation.externalConsistency("accepted with warning")))));
-		CreationExecutor<String, String> executor = plan -> "created:" + plan.createModel();
+		CreationExecutor<DomainPayload, String, String> executor = attempt ->
+		{
+			executedAttempt.set(attempt);
+			return "created:" + attempt.plan().createModel();
+		};
 
 		var service = new TestCreateApplicationService(registry, evaluator, executor);
 		var facade = new TestCreateApplicationServiceFacade(service);
@@ -46,6 +52,12 @@ class CreateApplicationControllerFlowTest
 				OperationRequestMetadata.source(OperationSource.AUTHORITATIVE_EXTERNAL_EVENT)));
 
 		assertThat(selectedPayloadName).hasValue("sample");
+		assertThat(executedAttempt).hasValueSatisfying(attempt ->
+		{
+			assertThat(attempt.request().payload()).isEqualTo(new DomainPayload("sample"));
+			assertThat(attempt.context().payloadTypeName()).isEqualTo(DomainPayload.class.getName());
+			assertThat(attempt.plan()).isEqualTo(CreationPlan.of("aggregate.Task", "domain:sample"));
+		});
 		assertThat(result).isInstanceOf(CreatedCreateApplicationResult.class);
 		var created = (CreatedCreateApplicationResult<String>) result;
 		assertThat(created.context().source()).isEqualTo(OperationSource.AUTHORITATIVE_EXTERNAL_EVENT);
@@ -72,7 +84,7 @@ class CreateApplicationControllerFlowTest
 		private TestCreateApplicationService(
 				final CreationHandlerRegistry<String> handlerRegistry,
 				final CreationPolicyEvaluator policyEvaluator,
-				final CreationExecutor<String, String> creationExecutor)
+				final CreationExecutor<DomainPayload, String, String> creationExecutor)
 		{
 			super(handlerRegistry, policyEvaluator, creationExecutor);
 		}

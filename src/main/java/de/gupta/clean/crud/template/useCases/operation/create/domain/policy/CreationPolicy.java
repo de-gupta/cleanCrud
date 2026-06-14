@@ -1,10 +1,9 @@
 package de.gupta.clean.crud.template.useCases.operation.create.domain.policy;
 
-import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationRequest;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.plan.CreationPlan;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.attempt.PreparedCreationAttempt;
 
 @FunctionalInterface
 public interface CreationPolicy
 {
-	CreationPolicyEvaluation evaluate(CreationOperationRequest<?> request, CreationPlan<?> plan);
+	CreationPolicyEvaluation evaluate(PreparedCreationAttempt<?, ?> preparedAttempt);
 }

@@ -2,7 +2,10 @@ package de.gupta.clean.crud.template.useCases.operation.create.domain.policy;
 
 import de.gupta.clean.crud.template.useCases.operation.common.domain.model.OperationRequestMetadata;
 import de.gupta.clean.crud.template.useCases.operation.common.domain.model.OperationSource;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.attempt.PreparedCreationAttempt;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.handler.RegisteredCreationHandler;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationPayload;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationContext;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationRequest;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.plan.CreationPlan;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreationOperationViolation;
@@ -19,8 +22,8 @@ class CreationPolicyEvaluatorTest
 	@Test
 	void evaluate_returnsAllowDecision_whenNoBlockingViolationsExist()
 	{
-		var evaluation = CreationPolicyEvaluator.of(List.of((_, _) -> CreationPolicyEvaluation.allow()))
-		                                        .evaluate(request(), plan());
+		var evaluation = CreationPolicyEvaluator.of(List.of(_ -> CreationPolicyEvaluation.allow()))
+		                                        .evaluate(preparedAttempt());
 
 		assertThat(evaluation.decision()).isEqualTo(CreationDecision.ALLOW);
 		assertThat(evaluation.blockingViolations()).isEmpty();
@@ -28,14 +31,31 @@ class CreationPolicyEvaluatorTest
 		assertThat(evaluation.quarantineReference()).isEmpty();
 	}
 
+	private static PreparedCreationAttempt<TestPayload, String> preparedAttempt()
+	{
+		var request = request();
+		return new PreparedCreationAttempt<>(
+				request,
+				RegisteredCreationHandler.of(TestPayload.class, ignored -> CreationPlan.of("aggregate.Task", "draft")),
+				CreationOperationContext.from(request),
+				CreationPlan.of("aggregate.Task", "draft"));
+	}
+
+	private static CreationOperationRequest<TestPayload> request()
+	{
+		return new CreationOperationRequest<>(
+				new TestPayload("draft"),
+				OperationRequestMetadata.source(OperationSource.USER_INTENT));
+	}
+
 	@Test
 	void evaluate_returnsAllowDecision_whenOnlyToleratedViolationsExist()
 	{
 		var tolerated = CreationOperationViolation.invariant("soft invariant warning");
 		var evaluation = CreationPolicyEvaluator.of(List.of(
-														(_, _) -> CreationPolicyEvaluation.allow(List.of(
+														_ -> CreationPolicyEvaluation.allow(List.of(
 																tolerated))))
-		                                        .evaluate(request(), plan());
+		                                        .evaluate(preparedAttempt());
 
 		assertThat(evaluation.decision()).isEqualTo(CreationDecision.ALLOW);
 		assertThat(evaluation.blockingViolations()).isEmpty();
@@ -48,33 +68,15 @@ class CreationPolicyEvaluatorTest
 		var blocking = CreationOperationViolation.core("core rule failed");
 		var tolerated = CreationOperationViolation.invariant("soft warning");
 		var evaluation = CreationPolicyEvaluator.of(List.of(
-														(_, _) -> CreationPolicyEvaluation.reject(
+														_ -> CreationPolicyEvaluation.reject(
 																List.of(blocking),
 																List.of(tolerated))))
-		                                        .evaluate(request(), plan());
+		                                        .evaluate(preparedAttempt());
 
 		assertThat(evaluation.decision()).isEqualTo(CreationDecision.REJECT);
 		assertThat(evaluation.blockingViolations()).containsExactly(blocking);
 		assertThat(evaluation.toleratedViolations()).containsExactly(tolerated);
 		assertThat(evaluation.quarantineReference()).isEmpty();
-	}
-
-	@Test
-	void evaluate_returnsQuarantineDecision_whenQuarantineViolationsExist()
-	{
-		var blocking = CreationOperationViolation.access("manual review needed");
-		var tolerated = CreationOperationViolation.externalConsistency("eventual consistency risk");
-		var evaluation = CreationPolicyEvaluator.of(List.of(
-														(_, _) -> CreationPolicyEvaluation.quarantine(
-																List.of(blocking),
-																List.of(tolerated),
-																Optional.of("Q-9"))))
-		                                        .evaluate(request(), plan());
-
-		assertThat(evaluation.decision()).isEqualTo(CreationDecision.QUARANTINE);
-		assertThat(evaluation.blockingViolations()).containsExactly(blocking);
-		assertThat(evaluation.toleratedViolations()).containsExactly(tolerated);
-		assertThat(evaluation.quarantineReference()).contains("Q-9");
 	}
 
 	@Test
@@ -89,16 +91,22 @@ class CreationPolicyEvaluatorTest
 				.hasMessageContaining("ALLOW decisions");
 	}
 
-	private static CreationOperationRequest<TestPayload> request()
+	@Test
+	void evaluate_returnsQuarantineDecision_whenQuarantineViolationsExist()
 	{
-		return new CreationOperationRequest<>(
-				new TestPayload("draft"),
-				OperationRequestMetadata.source(OperationSource.USER_INTENT));
-	}
+		var blocking = CreationOperationViolation.access("manual review needed");
+		var tolerated = CreationOperationViolation.externalConsistency("eventual consistency risk");
+		var evaluation = CreationPolicyEvaluator.of(List.of(
+														_ -> CreationPolicyEvaluation.quarantine(
+																List.of(blocking),
+																List.of(tolerated),
+																Optional.of("Q-9"))))
+		                                        .evaluate(preparedAttempt());
 
-	private static CreationPlan<String> plan()
-	{
-		return CreationPlan.of("aggregate.Task", "draft");
+		assertThat(evaluation.decision()).isEqualTo(CreationDecision.QUARANTINE);
+		assertThat(evaluation.blockingViolations()).containsExactly(blocking);
+		assertThat(evaluation.toleratedViolations()).containsExactly(tolerated);
+		assertThat(evaluation.quarantineReference()).contains("Q-9");
 	}
 
 	private record TestPayload(String name) implements CreateOperationPayload

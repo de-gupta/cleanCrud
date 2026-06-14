@@ -4,6 +4,8 @@ import de.gupta.clean.crud.template.useCases.operation.common.domain.model.Opera
 import de.gupta.clean.crud.template.useCases.operation.common.domain.model.OperationCorrelationId;
 import de.gupta.clean.crud.template.useCases.operation.common.domain.model.OperationRequestMetadata;
 import de.gupta.clean.crud.template.useCases.operation.common.domain.model.OperationSource;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.attempt.EvaluatedCreationAttempt;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.attempt.PreparedCreationAttempt;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.execution.CreationExecutor;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.handler.CreationHandlerRegistry;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.handler.RegisteredCreationHandler;
@@ -12,7 +14,6 @@ import de.gupta.clean.crud.template.useCases.operation.create.domain.model.Creat
 import de.gupta.clean.crud.template.useCases.operation.create.domain.plan.CreationPlan;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.policy.CreationPolicyEvaluation;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.policy.CreationPolicyEvaluator;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.quarantine.CreationQuarantineRecordRequest;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.quarantine.CreationQuarantineRecorder;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreatedCreateOperationResult;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreationOperationViolation;
@@ -34,14 +35,14 @@ class AbstractCreateApplicationServiceTest
 	void create_returnsCreatedResult_whenDecisionAllows()
 	{
 		var tolerated = CreationOperationViolation.externalConsistency("accepted with warning");
-		var executedPlans = new ArrayList<CreationPlan<String>>();
+		var executedAttempts = new ArrayList<PreparedCreationAttempt<TestPayload, String>>();
 		var service = new TestCreateApplicationService(
 				registryFor(request -> CreationPlan.of("aggregate.Task", request.payload().name())),
-				(_, _) -> CreationPolicyEvaluation.allow(List.of(tolerated)),
-				plan ->
+				_ -> CreationPolicyEvaluation.allow(List.of(tolerated)),
+				attempt ->
 				{
-					executedPlans.add(plan);
-					return "created:" + plan.createModel();
+					executedAttempts.add(attempt);
+					return "created:" + attempt.plan().createModel();
 				});
 
 		var result = service.create(request(new TestPayload("draft")));
@@ -54,7 +55,12 @@ class AbstractCreateApplicationServiceTest
 		assertThat(created.context().payloadTypeName()).isEqualTo(TestPayload.class.getName());
 		assertThat(created.context().correlationId()).contains("corr-1");
 		assertThat(created.context().causationId()).contains("cause-1");
-		assertThat(executedPlans).containsExactly(CreationPlan.of("aggregate.Task", "draft"));
+		assertThat(executedAttempts).singleElement().satisfies(attempt ->
+		{
+			assertThat(attempt.request().payload()).isEqualTo(new TestPayload("draft"));
+			assertThat(attempt.context().payloadTypeName()).isEqualTo(TestPayload.class.getName());
+			assertThat(attempt.plan()).isEqualTo(CreationPlan.of("aggregate.Task", "draft"));
+		});
 	}
 
 	@Test
@@ -65,11 +71,11 @@ class AbstractCreateApplicationServiceTest
 		var executorCalls = new AtomicInteger();
 		var service = new TestCreateApplicationService(
 				registryFor(request -> CreationPlan.of("aggregate.Task", request.payload().name())),
-				(_, _) -> CreationPolicyEvaluation.reject(List.of(blocking), List.of(tolerated)),
-				plan ->
+				_ -> CreationPolicyEvaluation.reject(List.of(blocking), List.of(tolerated)),
+				attempt ->
 				{
 					executorCalls.incrementAndGet();
-					return "created:" + plan.createModel();
+					return "created:" + attempt.plan().createModel();
 				});
 
 		var result = service.create(request(new TestPayload("draft")));
@@ -90,8 +96,8 @@ class AbstractCreateApplicationServiceTest
 		var recorder = new TrackingQuarantineRecorder(Optional.empty());
 		var service = new TestCreateApplicationService(
 				registryFor(request -> CreationPlan.of("aggregate.Task", request.payload().name())),
-				(_, _) -> CreationPolicyEvaluation.quarantine(List.of(blocking), List.of(tolerated)),
-				plan -> "created:" + plan.createModel(),
+				_ -> CreationPolicyEvaluation.quarantine(List.of(blocking), List.of(tolerated)),
+				attempt -> "created:" + attempt.plan().createModel(),
 				recorder);
 
 		var result = service.create(request(new TestPayload("draft")));
@@ -101,7 +107,7 @@ class AbstractCreateApplicationServiceTest
 		assertThat(quarantined.blockingViolations()).containsExactly(blocking);
 		assertThat(quarantined.toleratedViolations()).containsExactly(tolerated);
 		assertThat(quarantined.quarantineReference()).isEmpty();
-		assertThat(recorder.recordedRequests).singleElement().satisfies(recorded ->
+		assertThat(recorder.recordedAttempts).singleElement().satisfies(recorded ->
 		{
 			assertThat(recorded.aggregateKey()).isEqualTo("aggregate.Task");
 			assertThat(recorded.context().payloadTypeName()).isEqualTo(TestPayload.class.getName());
@@ -116,8 +122,8 @@ class AbstractCreateApplicationServiceTest
 		var recorder = new TrackingQuarantineRecorder(Optional.of("Q-42"));
 		var service = new TestCreateApplicationService(
 				registryFor(request -> CreationPlan.of("aggregate.Task", request.payload().name())),
-				(_, _) -> CreationPolicyEvaluation.quarantine(List.of(blocking)),
-				plan -> "created:" + plan.createModel(),
+				_ -> CreationPolicyEvaluation.quarantine(List.of(blocking)),
+				attempt -> "created:" + attempt.plan().createModel(),
 				recorder);
 
 		var result = service.create(request(new TestPayload("draft")));
@@ -125,7 +131,26 @@ class AbstractCreateApplicationServiceTest
 		assertThat(result).isInstanceOf(QuarantinedCreateOperationResult.class);
 		var quarantined = (QuarantinedCreateOperationResult<String>) result;
 		assertThat(quarantined.quarantineReference()).contains("Q-42");
-		assertThat(recorder.recordedRequests).hasSize(1);
+		assertThat(recorder.recordedAttempts).hasSize(1);
+	}
+
+	@Test
+	void create_preservesPreexistingQuarantineReference_withoutCallingRecorder()
+	{
+		var blocking = CreationOperationViolation.access("manual review needed");
+		var recorder = new TrackingQuarantineRecorder(Optional.of("Q-recorder"));
+		var service = new TestCreateApplicationService(
+				registryFor(request -> CreationPlan.of("aggregate.Task", request.payload().name())),
+				_ -> CreationPolicyEvaluation.quarantine(List.of(blocking), List.of(), Optional.of("Q-existing")),
+				attempt -> "created:" + attempt.plan().createModel(),
+				recorder);
+
+		var result = service.create(request(new TestPayload("draft")));
+
+		assertThat(result).isInstanceOf(QuarantinedCreateOperationResult.class);
+		var quarantined = (QuarantinedCreateOperationResult<String>) result;
+		assertThat(quarantined.quarantineReference()).contains("Q-existing");
+		assertThat(recorder.recordedAttempts).isEmpty();
 	}
 
 	@Test
@@ -134,7 +159,7 @@ class AbstractCreateApplicationServiceTest
 		var service = new TestCreateApplicationService(
 				CreationHandlerRegistry.of(List.of()),
 				CreationPolicyEvaluator.allowing(),
-				plan -> "created:" + plan.createModel());
+				attempt -> "created:" + attempt.plan().createModel());
 
 		assertThatThrownBy(() -> service.create(request(new TestPayload("draft"))))
 				.isInstanceOf(IllegalStateException.class)
@@ -177,7 +202,7 @@ class AbstractCreateApplicationServiceTest
 		private TestCreateApplicationService(
 				final CreationHandlerRegistry<String> handlerRegistry,
 				final CreationPolicyEvaluator policyEvaluator,
-				final CreationExecutor<String, String> creationExecutor)
+				final CreationExecutor<TestPayload, String, String> creationExecutor)
 		{
 			super(handlerRegistry, policyEvaluator, creationExecutor);
 		}
@@ -185,7 +210,7 @@ class AbstractCreateApplicationServiceTest
 		private TestCreateApplicationService(
 				final CreationHandlerRegistry<String> handlerRegistry,
 				final CreationPolicyEvaluator policyEvaluator,
-				final CreationExecutor<String, String> creationExecutor,
+				final CreationExecutor<TestPayload, String, String> creationExecutor,
 				final CreationQuarantineRecorder quarantineRecorder)
 		{
 			super(handlerRegistry, policyEvaluator, creationExecutor, quarantineRecorder);
@@ -195,12 +220,12 @@ class AbstractCreateApplicationServiceTest
 	private static final class TrackingQuarantineRecorder implements CreationQuarantineRecorder
 	{
 		private final Optional<String> persistedReference;
-		private final List<CreationQuarantineRecordRequest> recordedRequests = new ArrayList<>();
+		private final List<EvaluatedCreationAttempt<?, ?>> recordedAttempts = new ArrayList<>();
 
 		@Override
-		public Optional<String> record(final CreationQuarantineRecordRequest request)
+		public Optional<String> record(final EvaluatedCreationAttempt<?, ?> evaluatedAttempt)
 		{
-			recordedRequests.add(request);
+			recordedAttempts.add(evaluatedAttempt);
 			return persistedReference;
 		}
 

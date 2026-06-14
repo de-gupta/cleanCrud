@@ -1,17 +1,18 @@
 package de.gupta.clean.crud.template.useCases.operation.create.application.service;
 
+import de.gupta.clean.crud.template.useCases.operation.create.domain.attempt.EvaluatedCreationAttempt;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.attempt.PreparedCreationAttempt;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.execution.CreationExecutor;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.handler.CreationHandlerRegistry;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationPayload;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationContext;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationRequest;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.policy.CreationPolicyEvaluation;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.policy.CreationPolicyEvaluator;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.quarantine.CreationQuarantineRecordRequest;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.quarantine.CreationQuarantineRecorder;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreateOperationResult;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreationOperationResults;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -20,63 +21,88 @@ public abstract class AbstractCreateApplicationService<Payload extends CreateOpe
 {
 	private final CreationHandlerRegistry<DomainCreateModel> handlerRegistry;
 	private final CreationPolicyEvaluator policyEvaluator;
-	private final CreationExecutor<DomainCreateModel, DomainModel> creationExecutor;
+	private final CreationExecutor<Payload, DomainCreateModel, DomainModel> creationExecutor;
 	private final CreationQuarantineRecorder quarantineRecorder;
 
 	@Override
 	public CreateOperationResult<DomainModel> create(final CreationOperationRequest<Payload> request)
 	{
-		var context = CreationOperationContext.from(request);
-		var handler = handlerRegistry.resolveHandlerFor(request.payload().getClass());
-		var plan = handler.createPlan(request);
-		var evaluation = policyEvaluator.evaluate(request, plan);
+		return resultFor(evaluateAttempt(prepareAttempt(request)));
+	}
 
-		return switch (evaluation.decision())
+	private CreateOperationResult<DomainModel> resultFor(
+			final EvaluatedCreationAttempt<Payload, DomainCreateModel> evaluatedAttempt)
+	{
+		return switch (evaluatedAttempt.decision())
 		{
-			case ALLOW -> CreationOperationResults.created(
-					context,
-					creationExecutor.create(plan),
-					evaluation.toleratedViolations().stream().toList());
-			case REJECT -> CreationOperationResults.rejected(
-					context,
-					evaluation.blockingViolations().stream().toList(),
-					evaluation.toleratedViolations().stream().toList());
-			case QUARANTINE -> CreationOperationResults.quarantined(
-					context,
-					evaluation.blockingViolations().stream().toList(),
-					evaluation.toleratedViolations().stream().toList(),
-					recordQuarantine(context, request, plan.aggregateKey(), evaluation));
+			case ALLOW -> createAllowedResult(evaluatedAttempt);
+			case REJECT -> createRejectedResult(evaluatedAttempt);
+			case QUARANTINE -> createQuarantinedResult(evaluatedAttempt);
 		};
 	}
 
-
-	private Optional<String> recordQuarantine(
-			final CreationOperationContext context,
-			final CreationOperationRequest<?> request,
-			final String aggregateKey,
-			final CreationPolicyEvaluation evaluation)
+	private EvaluatedCreationAttempt<Payload, DomainCreateModel> evaluateAttempt(
+			final PreparedCreationAttempt<Payload, DomainCreateModel> preparedAttempt)
 	{
-		return evaluation.quarantineReference().or(() -> quarantineRecorder.record(new CreationQuarantineRecordRequest(
-				context,
-				aggregateKey,
-				request,
-				evaluation.blockingViolations(),
-				evaluation.toleratedViolations())));
+		return EvaluatedCreationAttempt.of(preparedAttempt, policyEvaluator.evaluate(preparedAttempt));
 	}
 
-	protected AbstractCreateApplicationService(
-			final CreationHandlerRegistry<DomainCreateModel> handlerRegistry,
-			final CreationPolicyEvaluator policyEvaluator,
-			final CreationExecutor<DomainCreateModel, DomainModel> creationExecutor)
+	private PreparedCreationAttempt<Payload, DomainCreateModel> prepareAttempt(
+			final CreationOperationRequest<Payload> request)
+	{
+		var handler = handlerRegistry.resolveHandlerFor(payloadTypeOf(request));
+		var context = CreationOperationContext.from(request);
+		var plan = handler.createPlan(request);
+		return new PreparedCreationAttempt<>(request, handler, context, plan);
+	}
+
+	private CreateOperationResult<DomainModel> createAllowedResult(
+			final EvaluatedCreationAttempt<Payload, DomainCreateModel> evaluatedAttempt)
+	{
+		return CreationOperationResults.created(evaluatedAttempt.context(),
+				creationExecutor.create(evaluatedAttempt.preparedAttempt()),
+				List.copyOf(evaluatedAttempt.toleratedViolations()));
+	}
+
+	private CreateOperationResult<DomainModel> createRejectedResult(
+			final EvaluatedCreationAttempt<Payload, DomainCreateModel> evaluatedAttempt)
+	{
+		return CreationOperationResults.rejected(evaluatedAttempt.context(),
+				List.copyOf(evaluatedAttempt.blockingViolations()),
+				List.copyOf(evaluatedAttempt.toleratedViolations()));
+	}
+
+	private CreateOperationResult<DomainModel> createQuarantinedResult(
+			final EvaluatedCreationAttempt<Payload, DomainCreateModel> evaluatedAttempt)
+	{
+		return CreationOperationResults.quarantined(evaluatedAttempt.context(),
+				List.copyOf(evaluatedAttempt.blockingViolations()), List.copyOf(evaluatedAttempt.toleratedViolations()),
+				recordQuarantine(evaluatedAttempt));
+	}
+
+	@SuppressWarnings("unchecked")
+	private Class<Payload> payloadTypeOf(final CreationOperationRequest<Payload> request)
+	{
+		return (Class<Payload>) request.payload().getClass();
+	}
+
+	private Optional<String> recordQuarantine(
+			final EvaluatedCreationAttempt<Payload, DomainCreateModel> evaluatedAttempt)
+	{
+		return evaluatedAttempt.quarantineReference().or(() -> quarantineRecorder.record(evaluatedAttempt));
+	}
+
+	protected AbstractCreateApplicationService(final CreationHandlerRegistry<DomainCreateModel> handlerRegistry,
+	                                           final CreationPolicyEvaluator policyEvaluator,
+	                                           final CreationExecutor<Payload, DomainCreateModel, DomainModel> creationExecutor)
 	{
 		this(handlerRegistry, policyEvaluator, creationExecutor, CreationQuarantineRecorder.noop());
 	}
 
-	protected AbstractCreateApplicationService(
-			final CreationHandlerRegistry<DomainCreateModel> handlerRegistry,
-			final CreationPolicyEvaluator policyEvaluator,
-			final CreationExecutor<DomainCreateModel, DomainModel> creationExecutor,
-			final CreationQuarantineRecorder quarantineRecorder)
+	protected AbstractCreateApplicationService(final CreationHandlerRegistry<DomainCreateModel> handlerRegistry,
+	                                           final CreationPolicyEvaluator policyEvaluator,
+	                                           final CreationExecutor<Payload, DomainCreateModel, DomainModel> creationExecutor,
+	                                           final CreationQuarantineRecorder quarantineRecorder)
 	{
 		this.handlerRegistry = Objects.requireNonNull(handlerRegistry, "handlerRegistry");
 		this.policyEvaluator = Objects.requireNonNull(policyEvaluator, "policyEvaluator");

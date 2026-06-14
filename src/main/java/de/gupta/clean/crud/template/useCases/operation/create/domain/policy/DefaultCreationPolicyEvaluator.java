@@ -1,7 +1,6 @@
 package de.gupta.clean.crud.template.useCases.operation.create.domain.policy;
 
-import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationRequest;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.plan.CreationPlan;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.attempt.PreparedCreationAttempt;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreationOperationViolation;
 
 import java.util.*;
@@ -11,10 +10,9 @@ final class DefaultCreationPolicyEvaluator implements CreationPolicyEvaluator
 	private final List<CreationPolicy> policies;
 
 	@Override
-	public CreationPolicyEvaluation evaluate(final CreationOperationRequest<?> request, final CreationPlan<?> plan)
+	public CreationPolicyEvaluation evaluate(final PreparedCreationAttempt<?, ?> preparedAttempt)
 	{
-		Objects.requireNonNull(request, "request");
-		Objects.requireNonNull(plan, "plan");
+		Objects.requireNonNull(preparedAttempt, "preparedAttempt");
 
 		var blockingViolations = new ArrayList<CreationOperationViolation>();
 		var toleratedViolations = new ArrayList<CreationOperationViolation>();
@@ -23,7 +21,7 @@ final class DefaultCreationPolicyEvaluator implements CreationPolicyEvaluator
 
 		for (var policy : policies)
 		{
-			var evaluation = policy.evaluate(request, plan);
+			var evaluation = policy.evaluate(preparedAttempt);
 			blockingViolations.addAll(evaluation.blockingViolations());
 			toleratedViolations.addAll(evaluation.toleratedViolations());
 
