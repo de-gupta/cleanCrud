@@ -1,5 +1,7 @@
 package de.gupta.clean.crud.template.useCases.operation.create.domain.model;
 
+import de.gupta.clean.crud.template.useCases.operation.common.domain.model.OperationCausationId;
+import de.gupta.clean.crud.template.useCases.operation.common.domain.model.OperationCorrelationId;
 import de.gupta.clean.crud.template.useCases.operation.common.domain.model.OperationRequestMetadata;
 import de.gupta.clean.crud.template.useCases.operation.common.domain.model.OperationSource;
 
@@ -24,8 +26,8 @@ public record CreationOperationContext(
 		return new CreationOperationContext(
 				metadata.source(),
 				payloadType.getName(),
-				metadata.correlationId().map(value -> value.value()),
-				metadata.causationId().map(value -> value.value()));
+				metadata.correlationId().map(OperationCorrelationId::value),
+				metadata.causationId().map(OperationCausationId::value));
 	}
 
 	public CreationOperationContext

@@ -1,0 +1,95 @@
+package de.gupta.clean.crud.template.useCases.operation.create.application.adapter;
+
+import de.gupta.clean.crud.template.useCases.operation.common.domain.model.OperationSource;
+import de.gupta.clean.crud.template.useCases.operation.create.application.model.*;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationContext;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreationOperationResults;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreationOperationViolation;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class AbstractCreationOperationResultAdapterTest
+{
+	private final TestResultAdapter adapter = new TestResultAdapter();
+
+	@Test
+	void mapToApiResult_mapsCreatedDomainResult()
+	{
+		var tolerated = CreationOperationViolation.externalConsistency("accepted with warning");
+		var result = adapter.mapToAPIResult(CreationOperationResults.created(context(), "domain-created", List.of(
+				tolerated)));
+
+		assertThat(result).isInstanceOf(CreatedCreateApplicationResult.class);
+		var created = (CreatedCreateApplicationResult<String>) result;
+		assertThat(created.context().source()).isEqualTo(OperationSource.USER_INTENT);
+		assertThat(created.context().payloadTypeName()).isEqualTo("payload.Type");
+		assertThat(created.context().correlationId()).contains("corr-1");
+		assertThat(created.context().causationId()).contains("cause-1");
+		assertThat(created.createdModel()).isEqualTo("api:domain-created");
+		assertThat(created.toleratedViolations()).containsExactly(new CreateApplicationViolation(
+				CreateApplicationViolationKind.EXTERNAL_CONSISTENCY,
+				"accepted with warning"));
+	}
+
+	@Test
+	void mapToApiResult_mapsRejectedDomainResult_withViolationsAndContextPreserved()
+	{
+		var blocking = CreationOperationViolation.core("core rule failed");
+		var tolerated = CreationOperationViolation.invariant("soft warning");
+		var result = adapter.mapToAPIResult(CreationOperationResults.rejected(
+				context(),
+				List.of(blocking),
+				List.of(tolerated)));
+
+		assertThat(result).isInstanceOf(RejectedCreateApplicationResult.class);
+		var rejected = (RejectedCreateApplicationResult<String>) result;
+		assertThat(rejected.context().payloadTypeName()).isEqualTo("payload.Type");
+		assertThat(rejected.blockingViolations()).containsExactly(new CreateApplicationViolation(
+				CreateApplicationViolationKind.CORE,
+				"core rule failed"));
+		assertThat(rejected.toleratedViolations()).containsExactly(new CreateApplicationViolation(
+				CreateApplicationViolationKind.INVARIANT,
+				"soft warning"));
+	}
+
+	@Test
+	void mapToApiResult_mapsQuarantinedDomainResult_withReferenceAndContextPreserved()
+	{
+		var blocking = CreationOperationViolation.access("manual review needed");
+		var result = adapter.mapToAPIResult(CreationOperationResults.quarantined(
+				context(),
+				List.of(blocking),
+				List.of(),
+				Optional.of("Q-17")));
+
+		assertThat(result).isInstanceOf(QuarantinedCreateApplicationResult.class);
+		var quarantined = (QuarantinedCreateApplicationResult<String>) result;
+		assertThat(quarantined.context().payloadTypeName()).isEqualTo("payload.Type");
+		assertThat(quarantined.blockingViolations()).containsExactly(new CreateApplicationViolation(
+				CreateApplicationViolationKind.ACCESS,
+				"manual review needed"));
+		assertThat(quarantined.quarantineReference()).contains("Q-17");
+	}
+
+	private static CreationOperationContext context()
+	{
+		return new CreationOperationContext(
+				OperationSource.USER_INTENT,
+				"payload.Type",
+				Optional.of("corr-1"),
+				Optional.of("cause-1"));
+	}
+
+	private static final class TestResultAdapter extends AbstractCreationOperationResultAdapter<String, String>
+	{
+		@Override
+		protected String mapCreatedModel(final String domainModel)
+		{
+			return "api:" + domainModel;
+		}
+	}
+}
