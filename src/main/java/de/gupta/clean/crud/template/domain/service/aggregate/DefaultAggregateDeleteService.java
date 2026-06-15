@@ -34,18 +34,15 @@ public final class DefaultAggregateDeleteService<DomainId, DomainModel, DomainMo
 
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
 	AggregateDeleteService<DomainId, DomainModel> create(
-			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
-					DomainModelResponse> definition,
+			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse> definition,
 			final AggregateLifecycle engine)
 	{
 		return new DefaultAggregateDeleteService<>(definition, engine);
 	}
 
 	@Override
-	public void deleteById(
-			final DomainId id,
-			final Function<Collection<PostCommitMutationContext<DomainId, DomainModel>>,
-					Collection<DurableProcessStartRequest<?, ?>>> durableProcessStartRequests)
+	public void deleteById(final DomainId id,
+	                       final Function<Collection<PostCommitMutationContext<DomainId, DomainModel>>, Collection<DurableProcessStartRequest<?, ?>>> durableProcessStartRequests)
 	{
 		var relationships = definitionGuard.satelliteRelationships(definition);
 		engine.execute(
