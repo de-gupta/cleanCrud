@@ -18,6 +18,7 @@ import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNot
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.relationship.LifecycleSemantics;
 import de.gupta.clean.crud.template.domain.relationship.ReconciliationStrategy;
+import de.gupta.clean.crud.template.domain.service.aggregate.DefaultAggregateSaveService;
 import de.gupta.clean.crud.template.domain.service.equality.KeyBasedDuplicateDefinition;
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
 import de.gupta.clean.crud.template.infrastructure.persistence.transaction.PersistenceTransactionRunner;
@@ -1244,9 +1245,7 @@ final class AggregateBuilderDslTest
 						StandardMasterResponse> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
-					AggregateServiceSupportFactory.validationSupport(),
-					AggregateServiceSupportFactory.saveCoordinator());
+			super(definition, DefaultAggregateSaveService.create(definition, engine));
 		}
 	}
 
@@ -1288,9 +1287,7 @@ final class AggregateBuilderDslTest
 						StandardReferenceMasterPatch, StandardMasterResponse> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
-					AggregateServiceSupportFactory.validationSupport(),
-					AggregateServiceSupportFactory.saveCoordinator());
+			super(definition, DefaultAggregateSaveService.create(definition, engine));
 		}
 	}
 
@@ -1316,9 +1313,7 @@ final class AggregateBuilderDslTest
 				final AggregateDefinition<String, MasterModel, MasterCreate, MasterPatch, MasterResponse> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
-					AggregateServiceSupportFactory.validationSupport(),
-					AggregateServiceSupportFactory.saveCoordinator());
+			super(definition, DefaultAggregateSaveService.create(definition, engine));
 		}
 	}
 

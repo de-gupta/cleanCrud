@@ -12,6 +12,7 @@ import de.gupta.clean.crud.template.domain.mapping.save.DomainModelBuilder;
 import de.gupta.clean.crud.template.domain.mapping.update.DomainModelPatcher;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
+import de.gupta.clean.crud.template.domain.service.aggregate.DefaultAggregateSaveService;
 import de.gupta.clean.crud.template.domain.service.crud.policy.DeletionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.InsertionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.PatchPolicy;
@@ -230,9 +231,7 @@ class AbstractCrudServicesEngineBackedTest
 				final AggregateDefinition<String, String, String, String, String> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
-					AggregateServiceSupportFactory.validationSupport(),
-					AggregateServiceSupportFactory.saveCoordinator());
+			super(definition, DefaultAggregateSaveService.create(definition, engine));
 		}
 	}
 
