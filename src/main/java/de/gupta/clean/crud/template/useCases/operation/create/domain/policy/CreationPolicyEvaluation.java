@@ -46,13 +46,6 @@ public record CreationPolicyEvaluation(
 
 	public static CreationPolicyEvaluation quarantine(
 			final Collection<CreationOperationViolation> blockingViolations,
-			final Collection<CreationOperationViolation> toleratedViolations)
-	{
-		return quarantine(blockingViolations, toleratedViolations, Optional.empty());
-	}
-
-	public static CreationPolicyEvaluation quarantine(
-			final Collection<CreationOperationViolation> blockingViolations,
 			final Collection<CreationOperationViolation> toleratedViolations,
 			final Optional<String> quarantineReference)
 	{
@@ -61,6 +54,13 @@ public record CreationPolicyEvaluation(
 				blockingViolations,
 				toleratedViolations,
 				quarantineReference);
+	}
+
+	public static CreationPolicyEvaluation quarantine(
+			final Collection<CreationOperationViolation> blockingViolations,
+			final Collection<CreationOperationViolation> toleratedViolations)
+	{
+		return quarantine(blockingViolations, toleratedViolations, Optional.empty());
 	}
 
 	public CreationPolicyEvaluation

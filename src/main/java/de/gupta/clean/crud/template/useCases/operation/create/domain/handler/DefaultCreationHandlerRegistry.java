@@ -42,10 +42,10 @@ final class DefaultCreationHandlerRegistry<DomainModel> implements CreationHandl
 	}
 
 	@SuppressWarnings("unchecked")
-	private <Payload extends CreateOperationPayload> RegisteredCreationHandler<Payload, DomainModel> castHandler(
+	private <DomainCreatePayload extends CreateOperationPayload> RegisteredCreationHandler<DomainCreatePayload, DomainModel> castHandler(
 			final RegisteredCreationHandler<? extends CreateOperationPayload, DomainModel> handler)
 	{
-		return (RegisteredCreationHandler<Payload, DomainModel>) handler;
+		return (RegisteredCreationHandler<DomainCreatePayload, DomainModel>) handler;
 	}
 
 	private String handlerTypeNames(
