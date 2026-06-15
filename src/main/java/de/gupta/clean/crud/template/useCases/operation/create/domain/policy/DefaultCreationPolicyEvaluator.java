@@ -5,12 +5,18 @@ import de.gupta.clean.crud.template.useCases.operation.create.domain.result.Crea
 
 import java.util.*;
 
-final class DefaultCreationPolicyEvaluator implements CreationPolicyEvaluator
+final class DefaultCreationPolicyEvaluator<DomainModel> implements CreationPolicyEvaluator<DomainModel>
 {
-	private final List<CreationPolicy> policies;
+	private final List<CreationPolicy<DomainModel>> policies;
+
+	static <DomainModel> CreationPolicyEvaluator<DomainModel> with(
+			final Collection<? extends CreationPolicy<DomainModel>> policies)
+	{
+		return new DefaultCreationPolicyEvaluator<>(policies);
+	}
 
 	@Override
-	public CreationPolicyEvaluation evaluate(final PreparedCreationAttempt<?, ?> preparedAttempt)
+	public CreationPolicyEvaluation evaluate(final PreparedCreationAttempt<?, DomainModel> preparedAttempt)
 	{
 		Objects.requireNonNull(preparedAttempt, "preparedAttempt");
 
@@ -59,7 +65,7 @@ final class DefaultCreationPolicyEvaluator implements CreationPolicyEvaluator
 		};
 	}
 
-	DefaultCreationPolicyEvaluator(final Collection<? extends CreationPolicy> policies)
+	private DefaultCreationPolicyEvaluator(final Collection<? extends CreationPolicy<DomainModel>> policies)
 	{
 		Objects.requireNonNull(policies, "policies");
 		this.policies = List.copyOf(policies);

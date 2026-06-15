@@ -5,17 +5,18 @@ import de.gupta.clean.crud.template.useCases.operation.create.domain.attempt.Pre
 import java.util.Collection;
 
 @FunctionalInterface
-public interface CreationPolicyEvaluator
+public interface CreationPolicyEvaluator<DomainModel>
 {
-	static CreationPolicyEvaluator allowing()
+	static <DomainModel> CreationPolicyEvaluator<DomainModel> allowing()
 	{
 		return _ -> CreationPolicyEvaluation.allow();
 	}
 
-	static CreationPolicyEvaluator of(final Collection<? extends CreationPolicy> policies)
+	static <DomainModel> CreationPolicyEvaluator<DomainModel> of(
+			final Collection<? extends CreationPolicy<DomainModel>> policies)
 	{
-		return new DefaultCreationPolicyEvaluator(policies);
+		return DefaultCreationPolicyEvaluator.with(policies);
 	}
 
-	CreationPolicyEvaluation evaluate(PreparedCreationAttempt<?, ?> preparedAttempt);
+	CreationPolicyEvaluation evaluate(PreparedCreationAttempt<?, DomainModel> preparedAttempt);
 }
