@@ -2,7 +2,7 @@ package de.gupta.clean.crud.template.useCases.operation.create.application.adapt
 
 import de.gupta.clean.crud.template.useCases.operation.common.domain.model.OperationSource;
 import de.gupta.clean.crud.template.useCases.operation.create.application.model.*;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationContext;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationContext;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreationOperationResults;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreationOperationViolation;
 import org.junit.jupiter.api.Test;
@@ -12,7 +12,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class AbstractCreationOperationResultAdapterTest
+class AbstractCreateOperationResultAdapterTest
 {
 	private final TestResultAdapter adapter = new TestResultAdapter();
 
@@ -33,6 +33,15 @@ class AbstractCreationOperationResultAdapterTest
 		assertThat(created.toleratedViolations()).containsExactly(new CreateApplicationViolation(
 				CreateApplicationViolationKind.EXTERNAL_CONSISTENCY,
 				"accepted with warning"));
+	}
+
+	private static CreateOperationContext context()
+	{
+		return new CreateOperationContext(
+				OperationSource.USER_INTENT,
+				"payload.Type",
+				Optional.of("corr-1"),
+				Optional.of("cause-1"));
 	}
 
 	@Test
@@ -75,16 +84,7 @@ class AbstractCreationOperationResultAdapterTest
 		assertThat(quarantined.quarantineReference()).contains("Q-17");
 	}
 
-	private static CreationOperationContext context()
-	{
-		return new CreationOperationContext(
-				OperationSource.USER_INTENT,
-				"payload.Type",
-				Optional.of("corr-1"),
-				Optional.of("cause-1"));
-	}
-
-	private static final class TestResultAdapter extends AbstractCreationOperationResultAdapter<String, String>
+	private static final class TestResultAdapter extends AbstractCreateOperationResultAdapter<String, String>
 	{
 		@Override
 		protected String mapCreatedModel(final String domainModel)

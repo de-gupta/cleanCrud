@@ -8,29 +8,29 @@ import de.gupta.clean.crud.template.useCases.operation.common.domain.model.Opera
 import java.util.Objects;
 import java.util.Optional;
 
-public record CreationOperationContext(
+public record CreateOperationContext(
 		OperationSource source,
 		String payloadTypeName,
 		Optional<String> correlationId,
 		Optional<String> causationId)
 {
-	public static CreationOperationContext from(final CreationOperationRequest<?> request)
+	public static CreateOperationContext from(final CreateOperationRequest<?> request)
 	{
 		return from(request.payload().getClass(), request.metadata());
 	}
 
-	public static CreationOperationContext from(
+	public static CreateOperationContext from(
 			final Class<?> payloadType,
 			final OperationRequestMetadata metadata)
 	{
-		return new CreationOperationContext(
+		return new CreateOperationContext(
 				metadata.source(),
 				payloadType.getName(),
 				metadata.correlationId().map(OperationCorrelationId::value),
 				metadata.causationId().map(OperationCausationId::value));
 	}
 
-	public CreationOperationContext
+	public CreateOperationContext
 	{
 		Objects.requireNonNull(source, "source");
 		Objects.requireNonNull(payloadTypeName, "payloadTypeName");

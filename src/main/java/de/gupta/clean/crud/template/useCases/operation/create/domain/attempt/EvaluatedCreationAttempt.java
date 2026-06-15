@@ -1,8 +1,8 @@
 package de.gupta.clean.crud.template.useCases.operation.create.domain.attempt;
 
+import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationContext;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationPayload;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationContext;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationRequest;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationRequest;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.plan.CreationPlan;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.policy.CreationDecision;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.policy.CreationPolicyEvaluation;
@@ -29,12 +29,12 @@ public record EvaluatedCreationAttempt<Payload extends CreateOperationPayload, D
 		Objects.requireNonNull(evaluation, "evaluation");
 	}
 
-	public CreationOperationRequest<Payload> request()
+	public CreateOperationRequest<Payload> request()
 	{
 		return preparedAttempt.request();
 	}
 
-	public CreationOperationContext context()
+	public CreateOperationContext context()
 	{
 		return preparedAttempt.context();
 	}

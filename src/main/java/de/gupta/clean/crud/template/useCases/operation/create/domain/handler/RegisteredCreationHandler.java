@@ -1,7 +1,7 @@
 package de.gupta.clean.crud.template.useCases.operation.create.domain.handler;
 
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationPayload;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationRequest;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationRequest;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.plan.CreationPlan;
 
 import java.util.Objects;
@@ -31,7 +31,7 @@ public record RegisteredCreationHandler<Payload extends CreateOperationPayload, 
 		return payloadType.isAssignableFrom(candidateType);
 	}
 
-	public CreationPlan<DomainCreateModel> createPlan(final CreationOperationRequest<?> request)
+	public CreationPlan<DomainCreateModel> createPlan(final CreateOperationRequest<?> request)
 	{
 		return handler.createPlan(request.withPayload(payloadType.cast(request.payload())));
 	}

@@ -4,19 +4,19 @@ import de.gupta.clean.crud.template.useCases.operation.common.domain.model.Opera
 
 import java.util.Objects;
 
-public record CreationOperationRequest<Payload extends CreateOperationPayload>(
+public record CreateOperationRequest<Payload extends CreateOperationPayload>(
 		Payload payload,
 		OperationRequestMetadata metadata)
 {
-	public CreationOperationRequest
+	public CreateOperationRequest
 	{
 		Objects.requireNonNull(payload, "payload");
 		Objects.requireNonNull(metadata, "metadata");
 	}
 
-	public <MappedPayload extends CreateOperationPayload> CreationOperationRequest<MappedPayload> withPayload(
+	public <MappedPayload extends CreateOperationPayload> CreateOperationRequest<MappedPayload> withPayload(
 			final MappedPayload mappedPayload)
 	{
-		return new CreationOperationRequest<>(mappedPayload, metadata);
+		return new CreateOperationRequest<>(mappedPayload, metadata);
 	}
 }

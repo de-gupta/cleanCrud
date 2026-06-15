@@ -2,15 +2,15 @@ package de.gupta.clean.crud.template.useCases.operation.create.application.facad
 
 import de.gupta.clean.crud.template.useCases.operation.common.domain.model.OperationRequestMetadata;
 import de.gupta.clean.crud.template.useCases.operation.common.domain.model.OperationSource;
-import de.gupta.clean.crud.template.useCases.operation.create.application.adapter.AbstractCreationOperationResultAdapter;
+import de.gupta.clean.crud.template.useCases.operation.create.application.adapter.AbstractCreateOperationResultAdapter;
 import de.gupta.clean.crud.template.useCases.operation.create.application.model.CreatedCreateApplicationResult;
 import de.gupta.clean.crud.template.useCases.operation.create.application.service.AbstractCreateApplicationService;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.attempt.PreparedCreationAttempt;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.execution.CreationExecutor;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.execution.CreateExecutor;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.handler.CreationHandlerRegistry;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.handler.RegisteredCreationHandler;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationPayload;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationRequest;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationRequest;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.plan.CreationPlan;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.policy.CreationPolicyEvaluation;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.policy.CreationPolicyEvaluator;
@@ -37,7 +37,7 @@ class CreateApplicationControllerFlowTest
 				})));
 		var evaluator = CreationPolicyEvaluator.of(List.of(_ -> CreationPolicyEvaluation.allow(List.of(
 				CreationOperationViolation.externalConsistency("accepted with warning")))));
-		CreationExecutor<DomainPayload, String, String> executor = attempt ->
+		CreateExecutor<DomainPayload, String, String> executor = attempt ->
 		{
 			executedAttempt.set(attempt);
 			return "created:" + attempt.plan().createModel();
@@ -47,7 +47,7 @@ class CreateApplicationControllerFlowTest
 		var facade = new TestCreateApplicationServiceFacade(service);
 		var controller = new TestCreateApplicationController(facade);
 
-		var result = controller.create(new CreationOperationRequest<>(
+		var result = controller.create(new CreateOperationRequest<>(
 				new ApiPayload("sample"),
 				OperationRequestMetadata.source(OperationSource.AUTHORITATIVE_EXTERNAL_EVENT)));
 
@@ -84,9 +84,9 @@ class CreateApplicationControllerFlowTest
 		private TestCreateApplicationService(
 				final CreationHandlerRegistry<String> handlerRegistry,
 				final CreationPolicyEvaluator policyEvaluator,
-				final CreationExecutor<DomainPayload, String, String> creationExecutor)
+				final CreateExecutor<DomainPayload, String, String> createExecutor)
 		{
-			super(handlerRegistry, policyEvaluator, creationExecutor);
+			super(handlerRegistry, policyEvaluator, createExecutor);
 		}
 	}
 
@@ -109,7 +109,7 @@ class CreateApplicationControllerFlowTest
 		}
 	}
 
-	private static final class TestResultAdapter extends AbstractCreationOperationResultAdapter<String, String>
+	private static final class TestResultAdapter extends AbstractCreateOperationResultAdapter<String, String>
 	{
 		@Override
 		protected String mapCreatedModel(final String domainModel)

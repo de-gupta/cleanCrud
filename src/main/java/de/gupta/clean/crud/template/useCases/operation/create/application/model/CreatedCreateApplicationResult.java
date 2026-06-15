@@ -6,10 +6,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-public record CreatedCreateApplicationResult<Model>(
-		CreateApplicationResultContext context,
-		Model createdModel,
-		Collection<CreateApplicationViolation> toleratedViolations)
+public record CreatedCreateApplicationResult<Model>(CreateApplicationResultContext context, Model createdModel,
+                                                    Collection<CreateApplicationViolation> toleratedViolations)
 		implements CreateApplicationResult<Model>
 {
 	public CreatedCreateApplicationResult

@@ -1,13 +1,13 @@
 package de.gupta.clean.crud.template.useCases.operation.create.domain.result;
 
-import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationContext;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationContext;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
 public record RejectedCreateOperationResult<Model>(
-		CreationOperationContext context,
+		CreateOperationContext context,
 		Collection<CreationOperationViolation> blockingViolations,
 		Collection<CreationOperationViolation> toleratedViolations) implements CreateOperationResult<Model>
 {

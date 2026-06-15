@@ -1,17 +1,17 @@
 package de.gupta.clean.crud.template.useCases.operation.create.domain.attempt;
 
 import de.gupta.clean.crud.template.useCases.operation.create.domain.handler.RegisteredCreationHandler;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationContext;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationPayload;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationContext;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationRequest;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationRequest;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.plan.CreationPlan;
 
 import java.util.Objects;
 
 public record PreparedCreationAttempt<Payload extends CreateOperationPayload, DomainCreateModel>(
-		CreationOperationRequest<Payload> request,
+		CreateOperationRequest<Payload> request,
 		RegisteredCreationHandler<Payload, DomainCreateModel> handler,
-		CreationOperationContext context,
+		CreateOperationContext context,
 		CreationPlan<DomainCreateModel> plan)
 {
 	public PreparedCreationAttempt

@@ -1,14 +1,14 @@
 package de.gupta.clean.crud.template.useCases.operation.create.application.adapter;
 
 import de.gupta.clean.crud.template.useCases.operation.create.application.model.*;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationContext;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationContext;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.result.*;
 
 import java.util.Collection;
 import java.util.List;
 
-public abstract class AbstractCreationOperationResultAdapter<DomainModel, APIModel>
-		implements CreationOperationResultAdapter<DomainModel, APIModel>
+public abstract class AbstractCreateOperationResultAdapter<DomainModel, APIModel>
+		implements CreateOperationResultAdapter<DomainModel, APIModel>
 {
 	@Override
 	public CreateApplicationResult<APIModel> mapToAPIResult(final CreateOperationResult<DomainModel> domainResult)
@@ -35,13 +35,16 @@ public abstract class AbstractCreationOperationResultAdapter<DomainModel, APIMod
 		};
 	}
 
-	protected abstract APIModel mapCreatedModel(DomainModel domainModel);
-
-	private CreateApplicationViolation mapViolation(final CreationOperationViolation violation)
+	private CreateApplicationResultContext mapContext(final CreateOperationContext context)
 	{
-		return new CreateApplicationViolation(
-				CreateApplicationViolationKind.valueOf(violation.kind().name()), violation.message());
+		return new CreateApplicationResultContext(
+				context.source(),
+				context.payloadTypeName(),
+				context.correlationId(),
+				context.causationId());
 	}
+
+	protected abstract APIModel mapCreatedModel(DomainModel domainModel);
 
 	private List<CreateApplicationViolation> mapViolations(final Collection<CreationOperationViolation> violations)
 	{
@@ -50,12 +53,9 @@ public abstract class AbstractCreationOperationResultAdapter<DomainModel, APIMod
 		                 .toList();
 	}
 
-	private CreateApplicationResultContext mapContext(final CreationOperationContext context)
+	private CreateApplicationViolation mapViolation(final CreationOperationViolation violation)
 	{
-		return new CreateApplicationResultContext(
-				context.source(),
-				context.payloadTypeName(),
-				context.correlationId(),
-				context.causationId());
+		return new CreateApplicationViolation(
+				CreateApplicationViolationKind.valueOf(violation.kind().name()), violation.message());
 	}
 }

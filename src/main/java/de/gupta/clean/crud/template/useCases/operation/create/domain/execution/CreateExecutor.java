@@ -4,7 +4,7 @@ import de.gupta.clean.crud.template.useCases.operation.create.domain.attempt.Pre
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationPayload;
 
 @FunctionalInterface
-public interface CreationExecutor<Payload extends CreateOperationPayload, DomainCreateModel, DomainCreatedModel>
+public interface CreateExecutor<Payload extends CreateOperationPayload, DomainCreateModel, DomainCreatedModel>
 {
 	DomainCreatedModel create(PreparedCreationAttempt<Payload, DomainCreateModel> preparedAttempt);
 }

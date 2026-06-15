@@ -4,9 +4,9 @@ import de.gupta.clean.crud.template.useCases.operation.common.domain.model.Opera
 import de.gupta.clean.crud.template.useCases.operation.common.domain.model.OperationSource;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.attempt.PreparedCreationAttempt;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.handler.RegisteredCreationHandler;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationContext;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationPayload;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationContext;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationRequest;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationRequest;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.plan.CreationPlan;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreationOperationViolation;
 import org.junit.jupiter.api.Test;
@@ -37,13 +37,13 @@ class CreationPolicyEvaluatorTest
 		return new PreparedCreationAttempt<>(
 				request,
 				RegisteredCreationHandler.of(TestPayload.class, ignored -> CreationPlan.of("aggregate.Task", "draft")),
-				CreationOperationContext.from(request),
+				CreateOperationContext.from(request),
 				CreationPlan.of("aggregate.Task", "draft"));
 	}
 
-	private static CreationOperationRequest<TestPayload> request()
+	private static CreateOperationRequest<TestPayload> request()
 	{
-		return new CreationOperationRequest<>(
+		return new CreateOperationRequest<>(
 				new TestPayload("draft"),
 				OperationRequestMetadata.source(OperationSource.USER_INTENT));
 	}

@@ -1,12 +1,12 @@
 package de.gupta.clean.crud.template.useCases.operation.create.domain.result;
 
-import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreationOperationContext;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationContext;
 
 import java.util.List;
 import java.util.Objects;
 
 public record CreatedCreateOperationResult<Model>(
-		CreationOperationContext context,
+		CreateOperationContext context,
 		Model createdModel,
 		List<CreationOperationViolation> toleratedViolations)
 		implements CreateOperationResult<Model>
