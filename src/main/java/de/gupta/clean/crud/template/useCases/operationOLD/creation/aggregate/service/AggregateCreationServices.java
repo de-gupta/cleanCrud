@@ -1,7 +1,7 @@
 package de.gupta.clean.crud.template.useCases.operationOLD.creation.aggregate.service;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
-import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionGuard;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionRelationshipInspector;
 import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateSaveCoordinator;
 import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateServiceSupportFactory;
 import de.gupta.clean.crud.template.domain.aggregate.runtime.AggregateWorkflowRunner;
@@ -51,7 +51,7 @@ public enum AggregateCreationServices
 			final CreationHandlerRegistry<DomainModelCreate> handlerRegistry,
 			final Function<CreationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
 					durableProcessStartRequests,
-			final AggregateDefinitionGuard definitionGuard,
+			final AggregateDefinitionRelationshipInspector definitionGuard,
 			final AggregateSaveCoordinator saveCoordinator,
 			final SourceAwareCreationPolicy<DomainModel> sourceAwareCreationPolicy,
 			final CreationQuarantineRecorder creationQuarantineRecorder
@@ -76,6 +76,22 @@ public enum AggregateCreationServices
 					DomainModelResponse> definition,
 			final AggregateWorkflowRunner engine,
 			final CreationHandlerRegistry<DomainModelCreate> handlerRegistry,
+			final AggregateDefinitionRelationshipInspector definitionGuard,
+			final AggregateSaveCoordinator saveCoordinator,
+			final SourceAwareCreationPolicy<DomainModel> sourceAwareCreationPolicy,
+			final CreationQuarantineRecorder creationQuarantineRecorder)
+	{
+		return creationService(aggregateKey, definition, engine, handlerRegistry, _ -> List.of(), definitionGuard,
+				saveCoordinator, sourceAwareCreationPolicy, creationQuarantineRecorder);
+	}
+
+	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
+	QuarantinableCreationService<DomainId, DomainModel> creationService(
+			final String aggregateKey,
+			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
+					DomainModelResponse> definition,
+			final AggregateWorkflowRunner engine,
+			final CreationHandlerRegistry<DomainModelCreate> handlerRegistry,
 			final Function<CreationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
 					durableProcessStartRequests,
 			final CreationQuarantineRecorder creationQuarantineRecorder)
@@ -91,22 +107,6 @@ public enum AggregateCreationServices
 				AggregateServiceSupportFactory.saveCoordinator(),
 				AggregateCreationPolicies.sourceAwarePolicy(definition),
 				creationQuarantineRecorder);
-	}
-
-	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
-	QuarantinableCreationService<DomainId, DomainModel> creationService(
-			final String aggregateKey,
-			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
-					DomainModelResponse> definition,
-			final AggregateWorkflowRunner engine,
-			final CreationHandlerRegistry<DomainModelCreate> handlerRegistry,
-			final AggregateDefinitionGuard definitionGuard,
-			final AggregateSaveCoordinator saveCoordinator,
-			final SourceAwareCreationPolicy<DomainModel> sourceAwareCreationPolicy,
-			final CreationQuarantineRecorder creationQuarantineRecorder)
-	{
-		return creationService(aggregateKey, definition, engine, handlerRegistry, _ -> List.of(), definitionGuard,
-				saveCoordinator, sourceAwareCreationPolicy, creationQuarantineRecorder);
 	}
 
 }

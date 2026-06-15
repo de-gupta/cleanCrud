@@ -4,7 +4,7 @@ import de.gupta.aletheia.functional.Unfolding;
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
-import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionGuard;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionRelationshipInspector;
 import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateMutationValidationSupport;
 import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateServiceSupportFactory;
 import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateUpdateCoordinator;
@@ -28,7 +28,7 @@ public final class DefaultAggregateUpdateService<DomainId, DomainModel, DomainMo
 	private final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 			DomainModelResponse> definition;
 	private final AggregateWorkflowRunner engine;
-	private final AggregateDefinitionGuard definitionGuard;
+	private final AggregateDefinitionRelationshipInspector definitionGuard;
 	private final AggregateMutationValidationSupport validationSupport;
 	private final AggregateUpdateCoordinator updateCoordinator;
 
@@ -234,7 +234,7 @@ public final class DefaultAggregateUpdateService<DomainId, DomainModel, DomainMo
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
 			final AggregateWorkflowRunner engine,
-			final AggregateDefinitionGuard definitionGuard,
+			final AggregateDefinitionRelationshipInspector definitionGuard,
 			final AggregateMutationValidationSupport validationSupport,
 			final AggregateUpdateCoordinator updateCoordinator)
 	{

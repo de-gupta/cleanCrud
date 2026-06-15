@@ -2,7 +2,7 @@ package de.gupta.clean.crud.template.domain.service.aggregate;
 
 import de.gupta.aletheia.functional.Unfolding;
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
-import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionGuard;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionRelationshipInspector;
 import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateFetchCoordinator;
 import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateServiceSupportFactory;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
@@ -24,7 +24,7 @@ public final class DefaultAggregateFetchService<DomainId, DomainModel, DomainMod
 	private final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 			DomainModelResponse> definition;
 	private final AggregateWorkflowRunner engine;
-	private final AggregateDefinitionGuard definitionGuard;
+	private final AggregateDefinitionRelationshipInspector definitionGuard;
 	private final AggregateFetchCoordinator fetchCoordinator;
 
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
@@ -182,7 +182,7 @@ public final class DefaultAggregateFetchService<DomainId, DomainModel, DomainMod
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
 			final AggregateWorkflowRunner engine,
-			final AggregateDefinitionGuard definitionGuard,
+			final AggregateDefinitionRelationshipInspector definitionGuard,
 			final AggregateFetchCoordinator fetchCoordinator)
 	{
 		this.definition = definition;

@@ -7,15 +7,16 @@ import de.gupta.clean.crud.template.domain.aggregate.relationship.Cardinality;
 import de.gupta.clean.crud.template.domain.relationship.ReconciliationStrategy;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
-// private or package privat constructor?
-public final class AggregateDefinitionGuard
+// private or package private constructor?
+public final class AggregateDefinitionRelationshipInspector
 {
 	public <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse> List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, ?, ?, ?, ?>> satelliteRelationships(
 			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition)
 	{
-		List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, ?, ?, ?, ?>>
+		Collection<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, ?, ?, ?, ?>>
 				relationships = new ArrayList<>();
 		for (var contract : definition.relationshipDefinitions())
 		{
@@ -38,7 +39,7 @@ public final class AggregateDefinitionGuard
 		return (AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, ?, ?, ?, ?>) relationshipDefinition;
 	}
 
-	private void validateRelationship(final AggregateRelationshipDefinition<?, ?, ?, ?, ?, ?, ?, ?> relationship)
+	private void validateRelationship(final AggregateRelationshipDefinitionContract<?, ?, ?, ?> relationship)
 	{
 		if (relationship.cardinality() == Cardinality.ONE && relationship.reconciliationStrategy() == ReconciliationStrategy.MERGE_BY_ID)
 		{
@@ -52,7 +53,7 @@ public final class AggregateDefinitionGuard
 		}
 	}
 
-	AggregateDefinitionGuard()
+	AggregateDefinitionRelationshipInspector()
 	{
 	}
 }

@@ -3,7 +3,7 @@ package de.gupta.clean.crud.template.useCases.operationOLD.mutation.aggregate.se
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
-import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionGuard;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionRelationshipInspector;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.runtime.AggregateWorkflowRunner;
 import de.gupta.clean.crud.template.domain.aggregate.workflow.AggregateWorkflowBuilder;
@@ -53,7 +53,7 @@ public final class DefaultAggregateMutationService<
 	private final MutationHandlerRegistry<DomainModel> handlerRegistry;
 	private final Function<MutationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
 			durableProcessStartRequests;
-	private final AggregateDefinitionGuard definitionGuard;
+	private final AggregateDefinitionRelationshipInspector definitionGuard;
 	private final SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy;
 	private final AggregateMutationCoordinator mutationCoordinator;
 	private final String aggregateType;
@@ -67,7 +67,7 @@ public final class DefaultAggregateMutationService<
 			final MutationHandlerRegistry<DomainModel> handlerRegistry,
 			final Function<MutationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
 					durableProcessStartRequests,
-			final AggregateDefinitionGuard definitionGuard,
+			final AggregateDefinitionRelationshipInspector definitionGuard,
 			final SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy,
 			final AggregateMutationCoordinator mutationCoordinator,
 			final MutationQuarantineRecorder mutationQuarantineRecorder)

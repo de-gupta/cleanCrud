@@ -3,7 +3,8 @@ package de.gupta.clean.crud.template.domain.aggregate.graph;
 public enum AggregateServiceSupportFactory
 {
 	;
-	private static final AggregateDefinitionGuard DEFINITION_GUARD = new AggregateDefinitionGuard();
+	private static final AggregateDefinitionRelationshipInspector
+			DEFINITION_GUARD = new AggregateDefinitionRelationshipInspector();
 	private static final AggregateMutationValidationSupport VALIDATION_SUPPORT =
 			new AggregateMutationValidationSupport();
 	private static final SatelliteRelationshipPlanner RELATIONSHIP_PLANNER = new SatelliteRelationshipPlanner();
@@ -19,7 +20,7 @@ public enum AggregateServiceSupportFactory
 	private static final AggregateDeleteCoordinator DELETE_COORDINATOR =
 			AggregateDeleteCoordinator.with(RELATIONSHIP_PLANNER, REFERENCE_RESOLVER);
 
-	public static AggregateDefinitionGuard definitionGuard()
+	public static AggregateDefinitionRelationshipInspector definitionGuard()
 	{
 		return DEFINITION_GUARD;
 	}

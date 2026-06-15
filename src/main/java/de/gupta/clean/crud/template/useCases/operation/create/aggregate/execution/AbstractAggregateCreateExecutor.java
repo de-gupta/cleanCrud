@@ -3,7 +3,7 @@ package de.gupta.clean.crud.template.useCases.operation.create.aggregate.executi
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
-import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionGuard;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionRelationshipInspector;
 import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateMutationValidationSupport;
 import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateServiceSupportFactory;
 import de.gupta.clean.crud.template.domain.aggregate.runtime.AggregateWorkflowRunner;
@@ -24,7 +24,7 @@ public abstract class AbstractAggregateCreateExecutor<DomainCreatePayload extend
 {
 	private final AggregateDefinition<DomainId, DomainModel, ?, ?, ?> definition;
 	private final AggregateWorkflowRunner engine;
-	private final AggregateDefinitionGuard definitionGuard;
+	private final AggregateDefinitionRelationshipInspector definitionGuard;
 	private final AggregateMutationValidationSupport validationSupport;
 
 	@Override
@@ -81,7 +81,7 @@ public abstract class AbstractAggregateCreateExecutor<DomainCreatePayload extend
 	protected AbstractAggregateCreateExecutor(
 			final AggregateDefinition<DomainId, DomainModel, ?, ?, ?> definition,
 			final AggregateWorkflowRunner engine,
-			final AggregateDefinitionGuard definitionGuard,
+			final AggregateDefinitionRelationshipInspector definitionGuard,
 			final AggregateMutationValidationSupport validationSupport)
 	{
 		this.definition = Objects.requireNonNull(definition, "definition");

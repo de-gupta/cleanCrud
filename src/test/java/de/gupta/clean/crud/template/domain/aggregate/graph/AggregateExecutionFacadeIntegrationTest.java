@@ -588,7 +588,7 @@ final class AggregateExecutionFacadeIntegrationTest
 	private static final class TestEngineFacade
 	{
 		private final AggregateWorkflowRunner engine;
-		private final AggregateDefinitionGuard definitionGuard;
+		private final AggregateDefinitionRelationshipInspector definitionGuard;
 		private final AggregateMutationValidationSupport validationSupport;
 		private final AggregateSaveCoordinator saveCoordinator;
 		private final AggregateFetchCoordinator fetchCoordinator;
@@ -971,7 +971,7 @@ final class AggregateExecutionFacadeIntegrationTest
 		private TestEngineFacade(final AggregateWorkflowRunner engine)
 		{
 			this.engine = engine;
-			this.definitionGuard = new AggregateDefinitionGuard();
+			this.definitionGuard = new AggregateDefinitionRelationshipInspector();
 			this.validationSupport = new AggregateMutationValidationSupport();
 			var relationshipPlanner = new SatelliteRelationshipPlanner();
 			var referenceResolver = new SatelliteReferenceResolver();

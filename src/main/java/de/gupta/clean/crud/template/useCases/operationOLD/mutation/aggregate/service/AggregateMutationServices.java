@@ -1,7 +1,7 @@
 package de.gupta.clean.crud.template.useCases.operationOLD.mutation.aggregate.service;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
-import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionGuard;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionRelationshipInspector;
 import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateServiceSupportFactory;
 import de.gupta.clean.crud.template.domain.aggregate.runtime.AggregateWorkflowRunner;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.aggregate.policy.AggregateMutationPolicies;
@@ -49,7 +49,7 @@ public enum AggregateMutationServices
 			final MutationHandlerRegistry<DomainModel> handlerRegistry,
 			final Function<MutationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
 					durableProcessStartRequests,
-			final AggregateDefinitionGuard definitionGuard,
+			final AggregateDefinitionRelationshipInspector definitionGuard,
 			final SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy,
 			final MutationQuarantineRecorder mutationQuarantineRecorder)
 	{
@@ -74,7 +74,7 @@ public enum AggregateMutationServices
 					DomainModelResponse> definition,
 			final AggregateWorkflowRunner engine,
 			final MutationHandlerRegistry<DomainModel> handlerRegistry,
-			final AggregateDefinitionGuard definitionGuard,
+			final AggregateDefinitionRelationshipInspector definitionGuard,
 			final SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy,
 			final MutationQuarantineRecorder mutationQuarantineRecorder)
 	{
