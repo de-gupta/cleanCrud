@@ -29,8 +29,7 @@ public final class DefaultAggregateUpdateService<DomainId, DomainModel, DomainMo
 
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
 	AggregateUpdateService<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch> create(
-			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
-					DomainModelResponse> definition,
+			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse> definition,
 			final AggregateLifecycleEngine engine)
 	{
 		return new DefaultAggregateUpdateService<>(definition, engine);
@@ -218,8 +217,7 @@ public final class DefaultAggregateUpdateService<DomainId, DomainModel, DomainMo
 	}
 
 	private DefaultAggregateUpdateService(
-			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
-					DomainModelResponse> definition,
+			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse> definition,
 			final AggregateLifecycleEngine engine)
 	{
 		this(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
