@@ -68,7 +68,7 @@ class DefaultMutationQuarantineServiceTest
 			Object restored = switch (envelope.typeKey())
 			{
 				case "java.lang.String" -> envelope.serialized();
-				case "de.gupta.clean.crud.template.useCases.operation.mutation.quarantine.application.DefaultMutationQuarantineServiceTest$AcknowledgeOrder" ->
+				case "de.gupta.clean.crud.template.useCases.operationOLD.mutation.quarantine.application.DefaultMutationQuarantineServiceTest$AcknowledgeOrder" ->
 						new AcknowledgeOrder(envelope.serialized());
 				default -> throw new IllegalArgumentException("Unsupported type " + envelope.typeKey());
 			};
