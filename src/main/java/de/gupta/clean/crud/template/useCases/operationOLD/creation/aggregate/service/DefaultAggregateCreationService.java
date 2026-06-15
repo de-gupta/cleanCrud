@@ -1,12 +1,12 @@
 package de.gupta.clean.crud.template.useCases.operationOLD.creation.aggregate.service;
 
+import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
+import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
+import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
+import de.gupta.clean.crud.template.domain.aggregate.execution.*;
+import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationContext;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationKind;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.*;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.aggregate.policy.AggregateCreationPolicies;
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.application.service.AbstractCreationService;
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.application.service.QuarantinableCreationService;
@@ -43,7 +43,7 @@ public final class DefaultAggregateCreationService<
 		extends AbstractCreationService<DomainId, DomainModel>
 		implements QuarantinableCreationService<DomainId, DomainModel>
 {
-	private final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
+	private final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 			DomainModelResponse> definition;
 	private final AggregateLifecycleEngine engine;
 	private final CreationHandlerRegistry<DomainModelCreate> handlerRegistry;
@@ -56,7 +56,7 @@ public final class DefaultAggregateCreationService<
 
 	public DefaultAggregateCreationService(
 			final String aggregateKey,
-			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
+			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
 			final AggregateLifecycleEngine engine,
 			final CreationHandlerRegistry<DomainModelCreate> handlerRegistry,
@@ -82,35 +82,6 @@ public final class DefaultAggregateCreationService<
 		return createWithResult(request, Optional.empty());
 	}
 
-	public String aggregateType()
-	{
-		return aggregateType;
-	}
-
-	@Override
-	public String aggregateKey()
-	{
-		return aggregateType;
-	}
-
-	@Override
-	public ReplayOutcome replay(final QuarantineReplayCommand<ApplicationOperationPayload> command)
-	{
-		var result = createWithResult(
-				new CreationRequest<>(
-						command.replayInputs(),
-						OperationSource.ADMINISTRATIVE_REPLAY,
-						command.metadata().family(),
-						command.metadata().correlationId(),
-						command.metadata().causationId()),
-				Optional.of(command.quarantineId()));
-		if (result.applied())
-		{
-			return ReplayOutcome.success();
-		}
-		return ReplayOutcome.quarantined(result.quarantineRequest().map(r -> r.violations().toString()));
-	}
-
 	private CreationResult<DomainId, DomainModel> createWithResult(
 			final CreationRequest<?> request,
 			final Optional<QuarantineId> replayQuarantineId)
@@ -118,13 +89,13 @@ public final class DefaultAggregateCreationService<
 		try
 		{
 			return engine.execute(
-					CrudWorkflowBuilder.writeFlow(() -> applyCreation(request, replayQuarantineId))
-					                   .startDurableProcesses(result -> result.created()
-					                                                          .map(_ -> durableProcessStartRequests.apply(
-																					  result.context()))
-					                                                          .orElse(List.of()))
-					                   .afterTransaction(this::dispatchCreationCompleted)
-					                   .build());
+					AggregateWorkflowBuilder.writeFlow(() -> applyCreation(request, replayQuarantineId))
+					                        .startDurableProcesses(result -> result.created()
+					                                                               .map(_ -> durableProcessStartRequests.apply(
+																						   result.context()))
+					                                                               .orElse(List.of()))
+					                        .afterTransaction(this::dispatchCreationCompleted)
+					                        .build());
 		}
 		catch (final QuarantinedAggregateCreationResultException exception)
 		{
@@ -173,6 +144,40 @@ public final class DefaultAggregateCreationService<
 		return CreationResult.created(context, policyDecision, CreateResult.of(created.id(), created.model()));
 	}
 
+	private void dispatchCreationCompleted(final CreationResult<DomainId, DomainModel> result)
+	{
+		if (!result.applied())
+		{
+			return;
+		}
+		definition.postCommitMutation().accept(new PostCommitMutationContext<>(
+				PostCommitMutationKind.CREATE,
+				result.context().domainId().orElseThrow(),
+				result.context().afterModel(),
+				Optional.empty()));
+	}
+
+	private AggregateCreationPlan<DomainModelCreate> applyRegisteredHandler(
+			final ApplicationOperationPayload payload)
+	{
+		var registeredHandler = handlerRegistry.findHandlerFor(payload.getClass())
+		                                       .orElseThrow(() -> InvalidRequestException.withMessage(
+													   "No creation handler registered for payload type "
+															   + payload.getClass().getName()));
+		return applyTypedHandler(registeredHandler, payload);
+	}
+
+	private de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.policy.evaluation.CreationPolicyDecision persistQuarantine(
+			final CreationRequest<?> request,
+			final de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.policy.evaluation.CreationPolicyDecision policyDecision)
+	{
+		var persistedRequest = engine.creationQuarantineRecorder().record(new CreationQuarantineSubmission(
+				aggregateType,
+				request,
+				policyDecision.quarantineRequest().orElseThrow()));
+		return policyDecision.withQuarantineRequest(persistedRequest);
+	}
+
 	private IdentifiedModel<DomainId, DomainModel> createAggregateWithRelationships(
 			final CreationRequest<?> request,
 			final List<AggregateRelationshipDefinition<DomainId, DomainModel, DomainModelCreate,
@@ -202,6 +207,15 @@ public final class DefaultAggregateCreationService<
 		}
 	}
 
+	@SuppressWarnings("unchecked")
+	private AggregateCreationPlan<DomainModelCreate> applyTypedHandler(
+			final RegisteredCreationHandler<DomainModelCreate, ?> registeredHandler,
+			final ApplicationOperationPayload payload)
+	{
+		return ((AggregateCreationHandler<DomainModelCreate, ApplicationOperationPayload>) registeredHandler.handler()).apply(
+				payload);
+	}
+
 	private RuntimeException quarantinedAggregateCreation(
 			final QuarantinedCreationException exception,
 			final CreationRequest<?> request,
@@ -222,47 +236,33 @@ public final class DefaultAggregateCreationService<
 				quarantineDecision));
 	}
 
-	private void dispatchCreationCompleted(final CreationResult<DomainId, DomainModel> result)
+	public String aggregateType()
 	{
-		if (!result.applied())
+		return aggregateType;
+	}
+
+	@Override
+	public String aggregateKey()
+	{
+		return aggregateType;
+	}
+
+	@Override
+	public ReplayOutcome replay(final QuarantineReplayCommand<ApplicationOperationPayload> command)
+	{
+		var result = createWithResult(
+				new CreationRequest<>(
+						command.replayInputs(),
+						OperationSource.ADMINISTRATIVE_REPLAY,
+						command.metadata().family(),
+						command.metadata().correlationId(),
+						command.metadata().causationId()),
+				Optional.of(command.quarantineId()));
+		if (result.applied())
 		{
-			return;
+			return ReplayOutcome.success();
 		}
-		definition.postCommitMutation().accept(new PostCommitMutationContext<>(
-				PostCommitMutationKind.CREATE,
-				result.context().domainId().orElseThrow(),
-				result.context().afterModel(),
-				Optional.empty()));
-	}
-
-	private AggregateCreationPlan<DomainModelCreate> applyRegisteredHandler(
-			final ApplicationOperationPayload payload)
-	{
-		var registeredHandler = handlerRegistry.findHandlerFor(payload.getClass())
-		                                       .orElseThrow(() -> InvalidRequestException.withMessage(
-													   "No creation handler registered for payload type "
-															   + payload.getClass().getName()));
-		return applyTypedHandler(registeredHandler, payload);
-	}
-
-	@SuppressWarnings("unchecked")
-	private AggregateCreationPlan<DomainModelCreate> applyTypedHandler(
-			final RegisteredCreationHandler<DomainModelCreate, ?> registeredHandler,
-			final ApplicationOperationPayload payload)
-	{
-		return ((AggregateCreationHandler<DomainModelCreate, ApplicationOperationPayload>) registeredHandler.handler()).apply(
-				payload);
-	}
-
-	private de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.policy.evaluation.CreationPolicyDecision persistQuarantine(
-			final CreationRequest<?> request,
-			final de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.policy.evaluation.CreationPolicyDecision policyDecision)
-	{
-		var persistedRequest = engine.creationQuarantineRecorder().record(new CreationQuarantineSubmission(
-				aggregateType,
-				request,
-				policyDecision.quarantineRequest().orElseThrow()));
-		return policyDecision.withQuarantineRequest(persistedRequest);
+		return ReplayOutcome.quarantined(result.quarantineRequest().map(r -> r.violations().toString()));
 	}
 
 	private static final class QuarantinedAggregateCreationResultException extends RuntimeException

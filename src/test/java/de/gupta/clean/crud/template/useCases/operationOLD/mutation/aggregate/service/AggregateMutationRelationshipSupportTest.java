@@ -1,5 +1,13 @@
 package de.gupta.clean.crud.template.useCases.operationOLD.mutation.aggregate.service;
 
+import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
+import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutation;
+import de.gupta.clean.crud.template.domain.aggregate.execution.DefaultAggregateLifecycleEngine;
+import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteCreateIntent;
+import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteMutationIntent;
+import de.gupta.clean.crud.template.domain.aggregate.port.AggregateFetchPort;
+import de.gupta.clean.crud.template.domain.aggregate.port.AggregateMutationPort;
+import de.gupta.clean.crud.template.domain.aggregate.relationship.*;
 import de.gupta.clean.crud.template.domain.mapping.fetch.DomainResponseBuilder;
 import de.gupta.clean.crud.template.domain.mapping.save.DomainModelBuilder;
 import de.gupta.clean.crud.template.domain.mapping.update.DomainModelPatcher;
@@ -14,13 +22,6 @@ import de.gupta.clean.crud.template.domain.service.crud.policy.PatchPolicy;
 import de.gupta.clean.crud.template.domain.service.equality.DuplicateDefinition;
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
 import de.gupta.clean.crud.template.infrastructure.persistence.transaction.PersistenceTransactionRunner;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutation;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteCreateIntent;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMutationIntent;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateFetchPort;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateMutationPort;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.*;
 import de.gupta.clean.crud.template.useCases.operationOLD.domain.model.ApplicationOperationPayload;
 import de.gupta.clean.crud.template.useCases.operationOLD.domain.model.OperationSource;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.application.service.MutationService;
@@ -58,30 +59,12 @@ class AggregateMutationRelationshipSupportTest
 		assertEquals("printed", definition.satelliteStore.get(updated.model().noteIds().getFirst()).value());
 	}
 
-	@Test
-	void aggregateMutationRejectsReferencedRelationshipMutationPlans()
-	{
-		var definition = new MasterAggregateDefinition(RelationshipKind.REFERENCED);
-		definition.masterStore.put("order-1", new MasterModel("SUBMITTED", List.of()));
-		definition.satelliteStore.put(7L, new SatelliteModel("external"));
-		var service = mutationService(definition, referencedRegistry());
-
-		var exception = assertThrows(
-				InvalidRequestException.class,
-				() -> service.mutate(new MutationRequest<>(
-						"order-1",
-						new LinkReferencedNote(7L),
-						OperationSource.INTERNAL_COMMAND)));
-
-		assertTrue(exception.getMessage().contains("mutate the referenced aggregate directly"));
-	}
-
 	private MutationService<String, MasterModel> mutationService(
 			final MasterAggregateDefinition definition,
 			final MutationHandlerRegistry<MasterModel> registry)
 	{
 		var engine =
-				de.gupta.clean.crud.template.useCases.crud.aggregate.engine.DefaultAggregateLifecycleEngine.withTransactionRunner(
+				DefaultAggregateLifecycleEngine.withTransactionRunner(
 						new InlineTransactionRunner());
 		return AggregateMutationServices.mutationService("test-aggregate", definition, engine, registry);
 	}
@@ -99,6 +82,24 @@ class AggregateMutationRelationshipSupportTest
 																						new SatelliteCreate(
 																								payload.noteValue()))))
 						                                                .build())));
+	}
+
+	@Test
+	void aggregateMutationRejectsReferencedRelationshipMutationPlans()
+	{
+		var definition = new MasterAggregateDefinition(RelationshipKind.REFERENCED);
+		definition.masterStore.put("order-1", new MasterModel("SUBMITTED", List.of()));
+		definition.satelliteStore.put(7L, new SatelliteModel("external"));
+		var service = mutationService(definition, referencedRegistry());
+
+		var exception = assertThrows(
+				InvalidRequestException.class,
+				() -> service.mutate(new MutationRequest<>(
+						"order-1",
+						new LinkReferencedNote(7L),
+						OperationSource.INTERNAL_COMMAND)));
+
+		assertTrue(exception.getMessage().contains("mutate the referenced aggregate directly"));
 	}
 
 	private MutationHandlerRegistry<MasterModel> referencedRegistry()
@@ -143,7 +144,7 @@ class AggregateMutationRelationshipSupportTest
 	}
 
 	private static final class MasterAggregateDefinition
-			implements AggregateCrudDefinition<String, MasterModel, String, String, String>
+			implements AggregateDefinition<String, MasterModel, String, String, String>
 	{
 		private final RelationshipKind relationshipKind;
 		private final Map<String, MasterModel> masterStore = new LinkedHashMap<>();
@@ -236,33 +237,11 @@ class AggregateMutationRelationshipSupportTest
 		}
 
 		@Override
-		public InsertionPolicy<MasterModel> insertionPolicy()
-		{
-			return _ ->
-			{
-			};
-		}
-
-		@Override
-		public PatchPolicy<MasterModel> patchPolicy()
-		{
-			return (_, _) ->
-			{
-			};
-		}
-
-		@Override
 		public DeletionPolicy<MasterModel> deletionPolicy()
 		{
 			return _ ->
 			{
 			};
-		}
-
-		@Override
-		public DomainSecurityPolicy<MasterModel> securityPolicy()
-		{
-			return DomainSecurityPolicy.allowing();
 		}
 
 		@Override
@@ -282,6 +261,28 @@ class AggregateMutationRelationshipSupportTest
 		relationshipDefinitions()
 		{
 			return List.of(new NoteRelationshipDefinition());
+		}
+
+		@Override
+		public DomainSecurityPolicy<MasterModel> securityPolicy()
+		{
+			return DomainSecurityPolicy.allowing();
+		}
+
+		@Override
+		public PatchPolicy<MasterModel> patchPolicy()
+		{
+			return (_, _) ->
+			{
+			};
+		}
+
+		@Override
+		public InsertionPolicy<MasterModel> insertionPolicy()
+		{
+			return _ ->
+			{
+			};
 		}
 
 		private MasterAggregateDefinition(final RelationshipKind relationshipKind)
@@ -324,7 +325,7 @@ class AggregateMutationRelationshipSupportTest
 			}
 
 			@Override
-			public AggregateCrudDefinition<Long, SatelliteModel, SatelliteCreate, SatellitePatch, ?> satelliteDefinition()
+			public AggregateDefinition<Long, SatelliteModel, SatelliteCreate, SatellitePatch, ?> satelliteDefinition()
 			{
 				return new SatelliteAggregateDefinition();
 			}
@@ -409,7 +410,7 @@ class AggregateMutationRelationshipSupportTest
 		}
 
 		private final class SatelliteAggregateDefinition
-				implements AggregateCrudDefinition<Long, SatelliteModel, SatelliteCreate, SatellitePatch, String>
+				implements AggregateDefinition<Long, SatelliteModel, SatelliteCreate, SatellitePatch, String>
 		{
 			@Override
 			public AggregateMutationPort<Long, SatelliteModel, SatelliteCreate, SatellitePatch> mutationPort()
@@ -499,33 +500,11 @@ class AggregateMutationRelationshipSupportTest
 			}
 
 			@Override
-			public InsertionPolicy<SatelliteModel> insertionPolicy()
-			{
-				return _ ->
-				{
-				};
-			}
-
-			@Override
-			public PatchPolicy<SatelliteModel> patchPolicy()
-			{
-				return (_, _) ->
-				{
-				};
-			}
-
-			@Override
 			public DeletionPolicy<SatelliteModel> deletionPolicy()
 			{
 				return _ ->
 				{
 				};
-			}
-
-			@Override
-			public DomainSecurityPolicy<SatelliteModel> securityPolicy()
-			{
-				return DomainSecurityPolicy.allowing();
 			}
 
 			@Override
@@ -545,6 +524,28 @@ class AggregateMutationRelationshipSupportTest
 			relationshipDefinitions()
 			{
 				return List.of();
+			}
+
+			@Override
+			public DomainSecurityPolicy<SatelliteModel> securityPolicy()
+			{
+				return DomainSecurityPolicy.allowing();
+			}
+
+			@Override
+			public PatchPolicy<SatelliteModel> patchPolicy()
+			{
+				return (_, _) ->
+				{
+				};
+			}
+
+			@Override
+			public InsertionPolicy<SatelliteModel> insertionPolicy()
+			{
+				return _ ->
+				{
+				};
 			}
 		}
 	}

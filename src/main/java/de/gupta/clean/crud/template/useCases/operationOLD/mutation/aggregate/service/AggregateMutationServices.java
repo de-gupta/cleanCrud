@@ -1,9 +1,9 @@
 package de.gupta.clean.crud.template.useCases.operationOLD.mutation.aggregate.service;
 
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateDefinitionGuard;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateLifecycleEngine;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateServiceSupportFactory;
+import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
+import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateDefinitionGuard;
+import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateLifecycleEngine;
+import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateServiceSupportFactory;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.aggregate.policy.AggregateMutationPolicies;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.application.service.QuarantinableMutationService;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.handler.MutationHandlerRegistry;
@@ -15,12 +15,14 @@ import java.util.Collection;
 import java.util.List;
 import java.util.function.Function;
 
-public final class AggregateMutationServices
+public enum AggregateMutationServices
 {
+	;
+
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
 	QuarantinableMutationService<DomainId, DomainModel> mutationService(
 			final String aggregateKey,
-			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
+			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
 			final AggregateLifecycleEngine engine,
 			final MutationHandlerRegistry<DomainModel> handlerRegistry)
@@ -38,41 +40,7 @@ public final class AggregateMutationServices
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
 	QuarantinableMutationService<DomainId, DomainModel> mutationService(
 			final String aggregateKey,
-			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
-					DomainModelResponse> definition,
-			final AggregateLifecycleEngine engine,
-			final MutationHandlerRegistry<DomainModel> handlerRegistry,
-			final Function<MutationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
-					durableProcessStartRequests)
-	{
-		return mutationService(
-				aggregateKey,
-				definition,
-				engine,
-				handlerRegistry,
-				durableProcessStartRequests,
-				AggregateServiceSupportFactory.definitionGuard(),
-				AggregateMutationPolicies.sourceAwarePolicy(definition));
-	}
-
-	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
-	QuarantinableMutationService<DomainId, DomainModel> mutationService(
-			final String aggregateKey,
-			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
-					DomainModelResponse> definition,
-			final AggregateLifecycleEngine engine,
-			final MutationHandlerRegistry<DomainModel> handlerRegistry,
-			final AggregateDefinitionGuard definitionGuard,
-			final SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy)
-	{
-		return mutationService(aggregateKey, definition, engine, handlerRegistry, _ -> List.of(), definitionGuard,
-				sourceAwareMutationPolicy);
-	}
-
-	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
-	QuarantinableMutationService<DomainId, DomainModel> mutationService(
-			final String aggregateKey,
-			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
+			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
 			final AggregateLifecycleEngine engine,
 			final MutationHandlerRegistry<DomainModel> handlerRegistry,
@@ -95,7 +63,38 @@ public final class AggregateMutationServices
 						AggregateServiceSupportFactory.validationSupport()));
 	}
 
-	private AggregateMutationServices()
+	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
+	QuarantinableMutationService<DomainId, DomainModel> mutationService(
+			final String aggregateKey,
+			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
+					DomainModelResponse> definition,
+			final AggregateLifecycleEngine engine,
+			final MutationHandlerRegistry<DomainModel> handlerRegistry,
+			final Function<MutationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
+					durableProcessStartRequests)
 	{
+		return mutationService(
+				aggregateKey,
+				definition,
+				engine,
+				handlerRegistry,
+				durableProcessStartRequests,
+				AggregateServiceSupportFactory.definitionGuard(),
+				AggregateMutationPolicies.sourceAwarePolicy(definition));
 	}
+
+	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
+	QuarantinableMutationService<DomainId, DomainModel> mutationService(
+			final String aggregateKey,
+			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
+					DomainModelResponse> definition,
+			final AggregateLifecycleEngine engine,
+			final MutationHandlerRegistry<DomainModel> handlerRegistry,
+			final AggregateDefinitionGuard definitionGuard,
+			final SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy)
+	{
+		return mutationService(aggregateKey, definition, engine, handlerRegistry, _ -> List.of(), definitionGuard,
+				sourceAwareMutationPolicy);
+	}
+
 }

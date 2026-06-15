@@ -1,14 +1,14 @@
 package de.gupta.clean.crud.template.useCases.crud.delete.application.service;
 
 import de.gupta.aletheia.functional.Unfolding;
+import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
+import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
+import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
+import de.gupta.clean.crud.template.domain.aggregate.execution.*;
+import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.domain.model.exceptions.DomainException;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationContext;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationKind;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.*;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.useCases.crud.common.BulkOperationMode;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 
@@ -25,7 +25,7 @@ public abstract class AbstractDeleteService<
 		MasterDomainModelResponse>
 		implements DeleteService<MasterDomainId>
 {
-	private final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+	private final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 			MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition;
 	private final AggregateLifecycleEngine engine;
 	private final AggregateDefinitionGuard definitionGuard;
@@ -37,10 +37,10 @@ public abstract class AbstractDeleteService<
 	{
 		var relationships = definitionGuard.satelliteRelationships(definition);
 		engine.execute(
-				CrudWorkflowBuilder.writeFlow(() -> deleteModel(id, relationships))
-				                   .startDurableProcesses(this::durableProcessStartRequests)
-				                   .afterTransaction(definition.postCommitMutation())
-				                   .build());
+				AggregateWorkflowBuilder.writeFlow(() -> deleteModel(id, relationships))
+				                        .startDurableProcesses(this::durableProcessStartRequests)
+				                        .afterTransaction(definition.postCommitMutation())
+				                        .build());
 	}
 
 	@Override
@@ -50,12 +50,27 @@ public abstract class AbstractDeleteService<
 		switch (mode)
 		{
 			case ALL_OR_NOTHING -> engine.execute(
-					CrudWorkflowBuilder.writeFlow(() -> deleteModels(ids, relationships))
-					                   .startDurableProcesses(this::durableProcessStartRequests)
-					                   .afterTransaction(this::dispatchDeleted)
-					                   .build());
+					AggregateWorkflowBuilder.writeFlow(() -> deleteModels(ids, relationships))
+					                        .startDurableProcesses(this::durableProcessStartRequests)
+					                        .afterTransaction(this::dispatchDeleted)
+					                        .build());
 			case BEST_EFFORT -> ids.forEach(this::tryDeleteById);
 		}
+	}
+
+	protected Collection<DurableProcessStartRequest<?, ?>> durableProcessStartRequests(
+			final Collection<PostCommitMutationContext<MasterDomainId, MasterDomainModel>> contexts)
+	{
+		return contexts.stream()
+		               .map(this::durableProcessStartRequests)
+		               .flatMap(Collection::stream)
+		               .toList();
+	}
+
+	protected Collection<DurableProcessStartRequest<?, ?>> durableProcessStartRequests(
+			final PostCommitMutationContext<MasterDomainId, MasterDomainModel> context)
+	{
+		return List.of();
 	}
 
 	private PostCommitMutationContext<MasterDomainId, MasterDomainModel> deleteModel(
@@ -121,21 +136,6 @@ public abstract class AbstractDeleteService<
 		}
 	}
 
-	protected Collection<DurableProcessStartRequest<?, ?>> durableProcessStartRequests(
-			final PostCommitMutationContext<MasterDomainId, MasterDomainModel> context)
-	{
-		return List.of();
-	}
-
-	protected Collection<DurableProcessStartRequest<?, ?>> durableProcessStartRequests(
-			final Collection<PostCommitMutationContext<MasterDomainId, MasterDomainModel>> contexts)
-	{
-		return contexts.stream()
-		               .map(this::durableProcessStartRequests)
-		               .flatMap(Collection::stream)
-		               .toList();
-	}
-
 	private PostCommitMutationContext<MasterDomainId, MasterDomainModel> deleteContext(
 			final MasterDomainId id,
 			final MasterDomainModel previousModel)
@@ -148,7 +148,7 @@ public abstract class AbstractDeleteService<
 	}
 
 	protected AbstractDeleteService(
-			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final AggregateLifecycleEngine engine,
 			final AggregateDefinitionGuard definitionGuard,

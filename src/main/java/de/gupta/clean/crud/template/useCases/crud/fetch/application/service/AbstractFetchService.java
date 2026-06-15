@@ -1,14 +1,14 @@
 package de.gupta.clean.crud.template.useCases.crud.fetch.application.service;
 
 import de.gupta.aletheia.functional.Unfolding;
+import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
+import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateDefinitionGuard;
+import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateFetchCoordinator;
+import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateLifecycleEngine;
+import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateWorkflowBuilder;
+import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateDefinitionGuard;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateFetchCoordinator;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateLifecycleEngine;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.CrudWorkflowBuilder;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.useCases.crud.common.utility.PageUtility;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -25,7 +25,7 @@ public abstract class AbstractFetchService<
 		MasterDomainModelResponse>
 		implements FetchService<MasterDomainModel, MasterDomainId>
 {
-	private final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+	private final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 			MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition;
 	private final AggregateLifecycleEngine engine;
 	private final AggregateDefinitionGuard definitionGuard;
@@ -35,7 +35,7 @@ public abstract class AbstractFetchService<
 	public Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> findAll()
 	{
 		var relationships = definitionGuard.satelliteRelationships(definition);
-		return engine.execute(CrudWorkflowBuilder.readOnlyFlow(() -> findAllModels(relationships)).build());
+		return engine.execute(AggregateWorkflowBuilder.readOnlyFlow(() -> findAllModels(relationships)).build());
 	}
 
 	@Override
@@ -43,7 +43,7 @@ public abstract class AbstractFetchService<
 	{
 		var relationships = definitionGuard.satelliteRelationships(definition);
 		return engine.execute(
-				CrudWorkflowBuilder.readOnlyFlow(() -> findAllModels(pageable, relationships)).build());
+				AggregateWorkflowBuilder.readOnlyFlow(() -> findAllModels(pageable, relationships)).build());
 	}
 
 	@Override
@@ -51,7 +51,7 @@ public abstract class AbstractFetchService<
 	{
 		var relationships = definitionGuard.satelliteRelationships(definition);
 		return engine.execute(
-				CrudWorkflowBuilder.readOnlyFlow(() -> findModelById(domainID, relationships)).build());
+				AggregateWorkflowBuilder.readOnlyFlow(() -> findModelById(domainID, relationships)).build());
 	}
 
 	@Override
@@ -59,54 +59,33 @@ public abstract class AbstractFetchService<
 	{
 		var relationships = definitionGuard.satelliteRelationships(definition);
 		return engine.execute(
-				CrudWorkflowBuilder.readOnlyFlow(() -> findModelsByIds(ids, relationships)).build());
+				AggregateWorkflowBuilder.readOnlyFlow(() -> findModelsByIds(ids, relationships)).build());
 	}
 
-	private Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> findAllModels(
+	private Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> findModelsByIds(
+			final Set<MasterDomainId> ids,
 			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships)
 	{
-		return Unfolding.of(relationships)
+		return Unfolding.beckon(relationships)
 		                .coronate(List::isEmpty,
-								ignored -> findAllModelsWithoutRelationships(),
-								this::findAllModelsWithRelationships);
+								ignored -> findModelsByIdsWithoutRelationships(ids),
+								relationshipDefinitions -> findModelsByIdsWithRelationships(ids,
+										relationshipDefinitions));
 	}
 
-	private Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> findAllModelsWithoutRelationships()
+	private Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> findModelsByIdsWithoutRelationships(
+			final Set<MasterDomainId> ids)
 	{
-		return definition.fetchPort().findAll().stream().filter(this::isVisible).toList();
+		return definition.fetchPort().findByIds(ids).stream().filter(this::isVisible).toList();
 	}
 
-	private Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> findAllModelsWithRelationships(
+	private Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> findModelsByIdsWithRelationships(
+			final Set<MasterDomainId> ids,
 			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships)
 	{
-		return fetchCoordinator.findAll(definition, relationships);
-	}
-
-	private Slice<IdentifiedModel<MasterDomainId, MasterDomainModel>> findAllModels(
-			final Pageable pageable,
-			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
-					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships)
-	{
-		return Unfolding.of(relationships)
-		                .coronate(List::isEmpty,
-								ignored -> findAllModelsWithoutRelationships(pageable),
-								rels -> findAllModelsWithRelationships(pageable, rels));
-	}
-
-	private Slice<IdentifiedModel<MasterDomainId, MasterDomainModel>> findAllModelsWithoutRelationships(
-			final Pageable pageable)
-	{
-		return PageUtility.filterSlice(definition.fetchPort().findAll(pageable), this::isVisible);
-	}
-
-	private Slice<IdentifiedModel<MasterDomainId, MasterDomainModel>> findAllModelsWithRelationships(
-			final Pageable pageable,
-			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
-					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships)
-	{
-		return fetchCoordinator.findAll(definition, relationships, pageable);
+		return fetchCoordinator.findByIds(definition, relationships, ids);
 	}
 
 	private IdentifiedModel<MasterDomainId, MasterDomainModel> findModelById(
@@ -136,30 +115,51 @@ public abstract class AbstractFetchService<
 		return fetchCoordinator.findById(definition, relationships, domainID);
 	}
 
-	private Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> findModelsByIds(
-			final Set<MasterDomainId> ids,
+	private Slice<IdentifiedModel<MasterDomainId, MasterDomainModel>> findAllModels(
+			final Pageable pageable,
 			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships)
 	{
-		return Unfolding.beckon(relationships)
+		return Unfolding.of(relationships)
 		                .coronate(List::isEmpty,
-								ignored -> findModelsByIdsWithoutRelationships(ids),
-								relationshipDefinitions -> findModelsByIdsWithRelationships(ids,
-										relationshipDefinitions));
+								ignored -> findAllModelsWithoutRelationships(pageable),
+								rels -> findAllModelsWithRelationships(pageable, rels));
 	}
 
-	private Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> findModelsByIdsWithoutRelationships(
-			final Set<MasterDomainId> ids)
+	private Slice<IdentifiedModel<MasterDomainId, MasterDomainModel>> findAllModelsWithoutRelationships(
+			final Pageable pageable)
 	{
-		return definition.fetchPort().findByIds(ids).stream().filter(this::isVisible).toList();
+		return PageUtility.filterSlice(definition.fetchPort().findAll(pageable), this::isVisible);
 	}
 
-	private Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> findModelsByIdsWithRelationships(
-			final Set<MasterDomainId> ids,
+	private Slice<IdentifiedModel<MasterDomainId, MasterDomainModel>> findAllModelsWithRelationships(
+			final Pageable pageable,
 			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships)
 	{
-		return fetchCoordinator.findByIds(definition, relationships, ids);
+		return fetchCoordinator.findAll(definition, relationships, pageable);
+	}
+
+	private Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> findAllModels(
+			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships)
+	{
+		return Unfolding.of(relationships)
+		                .coronate(List::isEmpty,
+								ignored -> findAllModelsWithoutRelationships(),
+								this::findAllModelsWithRelationships);
+	}
+
+	private Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> findAllModelsWithoutRelationships()
+	{
+		return definition.fetchPort().findAll().stream().filter(this::isVisible).toList();
+	}
+
+	private Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> findAllModelsWithRelationships(
+			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships)
+	{
+		return fetchCoordinator.findAll(definition, relationships);
 	}
 
 	private boolean isVisible(final IdentifiedModel<MasterDomainId, MasterDomainModel> model)
@@ -168,7 +168,7 @@ public abstract class AbstractFetchService<
 	}
 
 	protected AbstractFetchService(
-			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final AggregateLifecycleEngine engine,
 			final AggregateDefinitionGuard definitionGuard,

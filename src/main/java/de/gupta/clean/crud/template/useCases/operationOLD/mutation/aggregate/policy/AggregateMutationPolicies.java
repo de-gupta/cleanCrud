@@ -1,8 +1,8 @@
 package de.gupta.clean.crud.template.useCases.operationOLD.mutation.aggregate.policy;
 
+import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDeniedException;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
 import de.gupta.clean.crud.template.useCases.operationOLD.domain.model.OperationSource;
 import de.gupta.clean.crud.template.useCases.operationOLD.domain.policy.violation.OperationPolicyViolation;
 import de.gupta.clean.crud.template.useCases.operationOLD.domain.policy.violation.ViolationHandling;
@@ -17,11 +17,13 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Optional;
 
-public final class AggregateMutationPolicies
+public enum AggregateMutationPolicies
 {
+	;
+
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
 	SourceAwareMutationPolicy<DomainModel> sourceAwarePolicy(
-			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
+			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition)
 	{
 		return new EvaluatingSourceAwareMutationPolicy<>(policyBundle(definition));
@@ -29,7 +31,7 @@ public final class AggregateMutationPolicies
 
 	private static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
 	MutationPolicyBundle<DomainModel> policyBundle(
-			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
+			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition)
 	{
 		return new MutationPolicyBundle<>(
@@ -38,10 +40,6 @@ public final class AggregateMutationPolicies
 				definition.mutationTransitionPolicy(),
 				definition.domainInvariantPolicy(),
 				definition.externalConsistencyPolicy());
-	}
-
-	private AggregateMutationPolicies()
-	{
 	}
 
 	private record EvaluatingSourceAwareMutationPolicy<DomainModel>(MutationPolicyBundle<DomainModel> policyBundle)

@@ -62,13 +62,8 @@ module de.gupta.clean.crud
 	exports de.gupta.clean.crud.template.useCases.crud.common.infrastructure.persistence.repository;
 	exports de.gupta.clean.crud.template.useCases.crud.common.security;
 	exports de.gupta.clean.crud.template.useCases.crud.common.utility;
-	exports de.gupta.clean.crud.template.useCases.crud.aggregate.builder;
-	exports de.gupta.clean.crud.template.useCases.crud.aggregate.definition;
-	exports de.gupta.clean.crud.template.useCases.crud.aggregate.engine;
-	exports de.gupta.clean.crud.template.useCases.crud.aggregate.intent;
-	exports de.gupta.clean.crud.template.useCases.crud.aggregate.port;
-	exports de.gupta.clean.crud.template.useCases.crud.aggregate.relationship;
-	exports de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.standard;
+	exports de.gupta.clean.crud.template.domain.aggregate.definition;
+	exports de.gupta.clean.crud.template.domain.aggregate.intent;
 	exports de.gupta.clean.crud.template.useCases.crud.aggregate.service;
 	exports de.gupta.clean.crud.template.useCases.crud.delete.api.application;
 	exports de.gupta.clean.crud.template.useCases.crud.delete.api.web;
@@ -187,4 +182,10 @@ module de.gupta.clean.crud
 	opens de.gupta.clean.crud.template.useCases.operationOLD.mutation.quarantine.infrastructure.spring;
 
 	opens de.gupta.clean.crud.template.infrastructure.web.openapi;
+	exports de.gupta.clean.crud.template.domain.aggregate.port;
+	exports de.gupta.clean.crud.template.domain.aggregate.relationship;
+	exports de.gupta.clean.crud.template.domain.aggregate.execution;
+	exports de.gupta.clean.crud.template.domain.aggregate.builder;
+	exports de.gupta.clean.crud.template.infrastructure.aggregate.adapter;
+	exports de.gupta.clean.crud.template.domain.aggregate.relationship.standard;
 }

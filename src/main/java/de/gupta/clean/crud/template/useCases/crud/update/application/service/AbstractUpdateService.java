@@ -1,14 +1,14 @@
 package de.gupta.clean.crud.template.useCases.crud.update.application.service;
 
 import de.gupta.aletheia.functional.Unfolding;
+import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
+import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
+import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
+import de.gupta.clean.crud.template.domain.aggregate.execution.*;
+import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.domain.model.exceptions.DomainException;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationContext;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationKind;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.*;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.useCases.crud.common.BulkOperationMode;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 
@@ -26,7 +26,7 @@ public abstract class AbstractUpdateService<
 		implements UpdateService<MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse,
 		MasterDomainId>
 {
-	private final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+	private final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 			MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition;
 	private final AggregateLifecycleEngine engine;
 	private final AggregateDefinitionGuard definitionGuard;
@@ -38,10 +38,10 @@ public abstract class AbstractUpdateService<
 	{
 		var relationships = definitionGuard.satelliteRelationships(definition);
 		engine.execute(
-				CrudWorkflowBuilder.writeFlow(() -> replaceModel(id, model, relationships))
-				                   .startDurableProcesses(this::durableProcessStartRequests)
-				                   .afterTransaction(definition.postCommitMutation())
-				                   .build());
+				AggregateWorkflowBuilder.writeFlow(() -> replaceModel(id, model, relationships))
+				                        .startDurableProcesses(this::durableProcessStartRequests)
+				                        .afterTransaction(definition.postCommitMutation())
+				                        .build());
 	}
 
 	@Override
@@ -51,10 +51,10 @@ public abstract class AbstractUpdateService<
 	{
 		var relationships = definitionGuard.satelliteRelationships(definition);
 		return identifiedModel(engine.execute(
-				CrudWorkflowBuilder.writeFlow(() -> patchModel(id, updatePatch, relationships))
-				                   .startDurableProcesses(result -> durableProcessStartRequests(result.context()))
-				                   .afterTransaction(this::dispatchUpdated)
-				                   .build()).updated());
+				AggregateWorkflowBuilder.writeFlow(() -> patchModel(id, updatePatch, relationships))
+				                        .startDurableProcesses(result -> durableProcessStartRequests(result.context()))
+				                        .afterTransaction(this::dispatchUpdated)
+				                        .build()).updated());
 	}
 
 	@Override
@@ -66,11 +66,11 @@ public abstract class AbstractUpdateService<
 		return switch (mode)
 		{
 			case ALL_OR_NOTHING -> engine.execute(
-												 CrudWorkflowBuilder.writeFlow(() -> patchAllModels(models, relationships))
-					                                                .startDurableProcesses(
-																			this::durableProcessStartRequests)
-					                                                .afterTransaction(this::dispatchUpdated)
-					                                                .build()).stream().map(UpdateDispatch::updated).map(this::identifiedModel)
+												 AggregateWorkflowBuilder.writeFlow(() -> patchAllModels(models, relationships))
+					                                                     .startDurableProcesses(
+																				 this::durableProcessStartRequests)
+					                                                     .afterTransaction(this::dispatchUpdated)
+					                                                     .build()).stream().map(UpdateDispatch::updated).map(this::identifiedModel)
 			                             .toList();
 			case BEST_EFFORT -> models.stream()
 			                          .map(model -> tryUpdateById(model.id(), model.model()))
@@ -80,39 +80,55 @@ public abstract class AbstractUpdateService<
 		};
 	}
 
-	protected Collection<DurableProcessStartRequest<?, ?>> durableProcessStartRequests(
-			final PostCommitMutationContext<MasterDomainId, MasterDomainModel> context)
+	private IdentifiedModel<MasterDomainId, MasterDomainModelResponse> identifiedModel(
+			final IdentifiedModel<MasterDomainId, MasterDomainModel> domainModel)
 	{
-		return List.of();
+		return IdentifiedModel.of(domainModel.id(), definition.responseBuilder().toResponse(domainModel.model()));
 	}
 
-	protected Collection<DurableProcessStartRequest<?, ?>> durableProcessStartRequests(
-			final Collection<UpdateDispatch<MasterDomainId, MasterDomainModel>> results)
+	private UpdateDispatch<MasterDomainId, MasterDomainModel> patchModel(
+			final MasterDomainId id,
+			final MasterDomainModelUpdatePatch updatePatch,
+			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships)
 	{
-		return results.stream()
-		              .map(UpdateDispatch::context)
-		              .map(this::durableProcessStartRequests)
-		              .flatMap(Collection::stream)
-		              .toList();
+		var previousModel = definition.fetchPort()
+		                              .findById(id)
+		                              .map(IdentifiedModel::model)
+		                              .orElseThrow(() -> ResourceNotFoundException.withId(id));
+		var updated = Unfolding.of(relationships)
+		                       .coronate(List::isEmpty,
+									   ignored -> patchModelWithoutRelationships(id, updatePatch),
+									   rels -> updateCoordinator.updateById(definition, rels, id, updatePatch));
+		return new UpdateDispatch<>(updated, patchContext(updated.id(), Optional.of(previousModel), updated.model()));
 	}
 
-	private Optional<IdentifiedModel<MasterDomainId, MasterDomainModel>> tryUpdateById(
+	private void dispatchUpdated(final UpdateDispatch<MasterDomainId, MasterDomainModel> result)
+	{
+		definition.postCommitMutation().accept(result.context());
+	}
+
+	private IdentifiedModel<MasterDomainId, MasterDomainModel> patchModelWithoutRelationships(
 			final MasterDomainId id,
 			final MasterDomainModelUpdatePatch updatePatch)
 	{
-		try
-		{
-			var relationships = definitionGuard.satelliteRelationships(definition);
-			return Optional.of(engine.execute(
-					CrudWorkflowBuilder.writeFlow(() -> patchModel(id, updatePatch, relationships))
-					                   .startDurableProcesses(result -> durableProcessStartRequests(result.context()))
-					                   .afterTransaction(this::dispatchUpdated)
-					                   .build()).updated());
-		}
-		catch (DomainException e)
-		{
-			return Optional.empty();
-		}
+		var current = definition.fetchPort().findById(id).orElseThrow(() -> ResourceNotFoundException.withId(id));
+		validationSupport.validateAccess(definition, current.model());
+		var updatedModel = definition.patcher().patchModel(current.model(), updatePatch);
+		validationSupport.validateAccessAndValidatePatch(definition, current.model(), updatedModel);
+		return definition.mutationPort().update(id, updatedModel);
+	}
+
+	private PostCommitMutationContext<MasterDomainId, MasterDomainModel> patchContext(
+			final MasterDomainId id,
+			final Optional<MasterDomainModel> previousModel,
+			final MasterDomainModel currentModel)
+	{
+		return new PostCommitMutationContext<>(
+				PostCommitMutationKind.PATCH,
+				id,
+				Optional.of(currentModel),
+				previousModel);
 	}
 
 	private PostCommitMutationContext<MasterDomainId, MasterDomainModel> replaceModel(
@@ -128,6 +144,12 @@ public abstract class AbstractUpdateService<
 						 rels -> replaceModelWithRelationships(id, model, rels));
 		var currentModel = definition.fetchPort().findById(id).map(IdentifiedModel::model).orElseThrow();
 		return putContext(id, previousModel, currentModel);
+	}
+
+	protected Collection<DurableProcessStartRequest<?, ?>> durableProcessStartRequests(
+			final PostCommitMutationContext<MasterDomainId, MasterDomainModel> context)
+	{
+		return List.of();
 	}
 
 	private Void replaceModelWithoutRelationships(
@@ -154,21 +176,46 @@ public abstract class AbstractUpdateService<
 		return null;
 	}
 
-	private UpdateDispatch<MasterDomainId, MasterDomainModel> patchModel(
+	private PostCommitMutationContext<MasterDomainId, MasterDomainModel> putContext(
 			final MasterDomainId id,
-			final MasterDomainModelUpdatePatch updatePatch,
-			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
-					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships)
+			final Optional<MasterDomainModel> previousModel,
+			final MasterDomainModel currentModel)
 	{
-		var previousModel = definition.fetchPort()
-		                              .findById(id)
-		                              .map(IdentifiedModel::model)
-		                              .orElseThrow(() -> ResourceNotFoundException.withId(id));
-		var updated = Unfolding.of(relationships)
-		                       .coronate(List::isEmpty,
-									   ignored -> patchModelWithoutRelationships(id, updatePatch),
-									   rels -> updateCoordinator.updateById(definition, rels, id, updatePatch));
-		return new UpdateDispatch<>(updated, patchContext(updated.id(), Optional.of(previousModel), updated.model()));
+		return new PostCommitMutationContext<>(
+				PostCommitMutationKind.PUT,
+				id,
+				Optional.of(currentModel),
+				previousModel);
+	}
+
+	protected Collection<DurableProcessStartRequest<?, ?>> durableProcessStartRequests(
+			final Collection<UpdateDispatch<MasterDomainId, MasterDomainModel>> results)
+	{
+		return results.stream()
+		              .map(UpdateDispatch::context)
+		              .map(this::durableProcessStartRequests)
+		              .flatMap(Collection::stream)
+		              .toList();
+	}
+
+	private Optional<IdentifiedModel<MasterDomainId, MasterDomainModel>> tryUpdateById(
+			final MasterDomainId id,
+			final MasterDomainModelUpdatePatch updatePatch)
+	{
+		try
+		{
+			var relationships = definitionGuard.satelliteRelationships(definition);
+			return Optional.of(engine.execute(
+					AggregateWorkflowBuilder.writeFlow(() -> patchModel(id, updatePatch, relationships))
+					                        .startDurableProcesses(
+													result -> durableProcessStartRequests(result.context()))
+					                        .afterTransaction(this::dispatchUpdated)
+					                        .build()).updated());
+		}
+		catch (DomainException e)
+		{
+			return Optional.empty();
+		}
 	}
 
 	private Collection<UpdateDispatch<MasterDomainId, MasterDomainModel>> patchAllModels(
@@ -184,59 +231,13 @@ public abstract class AbstractUpdateService<
 		return updates;
 	}
 
-	private IdentifiedModel<MasterDomainId, MasterDomainModel> patchModelWithoutRelationships(
-			final MasterDomainId id,
-			final MasterDomainModelUpdatePatch updatePatch)
-	{
-		var current = definition.fetchPort().findById(id).orElseThrow(() -> ResourceNotFoundException.withId(id));
-		validationSupport.validateAccess(definition, current.model());
-		var updatedModel = definition.patcher().patchModel(current.model(), updatePatch);
-		validationSupport.validateAccessAndValidatePatch(definition, current.model(), updatedModel);
-		return definition.mutationPort().update(id, updatedModel);
-	}
-
-	private void dispatchUpdated(final UpdateDispatch<MasterDomainId, MasterDomainModel> result)
-	{
-		definition.postCommitMutation().accept(result.context());
-	}
-
 	private void dispatchUpdated(final Collection<UpdateDispatch<MasterDomainId, MasterDomainModel>> result)
 	{
 		result.forEach(this::dispatchUpdated);
 	}
 
-	private PostCommitMutationContext<MasterDomainId, MasterDomainModel> putContext(
-			final MasterDomainId id,
-			final Optional<MasterDomainModel> previousModel,
-			final MasterDomainModel currentModel)
-	{
-		return new PostCommitMutationContext<>(
-				PostCommitMutationKind.PUT,
-				id,
-				Optional.of(currentModel),
-				previousModel);
-	}
-
-	private PostCommitMutationContext<MasterDomainId, MasterDomainModel> patchContext(
-			final MasterDomainId id,
-			final Optional<MasterDomainModel> previousModel,
-			final MasterDomainModel currentModel)
-	{
-		return new PostCommitMutationContext<>(
-				PostCommitMutationKind.PATCH,
-				id,
-				Optional.of(currentModel),
-				previousModel);
-	}
-
-	private IdentifiedModel<MasterDomainId, MasterDomainModelResponse> identifiedModel(
-			final IdentifiedModel<MasterDomainId, MasterDomainModel> domainModel)
-	{
-		return IdentifiedModel.of(domainModel.id(), definition.responseBuilder().toResponse(domainModel.model()));
-	}
-
 	protected AbstractUpdateService(
-			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final AggregateLifecycleEngine engine,
 			final AggregateDefinitionGuard definitionGuard,

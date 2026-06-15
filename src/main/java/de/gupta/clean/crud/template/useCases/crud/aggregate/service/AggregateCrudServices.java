@@ -1,9 +1,9 @@
 package de.gupta.clean.crud.template.useCases.crud.aggregate.service;
 
+import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
+import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
+import de.gupta.clean.crud.template.domain.aggregate.execution.*;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationContext;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.*;
 import de.gupta.clean.crud.template.useCases.crud.delete.application.service.AbstractDeleteService;
 import de.gupta.clean.crud.template.useCases.crud.delete.application.service.DeleteService;
 import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.AbstractFetchService;
@@ -17,12 +17,14 @@ import de.gupta.clean.crud.template.useCases.process.application.registration.Du
 import java.util.Collection;
 import java.util.function.Function;
 
-public final class AggregateCrudServices
+public enum AggregateCrudServices
 {
+	;
+
 	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
 			MasterDomainModelResponse>
 	SaveService<MasterDomainModelCreate, MasterDomainModelResponse, MasterDomainId> saveService(
-			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final AggregateLifecycleEngine engine)
 	{
@@ -37,25 +39,7 @@ public final class AggregateCrudServices
 	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
 			MasterDomainModelResponse>
 	SaveService<MasterDomainModelCreate, MasterDomainModelResponse, MasterDomainId> saveService(
-			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
-					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
-			final AggregateLifecycleEngine engine,
-			final Function<Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>>,
-					Collection<DurableProcessStartRequest<?, ?>>> durableProcessStartRequests)
-	{
-		return saveService(
-				definition,
-				engine,
-				durableProcessStartRequests,
-				AggregateServiceSupportFactory.definitionGuard(),
-				AggregateServiceSupportFactory.validationSupport(),
-				AggregateServiceSupportFactory.saveCoordinator());
-	}
-
-	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
-			MasterDomainModelResponse>
-	SaveService<MasterDomainModelCreate, MasterDomainModelResponse, MasterDomainId> saveService(
-			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final AggregateLifecycleEngine engine,
 			final AggregateDefinitionGuard definitionGuard,
@@ -69,7 +53,7 @@ public final class AggregateCrudServices
 	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
 			MasterDomainModelResponse>
 	SaveService<MasterDomainModelCreate, MasterDomainModelResponse, MasterDomainId> saveService(
-			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final AggregateLifecycleEngine engine,
 			final Function<Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>>,
@@ -84,8 +68,26 @@ public final class AggregateCrudServices
 
 	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
 			MasterDomainModelResponse>
+	SaveService<MasterDomainModelCreate, MasterDomainModelResponse, MasterDomainId> saveService(
+			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+			final AggregateLifecycleEngine engine,
+			final Function<Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>>,
+					Collection<DurableProcessStartRequest<?, ?>>> durableProcessStartRequests)
+	{
+		return saveService(
+				definition,
+				engine,
+				durableProcessStartRequests,
+				AggregateServiceSupportFactory.definitionGuard(),
+				AggregateServiceSupportFactory.validationSupport(),
+				AggregateServiceSupportFactory.saveCoordinator());
+	}
+
+	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			MasterDomainModelResponse>
 	FetchService<MasterDomainModel, MasterDomainId> fetchService(
-			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final AggregateLifecycleEngine engine)
 	{
@@ -99,7 +101,7 @@ public final class AggregateCrudServices
 	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
 			MasterDomainModelResponse>
 	FetchService<MasterDomainModel, MasterDomainId> fetchService(
-			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final AggregateLifecycleEngine engine,
 			final AggregateDefinitionGuard definitionGuard,
@@ -112,7 +114,7 @@ public final class AggregateCrudServices
 			MasterDomainModelResponse>
 	UpdateService<MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse, MasterDomainId>
 	updateService(
-			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final AggregateLifecycleEngine engine)
 	{
@@ -129,41 +131,7 @@ public final class AggregateCrudServices
 			MasterDomainModelResponse>
 	UpdateService<MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse, MasterDomainId>
 	updateService(
-			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
-					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
-			final AggregateLifecycleEngine engine,
-			final Function<PostCommitMutationContext<MasterDomainId, MasterDomainModel>,
-					Collection<DurableProcessStartRequest<?, ?>>> durableProcessStartRequests)
-	{
-		return updateService(
-				definition,
-				engine,
-				durableProcessStartRequests,
-				AggregateServiceSupportFactory.definitionGuard(),
-				AggregateServiceSupportFactory.validationSupport(),
-				AggregateServiceSupportFactory.updateCoordinator());
-	}
-
-	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
-			MasterDomainModelResponse>
-	UpdateService<MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse, MasterDomainId>
-	updateService(
-			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
-					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
-			final AggregateLifecycleEngine engine,
-			final AggregateDefinitionGuard definitionGuard,
-			final AggregateMutationValidationSupport validationSupport,
-			final AggregateUpdateCoordinator updateCoordinator)
-	{
-		return updateService(definition, engine, _ -> java.util.List.of(), definitionGuard, validationSupport,
-				updateCoordinator);
-	}
-
-	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
-			MasterDomainModelResponse>
-	UpdateService<MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse, MasterDomainId>
-	updateService(
-			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final AggregateLifecycleEngine engine,
 			final Function<PostCommitMutationContext<MasterDomainId, MasterDomainModel>,
@@ -178,8 +146,42 @@ public final class AggregateCrudServices
 
 	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
 			MasterDomainModelResponse>
+	UpdateService<MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse, MasterDomainId>
+	updateService(
+			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+			final AggregateLifecycleEngine engine,
+			final Function<PostCommitMutationContext<MasterDomainId, MasterDomainModel>,
+					Collection<DurableProcessStartRequest<?, ?>>> durableProcessStartRequests)
+	{
+		return updateService(
+				definition,
+				engine,
+				durableProcessStartRequests,
+				AggregateServiceSupportFactory.definitionGuard(),
+				AggregateServiceSupportFactory.validationSupport(),
+				AggregateServiceSupportFactory.updateCoordinator());
+	}
+
+	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			MasterDomainModelResponse>
+	UpdateService<MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse, MasterDomainId>
+	updateService(
+			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+			final AggregateLifecycleEngine engine,
+			final AggregateDefinitionGuard definitionGuard,
+			final AggregateMutationValidationSupport validationSupport,
+			final AggregateUpdateCoordinator updateCoordinator)
+	{
+		return updateService(definition, engine, _ -> java.util.List.of(), definitionGuard, validationSupport,
+				updateCoordinator);
+	}
+
+	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			MasterDomainModelResponse>
 	DeleteService<MasterDomainId> deleteService(
-			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final AggregateLifecycleEngine engine)
 	{
@@ -195,7 +197,23 @@ public final class AggregateCrudServices
 	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
 			MasterDomainModelResponse>
 	DeleteService<MasterDomainId> deleteService(
-			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+			final AggregateLifecycleEngine engine,
+			final Function<PostCommitMutationContext<MasterDomainId, MasterDomainModel>,
+					Collection<DurableProcessStartRequest<?, ?>>> durableProcessStartRequests,
+			final AggregateDefinitionGuard definitionGuard,
+			final AggregateMutationValidationSupport validationSupport,
+			final AggregateDeleteCoordinator deleteCoordinator)
+	{
+		return new DeleteAggregateCrudService<>(definition, engine, durableProcessStartRequests, definitionGuard,
+				validationSupport, deleteCoordinator);
+	}
+
+	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
+			MasterDomainModelResponse>
+	DeleteService<MasterDomainId> deleteService(
+			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final AggregateLifecycleEngine engine,
 			final Function<PostCommitMutationContext<MasterDomainId, MasterDomainModel>,
@@ -213,7 +231,7 @@ public final class AggregateCrudServices
 	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
 			MasterDomainModelResponse>
 	DeleteService<MasterDomainId> deleteService(
-			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final AggregateLifecycleEngine engine,
 			final AggregateDefinitionGuard definitionGuard,
@@ -222,26 +240,6 @@ public final class AggregateCrudServices
 	{
 		return deleteService(definition, engine, _ -> java.util.List.of(), definitionGuard, validationSupport,
 				deleteCoordinator);
-	}
-
-	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
-			MasterDomainModelResponse>
-	DeleteService<MasterDomainId> deleteService(
-			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
-					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
-			final AggregateLifecycleEngine engine,
-			final Function<PostCommitMutationContext<MasterDomainId, MasterDomainModel>,
-					Collection<DurableProcessStartRequest<?, ?>>> durableProcessStartRequests,
-			final AggregateDefinitionGuard definitionGuard,
-			final AggregateMutationValidationSupport validationSupport,
-			final AggregateDeleteCoordinator deleteCoordinator)
-	{
-		return new DeleteAggregateCrudService<>(definition, engine, durableProcessStartRequests, definitionGuard,
-				validationSupport, deleteCoordinator);
-	}
-
-	private AggregateCrudServices()
-	{
 	}
 
 	private static final class SaveAggregateCrudService<
@@ -267,7 +265,7 @@ public final class AggregateCrudServices
 		}
 
 		private SaveAggregateCrudService(
-				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+				final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 				final AggregateLifecycleEngine engine,
 				final AggregateDefinitionGuard definitionGuard,
@@ -278,7 +276,7 @@ public final class AggregateCrudServices
 		}
 
 		private SaveAggregateCrudService(
-				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+				final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 				final AggregateLifecycleEngine engine,
 				final Function<Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>>,
@@ -305,7 +303,7 @@ public final class AggregateCrudServices
 			MasterDomainModelResponse>
 	{
 		private FetchAggregateCrudService(
-				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+				final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 				final AggregateLifecycleEngine engine,
 				final AggregateDefinitionGuard definitionGuard,
@@ -338,7 +336,19 @@ public final class AggregateCrudServices
 		}
 
 		private UpdateAggregateCrudService(
-				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+				final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+				final AggregateLifecycleEngine engine,
+				final AggregateDefinitionGuard definitionGuard,
+				final AggregateMutationValidationSupport validationSupport,
+				final AggregateUpdateCoordinator updateCoordinator)
+		{
+			this(definition, engine, _ -> java.util.List.of(), definitionGuard, validationSupport,
+					updateCoordinator);
+		}
+
+		private UpdateAggregateCrudService(
+				final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 				final AggregateLifecycleEngine engine,
 				final Function<PostCommitMutationContext<MasterDomainId, MasterDomainModel>,
@@ -349,18 +359,6 @@ public final class AggregateCrudServices
 		{
 			super(definition, engine, definitionGuard, validationSupport, updateCoordinator);
 			this.durableProcessStartRequests = durableProcessStartRequests;
-		}
-
-		private UpdateAggregateCrudService(
-				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
-						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
-				final AggregateLifecycleEngine engine,
-				final AggregateDefinitionGuard definitionGuard,
-				final AggregateMutationValidationSupport validationSupport,
-				final AggregateUpdateCoordinator updateCoordinator)
-		{
-			this(definition, engine, _ -> java.util.List.of(), definitionGuard, validationSupport,
-					updateCoordinator);
 		}
 	}
 
@@ -387,7 +385,19 @@ public final class AggregateCrudServices
 		}
 
 		private DeleteAggregateCrudService(
-				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+				final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
+				final AggregateLifecycleEngine engine,
+				final AggregateDefinitionGuard definitionGuard,
+				final AggregateMutationValidationSupport validationSupport,
+				final AggregateDeleteCoordinator deleteCoordinator)
+		{
+			this(definition, engine, _ -> java.util.List.of(), definitionGuard, validationSupport,
+					deleteCoordinator);
+		}
+
+		private DeleteAggregateCrudService(
+				final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 				final AggregateLifecycleEngine engine,
 				final Function<PostCommitMutationContext<MasterDomainId, MasterDomainModel>,
@@ -398,18 +408,6 @@ public final class AggregateCrudServices
 		{
 			super(definition, engine, definitionGuard, validationSupport, deleteCoordinator);
 			this.durableProcessStartRequests = durableProcessStartRequests;
-		}
-
-		private DeleteAggregateCrudService(
-				final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
-						MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
-				final AggregateLifecycleEngine engine,
-				final AggregateDefinitionGuard definitionGuard,
-				final AggregateMutationValidationSupport validationSupport,
-				final AggregateDeleteCoordinator deleteCoordinator)
-		{
-			this(definition, engine, _ -> java.util.List.of(), definitionGuard, validationSupport,
-					deleteCoordinator);
 		}
 	}
 }

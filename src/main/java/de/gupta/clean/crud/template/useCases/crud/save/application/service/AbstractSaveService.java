@@ -1,12 +1,12 @@
 package de.gupta.clean.crud.template.useCases.crud.save.application.service;
 
 import de.gupta.aletheia.functional.Unfolding;
+import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
+import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
+import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
+import de.gupta.clean.crud.template.domain.aggregate.execution.*;
+import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationContext;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationKind;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.*;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 
 import java.util.Collection;
@@ -21,7 +21,7 @@ public abstract class AbstractSaveService<
 		MasterDomainModelResponse>
 		implements SaveService<MasterDomainModelCreate, MasterDomainModelResponse, MasterDomainId>
 {
-	private final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+	private final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 			MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition;
 	private final AggregateLifecycleEngine engine;
 	private final AggregateDefinitionGuard definitionGuard;
@@ -40,19 +40,13 @@ public abstract class AbstractSaveService<
 	{
 		var relationships = definitionGuard.satelliteRelationships(definition);
 		return engine.execute(
-							 CrudWorkflowBuilder.writeFlow(() -> persistAll(models, relationships))
-				                                .startDurableProcesses(this::durableProcessStartRequests)
-				                                .afterTransaction(this::dispatchCreated)
-				                                .build())
+							 AggregateWorkflowBuilder.writeFlow(() -> persistAll(models, relationships))
+				                                     .startDurableProcesses(this::durableProcessStartRequests)
+				                                     .afterTransaction(this::dispatchCreated)
+				                                     .build())
 		             .stream()
 		             .map(this::identifiedModel)
 		             .toList();
-	}
-
-	protected Collection<DurableProcessStartRequest<?, ?>> durableProcessStartRequests(
-			final Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> savedModels)
-	{
-		return List.of();
 	}
 
 	private Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> persistAll(
@@ -64,6 +58,24 @@ public abstract class AbstractSaveService<
 		                .coronate(List::isEmpty,
 								ignored -> persistAllWithoutRelationships(models),
 								rels -> persistAllWithRelationships(models, rels));
+	}
+
+	protected Collection<DurableProcessStartRequest<?, ?>> durableProcessStartRequests(
+			final Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> savedModels)
+	{
+		return List.of();
+	}
+
+	private void dispatchCreated(final Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> savedModels)
+	{
+		savedModels.forEach(saved -> definition.postCommitMutation().accept(createContext(saved)));
+	}
+
+	private IdentifiedModel<MasterDomainId, MasterDomainModelResponse> identifiedModel(
+			final IdentifiedModel<MasterDomainId, MasterDomainModel> identifiedModel)
+	{
+		return IdentifiedModel.of(identifiedModel.id(),
+				definition.responseBuilder().toResponse(identifiedModel.model()));
 	}
 
 	private Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> persistAllWithoutRelationships(
@@ -83,17 +95,6 @@ public abstract class AbstractSaveService<
 		return saveCoordinator.saveAll(definition, relationships, models);
 	}
 
-	private void validateSaveModels(final Collection<MasterDomainModelCreate> models)
-	{
-		validationSupport.validateSaveModels(definition,
-				models.stream().map(definition.createBuilder()::toModel).toList());
-	}
-
-	private void dispatchCreated(final Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>> savedModels)
-	{
-		savedModels.forEach(saved -> definition.postCommitMutation().accept(createContext(saved)));
-	}
-
 	private PostCommitMutationContext<MasterDomainId, MasterDomainModel> createContext(
 			final IdentifiedModel<MasterDomainId, MasterDomainModel> saved)
 	{
@@ -104,15 +105,14 @@ public abstract class AbstractSaveService<
 				Optional.empty());
 	}
 
-	private IdentifiedModel<MasterDomainId, MasterDomainModelResponse> identifiedModel(
-			final IdentifiedModel<MasterDomainId, MasterDomainModel> identifiedModel)
+	private void validateSaveModels(final Collection<MasterDomainModelCreate> models)
 	{
-		return IdentifiedModel.of(identifiedModel.id(),
-				definition.responseBuilder().toResponse(identifiedModel.model()));
+		validationSupport.validateSaveModels(definition,
+				models.stream().map(definition.createBuilder()::toModel).toList());
 	}
 
 	protected AbstractSaveService(
-			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final AggregateLifecycleEngine engine,
 			final AggregateDefinitionGuard definitionGuard,

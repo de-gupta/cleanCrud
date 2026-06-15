@@ -1,5 +1,16 @@
 package de.gupta.clean.crud.template.useCases.operationOLD.creation.aggregate.service;
 
+import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
+import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutation;
+import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
+import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
+import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateLifecycleEngine;
+import de.gupta.clean.crud.template.domain.aggregate.execution.DefaultAggregateLifecycleEngine;
+import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteCreateIntent;
+import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteMutationIntent;
+import de.gupta.clean.crud.template.domain.aggregate.port.AggregateFetchPort;
+import de.gupta.clean.crud.template.domain.aggregate.port.AggregateMutationPort;
+import de.gupta.clean.crud.template.domain.aggregate.relationship.*;
 import de.gupta.clean.crud.template.domain.mapping.fetch.DomainResponseBuilder;
 import de.gupta.clean.crud.template.domain.mapping.save.DomainModelBuilder;
 import de.gupta.clean.crud.template.domain.mapping.update.DomainModelPatcher;
@@ -12,16 +23,6 @@ import de.gupta.clean.crud.template.domain.service.crud.policy.PatchPolicy;
 import de.gupta.clean.crud.template.domain.service.equality.DuplicateDefinition;
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
 import de.gupta.clean.crud.template.infrastructure.persistence.transaction.PersistenceTransactionRunner;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutation;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationContext;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationKind;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateLifecycleEngine;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.DefaultAggregateLifecycleEngine;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteCreateIntent;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateFetchPort;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateMutationPort;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.*;
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.handler.CreationHandlerRegistry;
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.handler.RegisteredCreationHandler;
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.model.CreationContext;
@@ -72,6 +73,23 @@ class AggregateCreationServicesTest
 		assertEquals("order-1", created.domainId());
 		assertEquals("AAPL:100", created.model().status());
 		assertEquals("AAPL:100", definition.store.get("order-1").status());
+	}
+
+	private static DefaultAggregateCreationService<String, OrderModel, OrderCreate, String, String> creationService(
+			final String aggregateKey,
+			final AggregateDefinition<String, OrderModel, OrderCreate, String, String> definition,
+			final AggregateLifecycleEngine engine)
+	{
+		return (DefaultAggregateCreationService<String, OrderModel, OrderCreate, String, String>)
+				AggregateCreationServices.creationService(aggregateKey, definition, engine, registry());
+	}
+
+	private static CreationHandlerRegistry<OrderCreate> registry()
+	{
+		return CreationHandlerRegistry.of(List.of(
+				RegisteredCreationHandler.of(OpenOrder.class,
+						payload -> AggregateCreationPlan.rootOnly(
+								new OrderCreate(payload.symbol(), payload.quantity())))));
 	}
 
 	@Test
@@ -245,6 +263,16 @@ class AggregateCreationServicesTest
 		assertEquals("entry", definition.lineStore.get(1L).value());
 	}
 
+	private static CreationHandlerRegistry<AggregateOrderCreate> aggregateRegistry()
+	{
+		return CreationHandlerRegistry.of(List.of(
+				RegisteredCreationHandler.of(OpenOrderWithLine.class,
+						payload -> AggregateCreationPlan.rootOnly(new AggregateOrderCreate(
+								payload.symbol(),
+								List.of(new SatelliteCreateIntent.InlineSatelliteCreateIntent<>(
+										new OrderLineCreate(payload.lineValue()))))))));
+	}
+
 	@Test
 	void creationServiceCanQuarantineOwnedInlineSatelliteCreation()
 	{
@@ -262,33 +290,6 @@ class AggregateCreationServicesTest
 		assertTrue(definition.lineStore.isEmpty());
 		assertEquals("External line source unavailable",
 				result.quarantineRequest().orElseThrow().violations().getFirst().message());
-	}
-
-	private static DefaultAggregateCreationService<String, OrderModel, OrderCreate, String, String> creationService(
-			final String aggregateKey,
-			final AggregateCrudDefinition<String, OrderModel, OrderCreate, String, String> definition,
-			final AggregateLifecycleEngine engine)
-	{
-		return (DefaultAggregateCreationService<String, OrderModel, OrderCreate, String, String>)
-				AggregateCreationServices.creationService(aggregateKey, definition, engine, registry());
-	}
-
-	private static CreationHandlerRegistry<OrderCreate> registry()
-	{
-		return CreationHandlerRegistry.of(List.of(
-				RegisteredCreationHandler.of(OpenOrder.class,
-						payload -> AggregateCreationPlan.rootOnly(
-								new OrderCreate(payload.symbol(), payload.quantity())))));
-	}
-
-	private static CreationHandlerRegistry<AggregateOrderCreate> aggregateRegistry()
-	{
-		return CreationHandlerRegistry.of(List.of(
-				RegisteredCreationHandler.of(OpenOrderWithLine.class,
-						payload -> AggregateCreationPlan.rootOnly(new AggregateOrderCreate(
-								payload.symbol(),
-								List.of(new SatelliteCreateIntent.InlineSatelliteCreateIntent<>(
-										new OrderLineCreate(payload.lineValue()))))))));
 	}
 
 	private record OpenOrder(String symbol, int quantity) implements ApplicationOperationPayload
@@ -342,7 +343,7 @@ class AggregateCreationServicesTest
 	}
 
 	private static class TestAggregateDefinition
-			implements AggregateCrudDefinition<String, OrderModel, OrderCreate, String, String>
+			implements AggregateDefinition<String, OrderModel, OrderCreate, String, String>
 	{
 		protected final Map<String, OrderModel> store = new LinkedHashMap<>();
 		protected PostCommitMutation<String, OrderModel> postCommitMutation = _ ->
@@ -438,33 +439,11 @@ class AggregateCreationServicesTest
 		}
 
 		@Override
-		public InsertionPolicy<OrderModel> insertionPolicy()
-		{
-			return _ ->
-			{
-			};
-		}
-
-		@Override
-		public PatchPolicy<OrderModel> patchPolicy()
-		{
-			return (_, _) ->
-			{
-			};
-		}
-
-		@Override
 		public DeletionPolicy<OrderModel> deletionPolicy()
 		{
 			return _ ->
 			{
 			};
-		}
-
-		@Override
-		public DomainSecurityPolicy<OrderModel> securityPolicy()
-		{
-			return _ -> true;
 		}
 
 		@Override
@@ -484,6 +463,28 @@ class AggregateCreationServicesTest
 		relationshipDefinitions()
 		{
 			return List.of();
+		}
+
+		@Override
+		public DomainSecurityPolicy<OrderModel> securityPolicy()
+		{
+			return _ -> true;
+		}
+
+		@Override
+		public PatchPolicy<OrderModel> patchPolicy()
+		{
+			return (_, _) ->
+			{
+			};
+		}
+
+		@Override
+		public InsertionPolicy<OrderModel> insertionPolicy()
+		{
+			return _ ->
+			{
+			};
 		}
 	}
 
@@ -553,7 +554,7 @@ class AggregateCreationServicesTest
 	}
 
 	private static class AggregateOrderDefinition
-			implements AggregateCrudDefinition<String, AggregateOrderModel, AggregateOrderCreate, String, String>
+			implements AggregateDefinition<String, AggregateOrderModel, AggregateOrderCreate, String, String>
 	{
 		protected final Map<String, AggregateOrderModel> store = new LinkedHashMap<>();
 		protected final Map<Long, OrderLineModel> lineStore = new LinkedHashMap<>();
@@ -647,33 +648,11 @@ class AggregateCreationServicesTest
 		}
 
 		@Override
-		public InsertionPolicy<AggregateOrderModel> insertionPolicy()
-		{
-			return _ ->
-			{
-			};
-		}
-
-		@Override
-		public PatchPolicy<AggregateOrderModel> patchPolicy()
-		{
-			return (_, _) ->
-			{
-			};
-		}
-
-		@Override
 		public DeletionPolicy<AggregateOrderModel> deletionPolicy()
 		{
 			return _ ->
 			{
 			};
-		}
-
-		@Override
-		public DomainSecurityPolicy<AggregateOrderModel> securityPolicy()
-		{
-			return _ -> true;
 		}
 
 		@Override
@@ -697,9 +676,31 @@ class AggregateCreationServicesTest
 			return List.of(new AggregateOrderLineRelationshipDefinition());
 		}
 
-		protected AggregateCrudDefinition<Long, OrderLineModel, OrderLineCreate, OrderLinePatch, String> lineDefinition()
+		@Override
+		public DomainSecurityPolicy<AggregateOrderModel> securityPolicy()
 		{
-			return new AggregateCrudDefinition<>()
+			return _ -> true;
+		}
+
+		@Override
+		public PatchPolicy<AggregateOrderModel> patchPolicy()
+		{
+			return (_, _) ->
+			{
+			};
+		}
+
+		@Override
+		public InsertionPolicy<AggregateOrderModel> insertionPolicy()
+		{
+			return _ ->
+			{
+			};
+		}
+
+		protected AggregateDefinition<Long, OrderLineModel, OrderLineCreate, OrderLinePatch, String> lineDefinition()
+		{
+			return new AggregateDefinition<>()
 			{
 				@Override
 				public AggregateMutationPort<Long, OrderLineModel, OrderLineCreate, OrderLinePatch> mutationPort()
@@ -788,33 +789,11 @@ class AggregateCreationServicesTest
 				}
 
 				@Override
-				public InsertionPolicy<OrderLineModel> insertionPolicy()
-				{
-					return _ ->
-					{
-					};
-				}
-
-				@Override
-				public PatchPolicy<OrderLineModel> patchPolicy()
-				{
-					return (_, _) ->
-					{
-					};
-				}
-
-				@Override
 				public DeletionPolicy<OrderLineModel> deletionPolicy()
 				{
 					return _ ->
 					{
 					};
-				}
-
-				@Override
-				public DomainSecurityPolicy<OrderLineModel> securityPolicy()
-				{
-					return _ -> true;
 				}
 
 				@Override
@@ -836,6 +815,28 @@ class AggregateCreationServicesTest
 				relationshipDefinitions()
 				{
 					return List.of();
+				}
+
+				@Override
+				public DomainSecurityPolicy<OrderLineModel> securityPolicy()
+				{
+					return _ -> true;
+				}
+
+				@Override
+				public PatchPolicy<OrderLineModel> patchPolicy()
+				{
+					return (_, _) ->
+					{
+					};
+				}
+
+				@Override
+				public InsertionPolicy<OrderLineModel> insertionPolicy()
+				{
+					return _ ->
+					{
+					};
 				}
 			};
 		}
@@ -877,7 +878,7 @@ class AggregateCreationServicesTest
 			}
 
 			@Override
-			public AggregateCrudDefinition<Long, OrderLineModel, OrderLineCreate, OrderLinePatch, ?> satelliteDefinition()
+			public AggregateDefinition<Long, OrderLineModel, OrderLineCreate, OrderLinePatch, ?> satelliteDefinition()
 			{
 				return lineDefinition();
 			}
@@ -902,7 +903,7 @@ class AggregateCreationServicesTest
 			}
 
 			@Override
-			public SatellitePatchInputResolver<String, Collection<de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMutationIntent<Long, OrderLineCreate, OrderLinePatch>>>
+			public SatellitePatchInputResolver<String, Collection<SatelliteMutationIntent<Long, OrderLineCreate, OrderLinePatch>>>
 			patchInputResolver()
 			{
 				return _ -> List.of();
@@ -987,11 +988,11 @@ class AggregateCreationServicesTest
 			return List.of(new QuarantiningAggregateOrderLineRelationshipDefinition());
 		}
 
-		private AggregateCrudDefinition<Long, OrderLineModel, OrderLineCreate, OrderLinePatch, String>
+		private AggregateDefinition<Long, OrderLineModel, OrderLineCreate, OrderLinePatch, String>
 		quarantiningLineDefinition()
 		{
 			var base = lineDefinition();
-			return new AggregateCrudDefinition<>()
+			return new AggregateDefinition<>()
 			{
 				@Override
 				public AggregateMutationPort<Long, OrderLineModel, OrderLineCreate, OrderLinePatch> mutationPort()
@@ -1024,27 +1025,9 @@ class AggregateCreationServicesTest
 				}
 
 				@Override
-				public InsertionPolicy<OrderLineModel> insertionPolicy()
-				{
-					return base.insertionPolicy();
-				}
-
-				@Override
-				public PatchPolicy<OrderLineModel> patchPolicy()
-				{
-					return base.patchPolicy();
-				}
-
-				@Override
 				public DeletionPolicy<OrderLineModel> deletionPolicy()
 				{
 					return base.deletionPolicy();
-				}
-
-				@Override
-				public DomainSecurityPolicy<OrderLineModel> securityPolicy()
-				{
-					return base.securityPolicy();
 				}
 
 				@Override
@@ -1067,11 +1050,29 @@ class AggregateCreationServicesTest
 				}
 
 				@Override
+				public DomainSecurityPolicy<OrderLineModel> securityPolicy()
+				{
+					return base.securityPolicy();
+				}
+
+				@Override
+				public PatchPolicy<OrderLineModel> patchPolicy()
+				{
+					return base.patchPolicy();
+				}
+
+				@Override
 				public CreationPolicyProfileResolver creationPolicyProfileResolver()
 				{
 					return source -> source == OperationSource.AUTHORITATIVE_EXTERNAL_EVENT
 							? CreationPolicyProfile.authoritativeExternalEvent()
 							: CreationPolicyProfileResolver.defaultResolver().resolve(source);
+				}
+
+				@Override
+				public InsertionPolicy<OrderLineModel> insertionPolicy()
+				{
+					return base.insertionPolicy();
 				}
 
 				@Override
@@ -1089,7 +1090,7 @@ class AggregateCreationServicesTest
 				extends AggregateOrderLineRelationshipDefinition
 		{
 			@Override
-			public AggregateCrudDefinition<Long, OrderLineModel, OrderLineCreate, OrderLinePatch, ?> satelliteDefinition()
+			public AggregateDefinition<Long, OrderLineModel, OrderLineCreate, OrderLinePatch, ?> satelliteDefinition()
 			{
 				return quarantiningLineDefinition();
 			}

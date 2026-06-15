@@ -1,14 +1,14 @@
 package de.gupta.clean.crud.template.useCases.operationOLD.mutation.aggregate.service;
 
+import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
+import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
+import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
+import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateDefinitionGuard;
+import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateLifecycleEngine;
+import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateWorkflowBuilder;
+import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationContext;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationKind;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateDefinitionGuard;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateLifecycleEngine;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.CrudWorkflowBuilder;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.useCases.operationOLD.domain.model.ApplicationOperationPayload;
 import de.gupta.clean.crud.template.useCases.operationOLD.domain.model.OperationSource;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.application.service.AbstractMutationService;
@@ -46,7 +46,7 @@ public final class DefaultAggregateMutationService<
 {
 	private static final Logger log = LoggerFactory.getLogger(DefaultAggregateMutationService.class);
 
-	private final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
+	private final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 			DomainModelResponse> definition;
 	private final AggregateLifecycleEngine engine;
 	private final MutationHandlerRegistry<DomainModel> handlerRegistry;
@@ -59,7 +59,7 @@ public final class DefaultAggregateMutationService<
 
 	public DefaultAggregateMutationService(
 			final String aggregateKey,
-			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
+			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
 			final AggregateLifecycleEngine engine,
 			final MutationHandlerRegistry<DomainModel> handlerRegistry,
@@ -85,50 +85,18 @@ public final class DefaultAggregateMutationService<
 		return mutateWithResult(request, Optional.empty());
 	}
 
-	public String aggregateType()
-	{
-		return aggregateType;
-	}
-
-	@Override
-	public String aggregateKey()
-	{
-		return aggregateType;
-	}
-
-	@Override
-	@SuppressWarnings("unchecked")
-	public ReplayOutcome replay(final QuarantineReplayCommand<MutationReplayData> command)
-	{
-		var data = command.replayInputs();
-		var result = mutateWithResult(
-				new MutationRequest<>(
-						(DomainId) data.domainId(),
-						data.payload(),
-						OperationSource.ADMINISTRATIVE_REPLAY,
-						command.metadata().family(),
-						command.metadata().correlationId(),
-						command.metadata().causationId()),
-				Optional.of(command.quarantineId()));
-		if (result.applied())
-		{
-			return ReplayOutcome.success();
-		}
-		return ReplayOutcome.quarantined(result.quarantineRequest().map(r -> r.violations().toString()));
-	}
-
 	private MutationResult<DomainId, DomainModel> mutateWithResult(
 			final MutationRequest<DomainId, ?> request,
 			final Optional<QuarantineId> replayQuarantineId)
 	{
 		return engine.execute(
-				CrudWorkflowBuilder.writeFlow(() -> applyMutation(request, replayQuarantineId))
-				                   .startDurableProcesses(result -> result.updated()
-				                                                          .map(_ -> durableProcessStartRequests.apply(
-																				  result.context()))
-				                                                          .orElse(List.of()))
-				                   .afterTransaction(this::dispatchMutationCompleted)
-				                   .build());
+				AggregateWorkflowBuilder.writeFlow(() -> applyMutation(request, replayQuarantineId))
+				                        .startDurableProcesses(result -> result.updated()
+				                                                               .map(_ -> durableProcessStartRequests.apply(
+																					   result.context()))
+				                                                               .orElse(List.of()))
+				                        .afterTransaction(this::dispatchMutationCompleted)
+				                        .build());
 	}
 
 	private MutationResult<DomainId, DomainModel> applyMutation(
@@ -168,6 +136,30 @@ public final class DefaultAggregateMutationService<
 		return MutationResult.applied(context, policyDecision, updated);
 	}
 
+	private void dispatchMutationCompleted(final MutationResult<DomainId, DomainModel> result)
+	{
+		if (result.quarantined())
+		{
+			return;
+		}
+		definition.postCommitMutation().accept(new PostCommitMutationContext<>(
+				PostCommitMutationKind.PATCH,
+				result.context().domainId(),
+				result.context().afterModel(),
+				result.context().beforeModel()));
+	}
+
+	private AggregateMutationPlan<DomainModel> applyRegisteredHandler(
+			final DomainModel currentModel,
+			final ApplicationOperationPayload payload)
+	{
+		var registeredHandler = handlerRegistry.findHandlerFor(payload.getClass())
+		                                       .orElseThrow(() -> InvalidRequestException.withMessage(
+													   "No mutation handler registered for payload type "
+															   + payload.getClass().getName()));
+		return applyTypedHandler(registeredHandler, currentModel, payload);
+	}
+
 	private DomainModel applyMutationPlan(
 			final List<AggregateRelationshipDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					?, ?, ?, ?>> relationships,
@@ -182,15 +174,15 @@ public final class DefaultAggregateMutationService<
 		return mutationCoordinator.applyPlan(definition, relationships, currentModel, mutationPlan, request.source());
 	}
 
-	private AggregateMutationPlan<DomainModel> applyRegisteredHandler(
-			final DomainModel currentModel,
-			final ApplicationOperationPayload payload)
+	private de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.policy.evaluation.MutationPolicyDecision persistQuarantine(
+			final MutationRequest<DomainId, ?> request,
+			final de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.policy.evaluation.MutationPolicyDecision policyDecision)
 	{
-		var registeredHandler = handlerRegistry.findHandlerFor(payload.getClass())
-		                                       .orElseThrow(() -> InvalidRequestException.withMessage(
-													   "No mutation handler registered for payload type "
-															   + payload.getClass().getName()));
-		return applyTypedHandler(registeredHandler, currentModel, payload);
+		var persistedRequest = engine.mutationQuarantineRecorder().record(new MutationQuarantineSubmission(
+				aggregateType,
+				request,
+				policyDecision.quarantineRequest().orElseThrow()));
+		return policyDecision.withQuarantineRequest(persistedRequest);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -204,27 +196,35 @@ public final class DefaultAggregateMutationService<
 				payload);
 	}
 
-	private void dispatchMutationCompleted(final MutationResult<DomainId, DomainModel> result)
+	public String aggregateType()
 	{
-		if (result.quarantined())
-		{
-			return;
-		}
-		definition.postCommitMutation().accept(new PostCommitMutationContext<>(
-				PostCommitMutationKind.PATCH,
-				result.context().domainId(),
-				result.context().afterModel(),
-				result.context().beforeModel()));
+		return aggregateType;
 	}
 
-	private de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.policy.evaluation.MutationPolicyDecision persistQuarantine(
-			final MutationRequest<DomainId, ?> request,
-			final de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.policy.evaluation.MutationPolicyDecision policyDecision)
+	@Override
+	public String aggregateKey()
 	{
-		var persistedRequest = engine.mutationQuarantineRecorder().record(new MutationQuarantineSubmission(
-				aggregateType,
-				request,
-				policyDecision.quarantineRequest().orElseThrow()));
-		return policyDecision.withQuarantineRequest(persistedRequest);
+		return aggregateType;
+	}
+
+	@Override
+	@SuppressWarnings("unchecked")
+	public ReplayOutcome replay(final QuarantineReplayCommand<MutationReplayData> command)
+	{
+		var data = command.replayInputs();
+		var result = mutateWithResult(
+				new MutationRequest<>(
+						(DomainId) data.domainId(),
+						data.payload(),
+						OperationSource.ADMINISTRATIVE_REPLAY,
+						command.metadata().family(),
+						command.metadata().correlationId(),
+						command.metadata().causationId()),
+				Optional.of(command.quarantineId()));
+		if (result.applied())
+		{
+			return ReplayOutcome.success();
+		}
+		return ReplayOutcome.quarantined(result.quarantineRequest().map(r -> r.violations().toString()));
 	}
 }

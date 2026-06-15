@@ -1,0 +1,7 @@
+package de.gupta.clean.crud.template.domain.aggregate.relationship;
+
+@FunctionalInterface
+public interface SatelliteCreateInputResolver<MasterDomainModelCreate, SatelliteCreateIntentModel>
+{
+	SatelliteCreateIntentModel resolveSatelliteCreateIntent(MasterDomainModelCreate masterDomainModelCreate);
+}

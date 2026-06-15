@@ -1,9 +1,10 @@
 package de.gupta.clean.crud.template.useCases.operationOLD.creation.aggregate.policy;
 
+import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
+import de.gupta.clean.crud.template.domain.aggregate.execution.SatelliteCreateValidator;
+import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDeniedException;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.SatelliteCreateValidator;
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.policy.evaluation.CreationPolicyBundle;
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.policy.evaluation.CreationPolicyDecision;
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.policy.evaluation.SourceAwareCreationPolicy;
@@ -18,20 +19,9 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Optional;
 
-public final class AggregateCreationPolicies
+public enum AggregateCreationPolicies
 {
-	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
-	SourceAwareCreationPolicy<DomainModel> sourceAwarePolicy(
-			final AggregateCrudDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
-					DomainModelResponse> definition)
-	{
-		return new EvaluatingSourceAwareCreationPolicy<>(new CreationPolicyBundle<>(
-				definition.creationPolicyProfileResolver(),
-				definition.creationAccessPolicy(),
-				definition.creationPolicy(),
-				definition.creationInvariantPolicy(),
-				definition.creationExternalConsistencyPolicy()));
-	}
+	;
 
 	public static SatelliteCreateValidator satelliteCreateValidator(final OperationSource source)
 	{
@@ -41,7 +31,7 @@ public final class AggregateCreationPolicies
 			public <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
 					SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch>
 			void validate(
-					final de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch> relationship,
+					final AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, SatelliteDomainId, SatelliteDomainModel, SatelliteDomainModelCreate, SatelliteDomainModelUpdatePatch> relationship,
 					final SatelliteDomainModel satelliteDomainModel)
 			{
 				AggregateCreationPolicies.sourceAwarePolicy(relationship.satelliteDefinition())
@@ -50,8 +40,17 @@ public final class AggregateCreationPolicies
 		};
 	}
 
-	private AggregateCreationPolicies()
+	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
+	SourceAwareCreationPolicy<DomainModel> sourceAwarePolicy(
+			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
+					DomainModelResponse> definition)
 	{
+		return new EvaluatingSourceAwareCreationPolicy<>(new CreationPolicyBundle<>(
+				definition.creationPolicyProfileResolver(),
+				definition.creationAccessPolicy(),
+				definition.creationPolicy(),
+				definition.creationInvariantPolicy(),
+				definition.creationExternalConsistencyPolicy()));
 	}
 
 	private record EvaluatingSourceAwareCreationPolicy<DomainModel>(

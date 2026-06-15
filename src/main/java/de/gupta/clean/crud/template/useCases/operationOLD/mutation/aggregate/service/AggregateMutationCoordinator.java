@@ -1,15 +1,15 @@
 package de.gupta.clean.crud.template.useCases.operationOLD.mutation.aggregate.service;
 
+import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
+import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateMutationValidationSupport;
+import de.gupta.clean.crud.template.domain.aggregate.execution.SatelliteReferenceResolver;
+import de.gupta.clean.crud.template.domain.aggregate.execution.SatelliteRelationshipPlanner;
+import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteMutationIntent;
+import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
+import de.gupta.clean.crud.template.domain.aggregate.relationship.Cardinality;
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDeniedException;
 import de.gupta.clean.crud.template.domain.relationship.RelationshipKind;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateMutationValidationSupport;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.SatelliteReferenceResolver;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.SatelliteRelationshipPlanner;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMutationIntent;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.AggregateRelationshipDefinition;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.Cardinality;
 import de.gupta.clean.crud.template.useCases.operationOLD.domain.model.OperationSource;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.plan.AggregateMutationPlan;
 
@@ -35,7 +35,7 @@ final class AggregateMutationCoordinator
 
 	<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse>
 	MasterDomainModel applyPlan(
-			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships,
@@ -526,7 +526,7 @@ final class AggregateMutationCoordinator
 
 	private <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch,
 			MasterDomainModelResponse> void validatePatch(
-			final AggregateCrudDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
 			final OperationSource source,
 			final MasterDomainModel originalMasterDomainModel,

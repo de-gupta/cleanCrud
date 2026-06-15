@@ -1,6 +1,6 @@
 package de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.plan;
 
-import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMutationIntent;
+import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteMutationIntent;
 
 import java.util.*;
 
@@ -13,14 +13,14 @@ public record AggregateMutationPlan<DomainModel>(
 		return builder(updatedRoot).build();
 	}
 
-	public static <DomainModel> Builder<DomainModel> builder()
-	{
-		return new Builder<>();
-	}
-
 	public static <DomainModel> Builder<DomainModel> builder(final DomainModel updatedRoot)
 	{
 		return new Builder<DomainModel>().updatedRoot(updatedRoot);
+	}
+
+	public static <DomainModel> Builder<DomainModel> builder()
+	{
+		return new Builder<>();
 	}
 
 	public AggregateMutationPlan

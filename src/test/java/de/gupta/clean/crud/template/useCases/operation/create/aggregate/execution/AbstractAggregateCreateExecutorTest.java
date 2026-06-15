@@ -1,5 +1,15 @@
 package de.gupta.clean.crud.template.useCases.operation.create.aggregate.execution;
 
+import de.gupta.clean.crud.template.domain.aggregate.builder.AggregateDefinitions;
+import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
+import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
+import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateLifecycleEngine;
+import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateWorkflow;
+import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteCreateIntent;
+import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteMutationIntent;
+import de.gupta.clean.crud.template.domain.aggregate.port.AggregateFetchPort;
+import de.gupta.clean.crud.template.domain.aggregate.port.AggregateMutationPort;
+import de.gupta.clean.crud.template.domain.aggregate.relationship.*;
 import de.gupta.clean.crud.template.domain.mapping.fetch.DomainResponseBuilder;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.relationship.LifecycleSemantics;
@@ -10,13 +20,6 @@ import de.gupta.clean.crud.template.domain.service.crud.policy.InsertionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.PatchPolicy;
 import de.gupta.clean.crud.template.domain.service.equality.DuplicateDefinition;
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.builder.AggregateCrudDefinitions;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationContext;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateLifecycleEngine;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateFetchPort;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateMutationPort;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.*;
 import de.gupta.clean.crud.template.useCases.operation.common.domain.model.OperationRequestMetadata;
 import de.gupta.clean.crud.template.useCases.operation.common.domain.model.OperationSource;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.attempt.PreparedCreationAttempt;
@@ -89,23 +92,23 @@ class AbstractAggregateCreateExecutorTest
 		});
 	}
 
-	private static AggregateCrudDefinition<String, String, String, String, String> definitionWithoutRelationships(
+	private static AggregateDefinition<String, String, String, String, String> definitionWithoutRelationships(
 			final AggregateMutationPort<String, String, String, String> mutationPort,
 			final java.util.function.Consumer<PostCommitMutationContext<String, String>> postCommitMutation)
 	{
-		return AggregateCrudDefinitions.<String, String, String, String, String>aggregateCrudDefinition()
-		                               .mutationPort(mutationPort)
-		                               .fetchPort(noopFetchPort())
-		                               .createBuilder(createIdentity())
-		                               .patcher((original, ignored) -> original)
-		                               .responseBuilder(responseIdentity())
-		                               .insertionPolicy(allowingInsertion())
-		                               .patchPolicy(allowingPatch())
-		                               .deletionPolicy(allowingDeletion())
-		                               .securityPolicy(DomainSecurityPolicy.allowing())
-		                               .duplicateDefinition(duplicatesNever())
-		                               .postCommitMutation(postCommitMutation::accept)
-		                               .build();
+		return AggregateDefinitions.<String, String, String, String, String>aggregateCrudDefinition()
+		                           .mutationPort(mutationPort)
+		                           .fetchPort(noopFetchPort())
+		                           .createBuilder(createIdentity())
+		                           .patcher((original, ignored) -> original)
+		                           .responseBuilder(responseIdentity())
+		                           .insertionPolicy(allowingInsertion())
+		                           .patchPolicy(allowingPatch())
+		                           .deletionPolicy(allowingDeletion())
+		                           .securityPolicy(DomainSecurityPolicy.allowing())
+		                           .duplicateDefinition(duplicatesNever())
+		                           .postCommitMutation(postCommitMutation::accept)
+		                           .build();
 	}
 
 	private static AggregateLifecycleEngine immediateEngine()
@@ -114,7 +117,7 @@ class AbstractAggregateCreateExecutorTest
 		{
 			@Override
 			public <Result> Result execute(
-					final de.gupta.clean.crud.template.useCases.crud.aggregate.engine.CrudWorkflow<Result> workflow)
+					final AggregateWorkflow<Result> workflow)
 			{
 				var result = workflow.inTransaction();
 				workflow.afterTransaction(result);
@@ -241,22 +244,22 @@ class AbstractAggregateCreateExecutorTest
 		assertThat(createCalls.get()).isNull();
 	}
 
-	private static AggregateCrudDefinition<String, String, String, String, String> definitionWithRelationship(
+	private static AggregateDefinition<String, String, String, String, String> definitionWithRelationship(
 			final AggregateMutationPort<String, String, String, String> mutationPort)
 	{
-		return AggregateCrudDefinitions.<String, String, String, String, String>aggregateCrudDefinition()
-		                               .mutationPort(mutationPort)
-		                               .fetchPort(noopFetchPort())
-		                               .createBuilder(createIdentity())
-		                               .patcher((original, ignored) -> original)
-		                               .responseBuilder(responseIdentity())
-		                               .insertionPolicy(allowingInsertion())
-		                               .patchPolicy(allowingPatch())
-		                               .deletionPolicy(allowingDeletion())
-		                               .securityPolicy(DomainSecurityPolicy.allowing())
-		                               .duplicateDefinition(duplicatesNever())
-		                               .relationshipDefinition(relationship())
-		                               .build();
+		return AggregateDefinitions.<String, String, String, String, String>aggregateCrudDefinition()
+		                           .mutationPort(mutationPort)
+		                           .fetchPort(noopFetchPort())
+		                           .createBuilder(createIdentity())
+		                           .patcher((original, ignored) -> original)
+		                           .responseBuilder(responseIdentity())
+		                           .insertionPolicy(allowingInsertion())
+		                           .patchPolicy(allowingPatch())
+		                           .deletionPolicy(allowingDeletion())
+		                           .securityPolicy(DomainSecurityPolicy.allowing())
+		                           .duplicateDefinition(duplicatesNever())
+		                           .relationshipDefinition(relationship())
+		                           .build();
 	}
 
 	private static AggregateRelationshipDefinition<String, String, String, String, String, String, String, String> relationship()
@@ -294,31 +297,31 @@ class AbstractAggregateCreateExecutorTest
 			}
 
 			@Override
-			public AggregateCrudDefinition<String, String, String, String, ?> satelliteDefinition()
+			public AggregateDefinition<String, String, String, String, ?> satelliteDefinition()
 			{
 				return null;
 			}
 
 			@Override
-			public de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateMutationPort<String, String, String, String> satelliteMutationPort()
+			public AggregateMutationPort<String, String, String, String> satelliteMutationPort()
 			{
 				return null;
 			}
 
 			@Override
-			public de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateFetchPort<String, String> satelliteFetchPort()
+			public AggregateFetchPort<String, String> satelliteFetchPort()
 			{
 				return null;
 			}
 
 			@Override
-			public SatelliteCreateInputResolver<String, Collection<de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteCreateIntent<String, String>>> createInputResolver()
+			public SatelliteCreateInputResolver<String, Collection<SatelliteCreateIntent<String, String>>> createInputResolver()
 			{
 				return _ -> List.of();
 			}
 
 			@Override
-			public SatellitePatchInputResolver<String, Collection<de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMutationIntent<String, String, String>>> patchInputResolver()
+			public SatellitePatchInputResolver<String, Collection<SatelliteMutationIntent<String, String, String>>> patchInputResolver()
 			{
 				return _ -> List.of();
 			}
@@ -351,7 +354,7 @@ class AbstractAggregateCreateExecutorTest
 			extends AbstractAggregateCreateExecutor<TestPayload, String, String>
 	{
 		private TestAggregateCreateExecutor(
-				final AggregateCrudDefinition<String, String, ?, ?, ?> definition,
+				final AggregateDefinition<String, String, ?, ?, ?> definition,
 				final AggregateLifecycleEngine engine)
 		{
 			super(definition, engine);

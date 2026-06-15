@@ -1,10 +1,10 @@
 package de.gupta.clean.crud.template.useCases.operation.create.aggregate.execution;
 
+import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
+import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
+import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
+import de.gupta.clean.crud.template.domain.aggregate.execution.*;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationContext;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationKind;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.*;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.attempt.PreparedCreationAttempt;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.execution.CreateExecutor;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationPayload;
@@ -18,7 +18,7 @@ import java.util.Optional;
 public abstract class AbstractAggregateCreateExecutor<DomainCreatePayload extends CreateOperationPayload, DomainId, DomainModel>
 		implements CreateExecutor<DomainCreatePayload, DomainModel>
 {
-	private final AggregateCrudDefinition<DomainId, DomainModel, ?, ?, ?> definition;
+	private final AggregateDefinition<DomainId, DomainModel, ?, ?, ?> definition;
 	private final AggregateLifecycleEngine engine;
 	private final AggregateDefinitionGuard definitionGuard;
 	private final AggregateMutationValidationSupport validationSupport;
@@ -29,10 +29,10 @@ public abstract class AbstractAggregateCreateExecutor<DomainCreatePayload extend
 		Objects.requireNonNull(preparedAttempt, "preparedAttempt");
 		throwIfRelationshipsConfigured();
 		return engine.execute(
-							 CrudWorkflowBuilder.writeFlow(() -> persist(preparedAttempt.plan().domainModel()))
-				                                .startDurableProcesses(this::durableProcessStartRequests)
-				                                .afterTransaction(this::dispatchCreated)
-				                                .build())
+							 AggregateWorkflowBuilder.writeFlow(() -> persist(preparedAttempt.plan().domainModel()))
+				                                     .startDurableProcesses(this::durableProcessStartRequests)
+				                                     .afterTransaction(this::dispatchCreated)
+				                                     .build())
 		             .model();
 	}
 
@@ -67,7 +67,7 @@ public abstract class AbstractAggregateCreateExecutor<DomainCreatePayload extend
 	}
 
 	protected AbstractAggregateCreateExecutor(
-			final AggregateCrudDefinition<DomainId, DomainModel, ?, ?, ?> definition,
+			final AggregateDefinition<DomainId, DomainModel, ?, ?, ?> definition,
 			final AggregateLifecycleEngine engine)
 	{
 		this(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
@@ -75,7 +75,7 @@ public abstract class AbstractAggregateCreateExecutor<DomainCreatePayload extend
 	}
 
 	protected AbstractAggregateCreateExecutor(
-			final AggregateCrudDefinition<DomainId, DomainModel, ?, ?, ?> definition,
+			final AggregateDefinition<DomainId, DomainModel, ?, ?, ?> definition,
 			final AggregateLifecycleEngine engine,
 			final AggregateDefinitionGuard definitionGuard,
 			final AggregateMutationValidationSupport validationSupport)

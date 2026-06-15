@@ -1,5 +1,16 @@
 package de.gupta.clean.crud.template.useCases.operationOLD.mutation.aggregate.service;
 
+import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
+import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutation;
+import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
+import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
+import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateLifecycleEngine;
+import de.gupta.clean.crud.template.domain.aggregate.execution.DefaultAggregateLifecycleEngine;
+import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteCreateIntent;
+import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteMutationIntent;
+import de.gupta.clean.crud.template.domain.aggregate.port.AggregateFetchPort;
+import de.gupta.clean.crud.template.domain.aggregate.port.AggregateMutationPort;
+import de.gupta.clean.crud.template.domain.aggregate.relationship.*;
 import de.gupta.clean.crud.template.domain.mapping.fetch.DomainResponseBuilder;
 import de.gupta.clean.crud.template.domain.mapping.save.DomainModelBuilder;
 import de.gupta.clean.crud.template.domain.mapping.update.DomainModelPatcher;
@@ -16,17 +27,6 @@ import de.gupta.clean.crud.template.domain.service.crud.policy.PatchPolicy;
 import de.gupta.clean.crud.template.domain.service.equality.DuplicateDefinition;
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
 import de.gupta.clean.crud.template.infrastructure.persistence.transaction.PersistenceTransactionRunner;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.AggregateCrudDefinition;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutation;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationContext;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.definition.PostCommitMutationKind;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.AggregateLifecycleEngine;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.engine.DefaultAggregateLifecycleEngine;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteCreateIntent;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.intent.SatelliteMutationIntent;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateFetchPort;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.port.AggregateMutationPort;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.relationship.*;
 import de.gupta.clean.crud.template.useCases.operationOLD.domain.model.ApplicationOperationPayload;
 import de.gupta.clean.crud.template.useCases.operationOLD.domain.model.OperationFamily;
 import de.gupta.clean.crud.template.useCases.operationOLD.domain.model.OperationSource;
@@ -95,6 +95,39 @@ class AggregateMutationServicesTest
 		assertEquals("order-1", updated.id());
 		assertEquals("ACKNOWLEDGED", updated.model().status());
 		assertEquals("ACKNOWLEDGED", definition.store.get("order-1").status());
+	}
+
+	private MutationService<String, OrderModel> mutationService(
+			final String aggregateKey,
+			final TestAggregateDefinition definition,
+			final AggregateLifecycleEngine engine)
+	{
+		return AggregateMutationServices.mutationService(aggregateKey, definition, engine, registry());
+	}
+
+	private MutationHandlerRegistry<OrderModel> registry()
+	{
+		return MutationHandlerRegistry.of(List.of(
+				RegisteredMutationHandler.of(AcknowledgeOrder.class,
+						(currentModel, _) -> AggregateMutationPlan.rootOnly(new OrderModel("ACKNOWLEDGED")))));
+	}
+
+	@Test
+	void quarantineReplayRegistryAcceptsMultipleAggregateMutationServices()
+	{
+		var firstDefinition = new TestAggregateDefinition();
+		var secondDefinition = new AlternateAggregateDefinition();
+		AggregateLifecycleEngine engine =
+				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
+		var firstService = mutationService("test-aggregate", firstDefinition, engine);
+		var secondService =
+				AggregateMutationServices.mutationService("test-aggregate-2", secondDefinition, engine, registry());
+
+		@SuppressWarnings("unchecked")
+		var gateways = List.of(
+				(de.gupta.clean.crud.template.useCases.operationOLD.quarantine.application.service.QuarantineReplayGateway<de.gupta.clean.crud.template.useCases.operationOLD.quarantine.domain.model.MutationReplayData>) firstService,
+				secondService);
+		assertDoesNotThrow(() -> DefaultQuarantineReplayRegistry.of(gateways));
 	}
 
 	@Test
@@ -343,24 +376,6 @@ class AggregateMutationServicesTest
 	}
 
 	@Test
-	void quarantineReplayRegistryAcceptsMultipleAggregateMutationServices()
-	{
-		var firstDefinition = new TestAggregateDefinition();
-		var secondDefinition = new AlternateAggregateDefinition();
-		AggregateLifecycleEngine engine =
-				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
-		var firstService = mutationService("test-aggregate", firstDefinition, engine);
-		var secondService =
-				AggregateMutationServices.mutationService("test-aggregate-2", secondDefinition, engine, registry());
-
-		@SuppressWarnings("unchecked")
-		var gateways = List.of(
-				(de.gupta.clean.crud.template.useCases.operationOLD.quarantine.application.service.QuarantineReplayGateway<de.gupta.clean.crud.template.useCases.operationOLD.quarantine.domain.model.MutationReplayData>) firstService,
-				(de.gupta.clean.crud.template.useCases.operationOLD.quarantine.application.service.QuarantineReplayGateway<de.gupta.clean.crud.template.useCases.operationOLD.quarantine.domain.model.MutationReplayData>) secondService);
-		assertDoesNotThrow(() -> DefaultQuarantineReplayRegistry.of(gateways));
-	}
-
-	@Test
 	void quarantineReplayGatewayReturnsExplicitAggregateKey()
 	{
 		var definition = new TestAggregateDefinition();
@@ -443,21 +458,6 @@ class AggregateMutationServicesTest
 								currentModel)))));
 	}
 
-	private MutationService<String, OrderModel> mutationService(
-			final String aggregateKey,
-			final TestAggregateDefinition definition,
-			final AggregateLifecycleEngine engine)
-	{
-		return AggregateMutationServices.mutationService(aggregateKey, definition, engine, registry());
-	}
-
-	private MutationHandlerRegistry<OrderModel> registry()
-	{
-		return MutationHandlerRegistry.of(List.of(
-				RegisteredMutationHandler.of(AcknowledgeOrder.class,
-						(currentModel, _) -> AggregateMutationPlan.rootOnly(new OrderModel("ACKNOWLEDGED")))));
-	}
-
 	private record OrderModel(String status)
 	{
 	}
@@ -479,7 +479,7 @@ class AggregateMutationServicesTest
 	}
 
 	private static class TestAggregateDefinition
-			implements AggregateCrudDefinition<String, OrderModel, String, String, String>
+			implements AggregateDefinition<String, OrderModel, String, String, String>
 	{
 		protected final Map<String, OrderModel> store = new LinkedHashMap<>();
 		private PostCommitMutation<String, OrderModel> postCommitMutation = PostCommitMutation.noop();
@@ -569,33 +569,11 @@ class AggregateMutationServicesTest
 		}
 
 		@Override
-		public InsertionPolicy<OrderModel> insertionPolicy()
-		{
-			return _ ->
-			{
-			};
-		}
-
-		@Override
-		public PatchPolicy<OrderModel> patchPolicy()
-		{
-			return (_, _) ->
-			{
-			};
-		}
-
-		@Override
 		public DeletionPolicy<OrderModel> deletionPolicy()
 		{
 			return _ ->
 			{
 			};
-		}
-
-		@Override
-		public DomainSecurityPolicy<OrderModel> securityPolicy()
-		{
-			return DomainSecurityPolicy.allowing();
 		}
 
 		@Override
@@ -615,6 +593,28 @@ class AggregateMutationServicesTest
 		relationshipDefinitions()
 		{
 			return List.of();
+		}
+
+		@Override
+		public DomainSecurityPolicy<OrderModel> securityPolicy()
+		{
+			return DomainSecurityPolicy.allowing();
+		}
+
+		@Override
+		public PatchPolicy<OrderModel> patchPolicy()
+		{
+			return (_, _) ->
+			{
+			};
+		}
+
+		@Override
+		public InsertionPolicy<OrderModel> insertionPolicy()
+		{
+			return _ ->
+			{
+			};
 		}
 	}
 
@@ -727,7 +727,7 @@ class AggregateMutationServicesTest
 		}
 
 		@Override
-		public AggregateCrudDefinition<Long, Long, Long, Long, ?> satelliteDefinition()
+		public AggregateDefinition<Long, Long, Long, Long, ?> satelliteDefinition()
 		{
 			return new SatelliteAggregateDefinition();
 		}
@@ -812,7 +812,7 @@ class AggregateMutationServicesTest
 	}
 
 	private static final class SatelliteAggregateDefinition
-			implements AggregateCrudDefinition<Long, Long, Long, Long, Long>
+			implements AggregateDefinition<Long, Long, Long, Long, Long>
 	{
 		@Override
 		public AggregateMutationPort<Long, Long, Long, Long> mutationPort()
@@ -845,33 +845,11 @@ class AggregateMutationServicesTest
 		}
 
 		@Override
-		public InsertionPolicy<Long> insertionPolicy()
-		{
-			return _ ->
-			{
-			};
-		}
-
-		@Override
-		public PatchPolicy<Long> patchPolicy()
-		{
-			return (_, _) ->
-			{
-			};
-		}
-
-		@Override
 		public DeletionPolicy<Long> deletionPolicy()
 		{
 			return _ ->
 			{
 			};
-		}
-
-		@Override
-		public DomainSecurityPolicy<Long> securityPolicy()
-		{
-			return DomainSecurityPolicy.allowing();
 		}
 
 		@Override
@@ -890,6 +868,28 @@ class AggregateMutationServicesTest
 		public Collection<AggregateRelationshipDefinitionContract<Long, Long, Long, Long>> relationshipDefinitions()
 		{
 			return List.of();
+		}
+
+		@Override
+		public DomainSecurityPolicy<Long> securityPolicy()
+		{
+			return DomainSecurityPolicy.allowing();
+		}
+
+		@Override
+		public PatchPolicy<Long> patchPolicy()
+		{
+			return (_, _) ->
+			{
+			};
+		}
+
+		@Override
+		public InsertionPolicy<Long> insertionPolicy()
+		{
+			return _ ->
+			{
+			};
 		}
 	}
 
