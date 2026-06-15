@@ -4,7 +4,7 @@ import de.gupta.clean.crud.template.useCases.operation.create.domain.model.Creat
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationRequest;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreateOperationResult;
 
-public interface CreateApplicationService<Payload extends CreateOperationPayload, DomainModel>
+public interface CreateApplicationService<DomainCreatePayload extends CreateOperationPayload, DomainModel>
 {
-	CreateOperationResult<DomainModel> create(final CreateOperationRequest<Payload> request);
+	CreateOperationResult<DomainModel> create(final CreateOperationRequest<DomainCreatePayload> request);
 }

@@ -16,22 +16,22 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-public abstract class AbstractCreateApplicationService<Payload extends CreateOperationPayload, DomainCreateModel, DomainModel>
-		implements CreateApplicationService<Payload, DomainModel>
+public abstract class AbstractCreateApplicationService<DomainCreatePayload extends CreateOperationPayload, DomainCreateModel, DomainModel>
+		implements CreateApplicationService<DomainCreatePayload, DomainModel>
 {
 	private final CreationHandlerRegistry<DomainCreateModel> handlerRegistry;
 	private final CreationPolicyEvaluator policyEvaluator;
-	private final CreateExecutor<Payload, DomainCreateModel, DomainModel> createExecutor;
+	private final CreateExecutor<DomainCreatePayload, DomainCreateModel, DomainModel> createExecutor;
 	private final CreationQuarantineRecorder quarantineRecorder;
 
 	@Override
-	public CreateOperationResult<DomainModel> create(final CreateOperationRequest<Payload> request)
+	public CreateOperationResult<DomainModel> create(final CreateOperationRequest<DomainCreatePayload> request)
 	{
 		return resultFor(evaluateAttempt(prepareAttempt(request)));
 	}
 
 	private CreateOperationResult<DomainModel> resultFor(
-			final EvaluatedCreationAttempt<Payload, DomainCreateModel> evaluatedAttempt)
+			final EvaluatedCreationAttempt<DomainCreatePayload, DomainCreateModel> evaluatedAttempt)
 	{
 		return switch (evaluatedAttempt.decision())
 		{
@@ -41,14 +41,14 @@ public abstract class AbstractCreateApplicationService<Payload extends CreateOpe
 		};
 	}
 
-	private EvaluatedCreationAttempt<Payload, DomainCreateModel> evaluateAttempt(
-			final PreparedCreationAttempt<Payload, DomainCreateModel> preparedAttempt)
+	private EvaluatedCreationAttempt<DomainCreatePayload, DomainCreateModel> evaluateAttempt(
+			final PreparedCreationAttempt<DomainCreatePayload, DomainCreateModel> preparedAttempt)
 	{
 		return EvaluatedCreationAttempt.of(preparedAttempt, policyEvaluator.evaluate(preparedAttempt));
 	}
 
-	private PreparedCreationAttempt<Payload, DomainCreateModel> prepareAttempt(
-			final CreateOperationRequest<Payload> request)
+	private PreparedCreationAttempt<DomainCreatePayload, DomainCreateModel> prepareAttempt(
+			final CreateOperationRequest<DomainCreatePayload> request)
 	{
 		var handler = handlerRegistry.resolveHandlerFor(payloadTypeOf(request));
 		var context = CreateOperationContext.from(request);
@@ -57,7 +57,7 @@ public abstract class AbstractCreateApplicationService<Payload extends CreateOpe
 	}
 
 	private CreateOperationResult<DomainModel> createAllowedResult(
-			final EvaluatedCreationAttempt<Payload, DomainCreateModel> evaluatedAttempt)
+			final EvaluatedCreationAttempt<DomainCreatePayload, DomainCreateModel> evaluatedAttempt)
 	{
 		return CreationOperationResults.created(evaluatedAttempt.context(),
 				createExecutor.create(evaluatedAttempt.preparedAttempt()),
@@ -65,7 +65,7 @@ public abstract class AbstractCreateApplicationService<Payload extends CreateOpe
 	}
 
 	private CreateOperationResult<DomainModel> createRejectedResult(
-			final EvaluatedCreationAttempt<Payload, DomainCreateModel> evaluatedAttempt)
+			final EvaluatedCreationAttempt<DomainCreatePayload, DomainCreateModel> evaluatedAttempt)
 	{
 		return CreationOperationResults.rejected(evaluatedAttempt.context(),
 				List.copyOf(evaluatedAttempt.blockingViolations()),
@@ -73,7 +73,7 @@ public abstract class AbstractCreateApplicationService<Payload extends CreateOpe
 	}
 
 	private CreateOperationResult<DomainModel> createQuarantinedResult(
-			final EvaluatedCreationAttempt<Payload, DomainCreateModel> evaluatedAttempt)
+			final EvaluatedCreationAttempt<DomainCreatePayload, DomainCreateModel> evaluatedAttempt)
 	{
 		return CreationOperationResults.quarantined(evaluatedAttempt.context(),
 				List.copyOf(evaluatedAttempt.blockingViolations()), List.copyOf(evaluatedAttempt.toleratedViolations()),
@@ -81,27 +81,27 @@ public abstract class AbstractCreateApplicationService<Payload extends CreateOpe
 	}
 
 	@SuppressWarnings("unchecked")
-	private Class<Payload> payloadTypeOf(final CreateOperationRequest<Payload> request)
+	private Class<DomainCreatePayload> payloadTypeOf(final CreateOperationRequest<DomainCreatePayload> request)
 	{
-		return (Class<Payload>) request.payload().getClass();
+		return (Class<DomainCreatePayload>) request.payload().getClass();
 	}
 
 	private Optional<String> recordQuarantine(
-			final EvaluatedCreationAttempt<Payload, DomainCreateModel> evaluatedAttempt)
+			final EvaluatedCreationAttempt<DomainCreatePayload, DomainCreateModel> evaluatedAttempt)
 	{
 		return evaluatedAttempt.quarantineReference().or(() -> quarantineRecorder.record(evaluatedAttempt));
 	}
 
 	protected AbstractCreateApplicationService(final CreationHandlerRegistry<DomainCreateModel> handlerRegistry,
 	                                           final CreationPolicyEvaluator policyEvaluator,
-	                                           final CreateExecutor<Payload, DomainCreateModel, DomainModel> createExecutor)
+	                                           final CreateExecutor<DomainCreatePayload, DomainCreateModel, DomainModel> createExecutor)
 	{
 		this(handlerRegistry, policyEvaluator, createExecutor, CreationQuarantineRecorder.noop());
 	}
 
 	protected AbstractCreateApplicationService(final CreationHandlerRegistry<DomainCreateModel> handlerRegistry,
 	                                           final CreationPolicyEvaluator policyEvaluator,
-	                                           final CreateExecutor<Payload, DomainCreateModel, DomainModel> createExecutor,
+	                                           final CreateExecutor<DomainCreatePayload, DomainCreateModel, DomainModel> createExecutor,
 	                                           final CreationQuarantineRecorder quarantineRecorder)
 	{
 		this.handlerRegistry = Objects.requireNonNull(handlerRegistry, "handlerRegistry");
