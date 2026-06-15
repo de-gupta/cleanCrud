@@ -29,6 +29,7 @@ import de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.handle
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.handler.RegisteredMutationHandler;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.model.MutationRequest;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.plan.AggregateMutationPlan;
+import de.gupta.clean.crud.template.useCases.operationOLD.mutation.quarantine.application.recording.MutationQuarantineRecorder;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -66,7 +67,12 @@ class AggregateMutationRelationshipSupportTest
 		var engine =
 				DefaultAggregateLifecycle.withTransactionRunner(
 						new InlineTransactionRunner());
-		return AggregateMutationServices.mutationService("test-aggregate", definition, engine, registry);
+		return AggregateMutationServices.mutationService(
+				"test-aggregate",
+				definition,
+				engine,
+				registry,
+				MutationQuarantineRecorder.noop());
 	}
 
 	private MutationHandlerRegistry<MasterModel> registry()
