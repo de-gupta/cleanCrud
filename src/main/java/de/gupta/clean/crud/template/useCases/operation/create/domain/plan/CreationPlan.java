@@ -2,9 +2,9 @@ package de.gupta.clean.crud.template.useCases.operation.create.domain.plan;
 
 import java.util.Objects;
 
-public record CreationPlan<DomainCreateModel>(
+public record CreationPlan<DomainModel>(
 		String aggregateKey,
-		DomainCreateModel createModel)
+		DomainModel domainModel)
 {
 	public static <DomainCreateModel> CreationPlan<DomainCreateModel> of(
 			final String aggregateKey,
@@ -16,7 +16,7 @@ public record CreationPlan<DomainCreateModel>(
 	public CreationPlan
 	{
 		Objects.requireNonNull(aggregateKey, "aggregateKey");
-		Objects.requireNonNull(createModel, "createModel");
+		Objects.requireNonNull(domainModel, "domainModel");
 		if (aggregateKey.isBlank())
 		{
 			throw new IllegalArgumentException("aggregateKey may not be blank");

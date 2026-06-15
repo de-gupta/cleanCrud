@@ -37,10 +37,10 @@ class CreateApplicationControllerFlowTest
 				})));
 		var evaluator = CreationPolicyEvaluator.of(List.of(_ -> CreationPolicyEvaluation.allow(List.of(
 				CreationOperationViolation.externalConsistency("accepted with warning")))));
-		CreateExecutor<DomainPayload, String, String> executor = attempt ->
+		CreateExecutor<DomainPayload, String> executor = attempt ->
 		{
 			executedAttempt.set(attempt);
-			return "created:" + attempt.plan().createModel();
+			return "created:" + attempt.plan().domainModel();
 		};
 
 		var service = new TestCreateApplicationService(registry, evaluator, executor);
@@ -79,12 +79,12 @@ class CreateApplicationControllerFlowTest
 	}
 
 	private static final class TestCreateApplicationService
-			extends AbstractCreateApplicationService<DomainPayload, String, String>
+			extends AbstractCreateApplicationService<DomainPayload, String>
 	{
 		private TestCreateApplicationService(
 				final CreationHandlerRegistry<String> handlerRegistry,
 				final CreationPolicyEvaluator policyEvaluator,
-				final CreateExecutor<DomainPayload, String, String> createExecutor)
+				final CreateExecutor<DomainPayload, String> createExecutor)
 		{
 			super(handlerRegistry, policyEvaluator, createExecutor);
 		}
@@ -96,7 +96,7 @@ class CreateApplicationControllerFlowTest
 		private TestCreateApplicationServiceFacade(
 				final TestCreateApplicationService service)
 		{
-			super(service, apiPayload -> new DomainPayload(apiPayload.name()), new TestResultAdapter());
+			super(apiPayload -> new DomainPayload(apiPayload.name()), service, new TestResultAdapter());
 		}
 	}
 

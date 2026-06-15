@@ -6,8 +6,8 @@ import de.gupta.clean.crud.template.useCases.operation.create.domain.plan.Creati
 
 import java.util.Objects;
 
-public record RegisteredCreationHandler<Payload extends CreateOperationPayload, DomainCreateModel>(
-		Class<Payload> payloadType, CreationHandler<Payload, DomainCreateModel> handler)
+public record RegisteredCreationHandler<DomainCreatePayload extends CreateOperationPayload, DomainModel>(
+		Class<DomainCreatePayload> payloadType, CreationHandler<DomainCreatePayload, DomainModel> handler)
 {
 	public static <Payload extends CreateOperationPayload, DomainCreateModel> RegisteredCreationHandler<Payload, DomainCreateModel> of(
 			final Class<Payload> payloadType, final CreationHandler<Payload, DomainCreateModel> handler)
@@ -31,7 +31,7 @@ public record RegisteredCreationHandler<Payload extends CreateOperationPayload, 
 		return payloadType.isAssignableFrom(candidateType);
 	}
 
-	public CreationPlan<DomainCreateModel> createPlan(final CreateOperationRequest<?> request)
+	public CreationPlan<DomainModel> createPlan(final CreateOperationRequest<?> request)
 	{
 		return handler.createPlan(request.withPayload(payloadType.cast(request.payload())));
 	}

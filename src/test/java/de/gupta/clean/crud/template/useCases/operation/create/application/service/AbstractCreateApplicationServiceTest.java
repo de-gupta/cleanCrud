@@ -42,7 +42,7 @@ class AbstractCreateApplicationServiceTest
 				attempt ->
 				{
 					executedAttempts.add(attempt);
-					return "created:" + attempt.plan().createModel();
+					return "created:" + attempt.plan().domainModel();
 				});
 
 		var result = service.create(request(new TestPayload("draft")));
@@ -91,7 +91,7 @@ class AbstractCreateApplicationServiceTest
 				attempt ->
 				{
 					executorCalls.incrementAndGet();
-					return "created:" + attempt.plan().createModel();
+					return "created:" + attempt.plan().domainModel();
 				});
 
 		var result = service.create(request(new TestPayload("draft")));
@@ -113,7 +113,7 @@ class AbstractCreateApplicationServiceTest
 		var service = new TestCreateApplicationService(
 				registryFor(request -> CreationPlan.of("aggregate.Task", request.payload().name())),
 				_ -> CreationPolicyEvaluation.quarantine(List.of(blocking), List.of(tolerated)),
-				attempt -> "created:" + attempt.plan().createModel(),
+				attempt -> "created:" + attempt.plan().domainModel(),
 				recorder);
 
 		var result = service.create(request(new TestPayload("draft")));
@@ -139,7 +139,7 @@ class AbstractCreateApplicationServiceTest
 		var service = new TestCreateApplicationService(
 				registryFor(request -> CreationPlan.of("aggregate.Task", request.payload().name())),
 				_ -> CreationPolicyEvaluation.quarantine(List.of(blocking)),
-				attempt -> "created:" + attempt.plan().createModel(),
+				attempt -> "created:" + attempt.plan().domainModel(),
 				recorder);
 
 		var result = service.create(request(new TestPayload("draft")));
@@ -158,7 +158,7 @@ class AbstractCreateApplicationServiceTest
 		var service = new TestCreateApplicationService(
 				registryFor(request -> CreationPlan.of("aggregate.Task", request.payload().name())),
 				_ -> CreationPolicyEvaluation.quarantine(List.of(blocking), List.of(), Optional.of("Q-existing")),
-				attempt -> "created:" + attempt.plan().createModel(),
+				attempt -> "created:" + attempt.plan().domainModel(),
 				recorder);
 
 		var result = service.create(request(new TestPayload("draft")));
@@ -175,7 +175,7 @@ class AbstractCreateApplicationServiceTest
 		var service = new TestCreateApplicationService(
 				CreationHandlerRegistry.of(List.of()),
 				CreationPolicyEvaluator.allowing(),
-				attempt -> "created:" + attempt.plan().createModel());
+				attempt -> "created:" + attempt.plan().domainModel());
 
 		assertThatThrownBy(() -> service.create(request(new TestPayload("draft"))))
 				.isInstanceOf(IllegalStateException.class)
@@ -197,12 +197,12 @@ class AbstractCreateApplicationServiceTest
 	}
 
 	private static final class TestCreateApplicationService
-			extends AbstractCreateApplicationService<TestPayload, String, String>
+			extends AbstractCreateApplicationService<TestPayload, String>
 	{
 		private TestCreateApplicationService(
 				final CreationHandlerRegistry<String> handlerRegistry,
 				final CreationPolicyEvaluator policyEvaluator,
-				final CreateExecutor<TestPayload, String, String> createExecutor)
+				final CreateExecutor<TestPayload, String> createExecutor)
 		{
 			super(handlerRegistry, policyEvaluator, createExecutor);
 		}
@@ -210,7 +210,7 @@ class AbstractCreateApplicationServiceTest
 		private TestCreateApplicationService(
 				final CreationHandlerRegistry<String> handlerRegistry,
 				final CreationPolicyEvaluator policyEvaluator,
-				final CreateExecutor<TestPayload, String, String> createExecutor,
+				final CreateExecutor<TestPayload, String> createExecutor,
 				final CreationQuarantineRecorder quarantineRecorder)
 		{
 			super(handlerRegistry, policyEvaluator, createExecutor, quarantineRecorder);

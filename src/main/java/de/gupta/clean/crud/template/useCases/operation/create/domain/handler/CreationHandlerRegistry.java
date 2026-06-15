@@ -4,14 +4,14 @@ import de.gupta.clean.crud.template.useCases.operation.create.domain.model.Creat
 
 import java.util.Collection;
 
-public interface CreationHandlerRegistry<DomainCreateModel>
+public interface CreationHandlerRegistry<DomainModel>
 {
-	static <DomainCreateModel> CreationHandlerRegistry<DomainCreateModel> of(
-			final Collection<? extends RegisteredCreationHandler<? extends CreateOperationPayload, DomainCreateModel>> handlers)
+	static <DomainModel> CreationHandlerRegistry<DomainModel> of(
+			final Collection<? extends RegisteredCreationHandler<? extends CreateOperationPayload, DomainModel>> handlers)
 	{
 		return new DefaultCreationHandlerRegistry<>(handlers);
 	}
 
-	<Payload extends CreateOperationPayload> RegisteredCreationHandler<Payload, DomainCreateModel> resolveHandlerFor(
-			Class<Payload> payloadType);
+	<DomainCreatePayload extends CreateOperationPayload> RegisteredCreationHandler<DomainCreatePayload, DomainModel> resolveHandlerFor(
+			Class<DomainCreatePayload> payloadType);
 }

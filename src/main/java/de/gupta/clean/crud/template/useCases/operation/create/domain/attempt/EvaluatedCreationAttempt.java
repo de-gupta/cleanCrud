@@ -12,12 +12,12 @@ import java.util.Collection;
 import java.util.Objects;
 import java.util.Optional;
 
-public record EvaluatedCreationAttempt<Payload extends CreateOperationPayload, DomainCreateModel>(
-		PreparedCreationAttempt<Payload, DomainCreateModel> preparedAttempt,
+public record EvaluatedCreationAttempt<DomainCreatePayload extends CreateOperationPayload, DomainModel>(
+		PreparedCreationAttempt<DomainCreatePayload, DomainModel> preparedAttempt,
 		CreationPolicyEvaluation evaluation)
 {
-	public static <Payload extends CreateOperationPayload, DomainCreateModel> EvaluatedCreationAttempt<Payload, DomainCreateModel> of(
-			final PreparedCreationAttempt<Payload, DomainCreateModel> preparedAttempt,
+	public static <Payload extends CreateOperationPayload, DomainModel> EvaluatedCreationAttempt<Payload, DomainModel> of(
+			final PreparedCreationAttempt<Payload, DomainModel> preparedAttempt,
 			final CreationPolicyEvaluation evaluation)
 	{
 		return new EvaluatedCreationAttempt<>(preparedAttempt, evaluation);
@@ -29,7 +29,7 @@ public record EvaluatedCreationAttempt<Payload extends CreateOperationPayload, D
 		Objects.requireNonNull(evaluation, "evaluation");
 	}
 
-	public CreateOperationRequest<Payload> request()
+	public CreateOperationRequest<DomainCreatePayload> request()
 	{
 		return preparedAttempt.request();
 	}
@@ -39,7 +39,7 @@ public record EvaluatedCreationAttempt<Payload extends CreateOperationPayload, D
 		return preparedAttempt.context();
 	}
 
-	public CreationPlan<DomainCreateModel> plan()
+	public CreationPlan<DomainModel> plan()
 	{
 		return preparedAttempt.plan();
 	}

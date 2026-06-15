@@ -8,11 +8,11 @@ import de.gupta.clean.crud.template.useCases.operation.create.domain.plan.Creati
 
 import java.util.Objects;
 
-public record PreparedCreationAttempt<Payload extends CreateOperationPayload, DomainCreateModel>(
-		CreateOperationRequest<Payload> request,
-		RegisteredCreationHandler<Payload, DomainCreateModel> handler,
+public record PreparedCreationAttempt<DomainCreatePayload extends CreateOperationPayload, DomainModel>(
+		CreateOperationRequest<DomainCreatePayload> request,
+		RegisteredCreationHandler<DomainCreatePayload, DomainModel> handler,
 		CreateOperationContext context,
-		CreationPlan<DomainCreateModel> plan)
+		CreationPlan<DomainModel> plan)
 {
 	public PreparedCreationAttempt
 	{
