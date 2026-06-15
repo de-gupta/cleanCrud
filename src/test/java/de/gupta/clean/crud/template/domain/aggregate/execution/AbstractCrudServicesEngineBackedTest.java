@@ -12,14 +12,19 @@ import de.gupta.clean.crud.template.domain.mapping.save.DomainModelBuilder;
 import de.gupta.clean.crud.template.domain.mapping.update.DomainModelPatcher;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
+import de.gupta.clean.crud.template.domain.service.aggregate.DefaultAggregateDeleteService;
+import de.gupta.clean.crud.template.domain.service.aggregate.DefaultAggregateFetchService;
 import de.gupta.clean.crud.template.domain.service.aggregate.DefaultAggregateSaveService;
+import de.gupta.clean.crud.template.domain.service.aggregate.DefaultAggregateUpdateService;
 import de.gupta.clean.crud.template.domain.service.crud.policy.DeletionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.InsertionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.PatchPolicy;
 import de.gupta.clean.crud.template.domain.service.equality.DuplicateDefinition;
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
 import de.gupta.clean.crud.template.infrastructure.persistence.transaction.PersistenceTransactionRunner;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.service.AggregateCrudServices;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.service.AggregateDeleteServices;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.service.AggregateSaveServices;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.service.AggregateUpdateServices;
 import de.gupta.clean.crud.template.useCases.crud.delete.application.service.AbstractDeleteService;
 import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.AbstractFetchService;
 import de.gupta.clean.crud.template.useCases.crud.save.application.service.AbstractSaveService;
@@ -54,7 +59,7 @@ class AbstractCrudServicesEngineBackedTest
 	void saveAndUpdateServicesMapDomainResultsToResponseModels()
 	{
 		TestAggregateDefinition definition = new TestAggregateDefinition();
-		DefaultAggregateLifecycleEngine engine =
+		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
 
 		TestSaveService saveService = new TestSaveService(definition, engine);
@@ -70,7 +75,7 @@ class AbstractCrudServicesEngineBackedTest
 	{
 		TestAggregateDefinition definition = new TestAggregateDefinition();
 		definition.store.put("id", "value");
-		DefaultAggregateLifecycleEngine engine =
+		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
 
 		TestFetchService fetchService = new TestFetchService(definition, engine);
@@ -94,7 +99,7 @@ class AbstractCrudServicesEngineBackedTest
 			contexts.add(context);
 			latch.countDown();
 		};
-		DefaultAggregateLifecycleEngine engine =
+		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
 
 		TestSaveService saveService = new TestSaveService(definition, engine);
@@ -116,7 +121,7 @@ class AbstractCrudServicesEngineBackedTest
 	void updateServiceThrowsResourceNotFoundWhenPatchingMissingModel()
 	{
 		TestAggregateDefinition definition = new TestAggregateDefinition();
-		DefaultAggregateLifecycleEngine engine =
+		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
 
 		TestUpdateService updateService = new TestUpdateService(definition, engine);
@@ -128,7 +133,7 @@ class AbstractCrudServicesEngineBackedTest
 	void deleteServiceThrowsResourceNotFoundWhenDeletingMissingModel()
 	{
 		TestAggregateDefinition definition = new TestAggregateDefinition();
-		DefaultAggregateLifecycleEngine engine =
+		AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
 
 		TestDeleteService deleteService = new TestDeleteService(definition, engine);
@@ -147,7 +152,7 @@ class AbstractCrudServicesEngineBackedTest
 		var processDefinition = DurableProcessDefinition.of("test-process", SavedTrigger.class, SavedPayload.class);
 		var retryPolicy = new RetryPolicy(2, BackoffPolicy.fixed(java.time.Duration.ofMillis(5)));
 
-		var saveService = AggregateCrudServices.saveService(
+		var saveService = AggregateSaveServices.saveService(
 				definition,
 				engine,
 				savedModels -> savedModels.stream()
@@ -179,7 +184,7 @@ class AbstractCrudServicesEngineBackedTest
 				SavedPayload.class);
 		var retryPolicy = new RetryPolicy(2, BackoffPolicy.fixed(java.time.Duration.ofMillis(5)));
 
-		var updateService = AggregateCrudServices.updateService(
+		var updateService = AggregateUpdateServices.updateService(
 				definition,
 				engine,
 				context -> List.of(new DurableProcessStartRequest<>(
@@ -208,7 +213,7 @@ class AbstractCrudServicesEngineBackedTest
 				SavedPayload.class);
 		var retryPolicy = new RetryPolicy(2, BackoffPolicy.fixed(java.time.Duration.ofMillis(5)));
 
-		var deleteService = AggregateCrudServices.deleteService(
+		var deleteService = AggregateDeleteServices.deleteService(
 				definition,
 				engine,
 				context -> List.of(new DurableProcessStartRequest<>(
@@ -242,34 +247,29 @@ class AbstractCrudServicesEngineBackedTest
 				final AggregateDefinition<String, String, String, String, String> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
-					AggregateServiceSupportFactory.validationSupport(),
-					AggregateServiceSupportFactory.updateCoordinator());
+			super(definition, DefaultAggregateUpdateService.create(definition, engine));
 		}
 	}
 
 	private static final class TestFetchService
-			extends AbstractFetchService<String, String, String, String, String>
+			extends AbstractFetchService<String, String>
 	{
 		private TestFetchService(
 				final AggregateDefinition<String, String, String, String, String> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
-					AggregateServiceSupportFactory.fetchCoordinator());
+			super(DefaultAggregateFetchService.create(definition, engine));
 		}
 	}
 
 	private static final class TestDeleteService
-			extends AbstractDeleteService<String, String, String, String, String>
+			extends AbstractDeleteService<String, String>
 	{
 		private TestDeleteService(
 				final AggregateDefinition<String, String, String, String, String> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
-					AggregateServiceSupportFactory.validationSupport(),
-					AggregateServiceSupportFactory.deleteCoordinator());
+			super(DefaultAggregateDeleteService.create(definition, engine));
 		}
 	}
 

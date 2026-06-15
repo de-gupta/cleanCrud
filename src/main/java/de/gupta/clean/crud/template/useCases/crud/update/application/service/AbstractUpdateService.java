@@ -1,21 +1,15 @@
 package de.gupta.clean.crud.template.useCases.crud.update.application.service;
 
-import de.gupta.aletheia.functional.Unfolding;
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
-import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
-import de.gupta.clean.crud.template.domain.aggregate.execution.*;
-import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
-import de.gupta.clean.crud.template.domain.model.exceptions.DomainException;
-import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
+import de.gupta.clean.crud.template.domain.service.aggregate.AggregateBulkOperationMode;
+import de.gupta.clean.crud.template.domain.service.aggregate.AggregateUpdateService;
 import de.gupta.clean.crud.template.useCases.crud.common.BulkOperationMode;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 
 public abstract class AbstractUpdateService<
 		MasterDomainId,
@@ -28,20 +22,13 @@ public abstract class AbstractUpdateService<
 {
 	private final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 			MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition;
-	private final AggregateLifecycleEngine engine;
-	private final AggregateDefinitionGuard definitionGuard;
-	private final AggregateMutationValidationSupport validationSupport;
-	private final AggregateUpdateCoordinator updateCoordinator;
+	private final AggregateUpdateService<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+			MasterDomainModelUpdatePatch> aggregateUpdateService;
 
 	@Override
 	public void putAtId(final MasterDomainId id, final MasterDomainModelCreate model)
 	{
-		var relationships = definitionGuard.satelliteRelationships(definition);
-		engine.execute(
-				AggregateWorkflowBuilder.writeFlow(() -> replaceModel(id, model, relationships))
-				                        .startDurableProcesses(this::durableProcessStartRequests)
-				                        .afterTransaction(definition.postCommitMutation())
-				                        .build());
+		aggregateUpdateService.putAtId(id, model, this::durableProcessStartRequests);
 	}
 
 	@Override
@@ -49,12 +36,7 @@ public abstract class AbstractUpdateService<
 			final MasterDomainId id,
 			final MasterDomainModelUpdatePatch updatePatch)
 	{
-		var relationships = definitionGuard.satelliteRelationships(definition);
-		return identifiedModel(engine.execute(
-				AggregateWorkflowBuilder.writeFlow(() -> patchModel(id, updatePatch, relationships))
-				                        .startDurableProcesses(result -> durableProcessStartRequests(result.context()))
-				                        .afterTransaction(this::dispatchUpdated)
-				                        .build()).updated());
+		return identifiedModel(aggregateUpdateService.updateById(id, updatePatch, this::durableProcessStartRequests));
 	}
 
 	@Override
@@ -62,21 +44,18 @@ public abstract class AbstractUpdateService<
 			final Collection<IdentifiedModel<MasterDomainId, MasterDomainModelUpdatePatch>> models,
 			final BulkOperationMode mode)
 	{
-		var relationships = definitionGuard.satelliteRelationships(definition);
+		return aggregateUpdateService.updateAllById(models, aggregateBulkMode(mode), this::durableProcessStartRequests)
+		                             .stream()
+		                             .map(this::identifiedModel)
+		                             .toList();
+	}
+
+	private AggregateBulkOperationMode aggregateBulkMode(final BulkOperationMode mode)
+	{
 		return switch (mode)
 		{
-			case ALL_OR_NOTHING -> engine.execute(
-												 AggregateWorkflowBuilder.writeFlow(() -> patchAllModels(models, relationships))
-					                                                     .startDurableProcesses(
-																				 this::durableProcessStartRequests)
-					                                                     .afterTransaction(this::dispatchUpdated)
-					                                                     .build()).stream().map(UpdateDispatch::updated).map(this::identifiedModel)
-			                             .toList();
-			case BEST_EFFORT -> models.stream()
-			                          .map(model -> tryUpdateById(model.id(), model.model()))
-			                          .flatMap(Optional::stream)
-			                          .map(this::identifiedModel)
-			                          .toList();
+			case ALL_OR_NOTHING -> AggregateBulkOperationMode.ALL_OR_NOTHING;
+			case BEST_EFFORT -> AggregateBulkOperationMode.BEST_EFFORT;
 		};
 	}
 
@@ -86,64 +65,13 @@ public abstract class AbstractUpdateService<
 		return IdentifiedModel.of(domainModel.id(), definition.responseBuilder().toResponse(domainModel.model()));
 	}
 
-	private UpdateDispatch<MasterDomainId, MasterDomainModel> patchModel(
-			final MasterDomainId id,
-			final MasterDomainModelUpdatePatch updatePatch,
-			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
-					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships)
+	protected Collection<DurableProcessStartRequest<?, ?>> durableProcessStartRequests(
+			final Collection<PostCommitMutationContext<MasterDomainId, MasterDomainModel>> results)
 	{
-		var previousModel = definition.fetchPort()
-		                              .findById(id)
-		                              .map(IdentifiedModel::model)
-		                              .orElseThrow(() -> ResourceNotFoundException.withId(id));
-		var updated = Unfolding.of(relationships)
-		                       .coronate(List::isEmpty,
-									   ignored -> patchModelWithoutRelationships(id, updatePatch),
-									   rels -> updateCoordinator.updateById(definition, rels, id, updatePatch));
-		return new UpdateDispatch<>(updated, patchContext(updated.id(), Optional.of(previousModel), updated.model()));
-	}
-
-	private void dispatchUpdated(final UpdateDispatch<MasterDomainId, MasterDomainModel> result)
-	{
-		definition.postCommitMutation().accept(result.context());
-	}
-
-	private IdentifiedModel<MasterDomainId, MasterDomainModel> patchModelWithoutRelationships(
-			final MasterDomainId id,
-			final MasterDomainModelUpdatePatch updatePatch)
-	{
-		var current = definition.fetchPort().findById(id).orElseThrow(() -> ResourceNotFoundException.withId(id));
-		validationSupport.validateAccess(definition, current.model());
-		var updatedModel = definition.patcher().patchModel(current.model(), updatePatch);
-		validationSupport.validateAccessAndValidatePatch(definition, current.model(), updatedModel);
-		return definition.mutationPort().update(id, updatedModel);
-	}
-
-	private PostCommitMutationContext<MasterDomainId, MasterDomainModel> patchContext(
-			final MasterDomainId id,
-			final Optional<MasterDomainModel> previousModel,
-			final MasterDomainModel currentModel)
-	{
-		return new PostCommitMutationContext<>(
-				PostCommitMutationKind.PATCH,
-				id,
-				Optional.of(currentModel),
-				previousModel);
-	}
-
-	private PostCommitMutationContext<MasterDomainId, MasterDomainModel> replaceModel(
-			final MasterDomainId id,
-			final MasterDomainModelCreate model,
-			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
-					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships)
-	{
-		var previousModel = definition.fetchPort().findById(id).map(IdentifiedModel::model);
-		Unfolding.of(relationships)
-		         .coronate(List::isEmpty,
-						 ignored -> replaceModelWithoutRelationships(id, model, previousModel),
-						 rels -> replaceModelWithRelationships(id, model, rels));
-		var currentModel = definition.fetchPort().findById(id).map(IdentifiedModel::model).orElseThrow();
-		return putContext(id, previousModel, currentModel);
+		return results.stream()
+		              .map(this::durableProcessStartRequests)
+		              .flatMap(Collection::stream)
+		              .toList();
 	}
 
 	protected Collection<DurableProcessStartRequest<?, ?>> durableProcessStartRequests(
@@ -152,108 +80,13 @@ public abstract class AbstractUpdateService<
 		return List.of();
 	}
 
-	private Void replaceModelWithoutRelationships(
-			final MasterDomainId id,
-			final MasterDomainModelCreate model,
-			final Optional<MasterDomainModel> previousModel)
-	{
-		var replacement = definition.createBuilder().toModel(model);
-		validationSupport.validateAccess(definition, replacement);
-		previousModel.ifPresentOrElse(
-				current -> validationSupport.validateAccessAndValidatePatch(definition, current, replacement),
-				() -> definition.insertionPolicy().validateInsertion(replacement));
-		definition.mutationPort().put(id, replacement);
-		return null;
-	}
-
-	private Void replaceModelWithRelationships(
-			final MasterDomainId id,
-			final MasterDomainModelCreate model,
-			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
-					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships)
-	{
-		updateCoordinator.putAtId(definition, relationships, id, model);
-		return null;
-	}
-
-	private PostCommitMutationContext<MasterDomainId, MasterDomainModel> putContext(
-			final MasterDomainId id,
-			final Optional<MasterDomainModel> previousModel,
-			final MasterDomainModel currentModel)
-	{
-		return new PostCommitMutationContext<>(
-				PostCommitMutationKind.PUT,
-				id,
-				Optional.of(currentModel),
-				previousModel);
-	}
-
-	protected Collection<DurableProcessStartRequest<?, ?>> durableProcessStartRequests(
-			final Collection<UpdateDispatch<MasterDomainId, MasterDomainModel>> results)
-	{
-		return results.stream()
-		              .map(UpdateDispatch::context)
-		              .map(this::durableProcessStartRequests)
-		              .flatMap(Collection::stream)
-		              .toList();
-	}
-
-	private Optional<IdentifiedModel<MasterDomainId, MasterDomainModel>> tryUpdateById(
-			final MasterDomainId id,
-			final MasterDomainModelUpdatePatch updatePatch)
-	{
-		try
-		{
-			var relationships = definitionGuard.satelliteRelationships(definition);
-			return Optional.of(engine.execute(
-					AggregateWorkflowBuilder.writeFlow(() -> patchModel(id, updatePatch, relationships))
-					                        .startDurableProcesses(
-													result -> durableProcessStartRequests(result.context()))
-					                        .afterTransaction(this::dispatchUpdated)
-					                        .build()).updated());
-		}
-		catch (DomainException e)
-		{
-			return Optional.empty();
-		}
-	}
-
-	private Collection<UpdateDispatch<MasterDomainId, MasterDomainModel>> patchAllModels(
-			final Collection<IdentifiedModel<MasterDomainId, MasterDomainModelUpdatePatch>> models,
-			final List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
-					MasterDomainModelUpdatePatch, ?, ?, ?, ?>> relationships)
-	{
-		var updates = new ArrayList<UpdateDispatch<MasterDomainId, MasterDomainModel>>();
-		for (var model : models)
-		{
-			updates.add(patchModel(model.id(), model.model(), relationships));
-		}
-		return updates;
-	}
-
-	private void dispatchUpdated(final Collection<UpdateDispatch<MasterDomainId, MasterDomainModel>> result)
-	{
-		result.forEach(this::dispatchUpdated);
-	}
-
 	protected AbstractUpdateService(
 			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
-			final AggregateLifecycleEngine engine,
-			final AggregateDefinitionGuard definitionGuard,
-			final AggregateMutationValidationSupport validationSupport,
-			final AggregateUpdateCoordinator updateCoordinator)
+			final AggregateUpdateService<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
+					MasterDomainModelUpdatePatch> aggregateUpdateService)
 	{
 		this.definition = definition;
-		this.engine = engine;
-		this.definitionGuard = definitionGuard;
-		this.validationSupport = validationSupport;
-		this.updateCoordinator = updateCoordinator;
-	}
-
-	protected record UpdateDispatch<DomainId, DomainModel>(
-			IdentifiedModel<DomainId, DomainModel> updated,
-			PostCommitMutationContext<DomainId, DomainModel> context)
-	{
+		this.aggregateUpdateService = aggregateUpdateService;
 	}
 }

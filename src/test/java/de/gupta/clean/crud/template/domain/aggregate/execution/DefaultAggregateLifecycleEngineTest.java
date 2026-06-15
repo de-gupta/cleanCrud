@@ -565,7 +565,7 @@ class DefaultAggregateLifecycleEngineTest
 	private static final class TestScenario
 	{
 		private final TestTransactionRunner transactionRunner = new TestTransactionRunner();
-		private final DefaultAggregateLifecycleEngine workflowEngine;
+		private final AggregateLifecycleEngine workflowEngine;
 		private final TestEngineFacade engine;
 		private final Map<String, MasterModel> masterStore = new LinkedHashMap<>();
 		private final Map<Long, SatelliteModel> satelliteStore = new LinkedHashMap<>();

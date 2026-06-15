@@ -5,7 +5,6 @@ import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutati
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
 import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateLifecycleEngine;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateServiceSupportFactory;
 import de.gupta.clean.crud.template.domain.aggregate.execution.DefaultAggregateLifecycleEngine;
 import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteCreateIntent;
 import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteMutationIntent;
@@ -18,7 +17,9 @@ import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNot
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.relationship.LifecycleSemantics;
 import de.gupta.clean.crud.template.domain.relationship.ReconciliationStrategy;
+import de.gupta.clean.crud.template.domain.service.aggregate.DefaultAggregateFetchService;
 import de.gupta.clean.crud.template.domain.service.aggregate.DefaultAggregateSaveService;
+import de.gupta.clean.crud.template.domain.service.aggregate.DefaultAggregateUpdateService;
 import de.gupta.clean.crud.template.domain.service.equality.KeyBasedDuplicateDefinition;
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
 import de.gupta.clean.crud.template.infrastructure.persistence.transaction.PersistenceTransactionRunner;
@@ -1258,23 +1259,19 @@ final class AggregateBuilderDslTest
 						StandardMasterResponse> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
-					AggregateServiceSupportFactory.validationSupport(),
-					AggregateServiceSupportFactory.updateCoordinator());
+			super(definition, DefaultAggregateUpdateService.create(definition, engine));
 		}
 	}
 
 	private static final class TestStandardFetchService
-			extends AbstractFetchService<String, StandardMasterModel, StandardMasterCreate, StandardMasterPatch,
-			StandardMasterResponse>
+			extends AbstractFetchService<String, StandardMasterModel>
 	{
 		private TestStandardFetchService(
 				final AggregateDefinition<String, StandardMasterModel, StandardMasterCreate, StandardMasterPatch,
 						StandardMasterResponse> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
-					AggregateServiceSupportFactory.fetchCoordinator());
+			super(DefaultAggregateFetchService.create(definition, engine));
 		}
 	}
 
@@ -1300,9 +1297,7 @@ final class AggregateBuilderDslTest
 						StandardReferenceMasterPatch, StandardMasterResponse> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
-					AggregateServiceSupportFactory.validationSupport(),
-					AggregateServiceSupportFactory.updateCoordinator());
+			super(definition, DefaultAggregateUpdateService.create(definition, engine));
 		}
 	}
 
@@ -1324,21 +1319,18 @@ final class AggregateBuilderDslTest
 				final AggregateDefinition<String, MasterModel, MasterCreate, MasterPatch, MasterResponse> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
-					AggregateServiceSupportFactory.validationSupport(),
-					AggregateServiceSupportFactory.updateCoordinator());
+			super(definition, DefaultAggregateUpdateService.create(definition, engine));
 		}
 	}
 
 	private static final class TestFetchService
-			extends AbstractFetchService<String, MasterModel, MasterCreate, MasterPatch, MasterResponse>
+			extends AbstractFetchService<String, MasterModel>
 	{
 		private TestFetchService(
 				final AggregateDefinition<String, MasterModel, MasterCreate, MasterPatch, MasterResponse> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
-					AggregateServiceSupportFactory.fetchCoordinator());
+			super(DefaultAggregateFetchService.create(definition, engine));
 		}
 	}
 

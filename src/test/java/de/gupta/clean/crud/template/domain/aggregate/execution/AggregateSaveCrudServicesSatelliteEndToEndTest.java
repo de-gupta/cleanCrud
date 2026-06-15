@@ -14,7 +14,10 @@ import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.relationship.LifecycleSemantics;
 import de.gupta.clean.crud.template.domain.relationship.ReconciliationStrategy;
 import de.gupta.clean.crud.template.domain.relationship.RelationshipKind;
+import de.gupta.clean.crud.template.domain.service.aggregate.DefaultAggregateDeleteService;
+import de.gupta.clean.crud.template.domain.service.aggregate.DefaultAggregateFetchService;
 import de.gupta.clean.crud.template.domain.service.aggregate.DefaultAggregateSaveService;
+import de.gupta.clean.crud.template.domain.service.aggregate.DefaultAggregateUpdateService;
 import de.gupta.clean.crud.template.domain.service.crud.policy.DeletionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.InsertionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.PatchPolicy;
@@ -44,7 +47,7 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("Aggregate CRUD services satellite end-to-end tests")
-final class AggregateCrudServicesSatelliteEndToEndTest
+final class AggregateSaveCrudServicesSatelliteEndToEndTest
 {
 	private record MasterCreate(
 			String value,
@@ -104,7 +107,7 @@ final class AggregateCrudServicesSatelliteEndToEndTest
 	{
 		private final TestMasterAggregateDefinition masterDefinition = new TestMasterAggregateDefinition();
 		private final TestTransactionRunner transactionRunner = new TestTransactionRunner();
-		private final DefaultAggregateLifecycleEngine engine =
+		private final AggregateLifecycleEngine engine =
 				DefaultAggregateLifecycleEngine.withTransactionRunner(transactionRunner);
 		private final TestSaveService saveService = new TestSaveService(masterDefinition, engine);
 		private final TestUpdateService updateService = new TestUpdateService(masterDefinition, engine);
@@ -617,34 +620,28 @@ final class AggregateCrudServicesSatelliteEndToEndTest
 				final AggregateDefinition<String, MasterModel, MasterCreate, MasterPatch, MasterResponse> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
-					AggregateServiceSupportFactory.validationSupport(),
-					AggregateServiceSupportFactory.updateCoordinator());
+			super(definition, DefaultAggregateUpdateService.create(definition, engine));
 		}
 	}
 
 	private static final class TestFetchService
-			extends AbstractFetchService<String, MasterModel, MasterCreate, MasterPatch, MasterResponse>
+			extends AbstractFetchService<String, MasterModel>
 	{
 		private TestFetchService(
 				final AggregateDefinition<String, MasterModel, MasterCreate, MasterPatch, MasterResponse> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
-					AggregateServiceSupportFactory.fetchCoordinator());
+			super(DefaultAggregateFetchService.create(definition, engine));
 		}
 	}
 
-	private static final class TestDeleteService
-			extends AbstractDeleteService<String, MasterModel, MasterCreate, MasterPatch, MasterResponse>
+	private static final class TestDeleteService extends AbstractDeleteService<String, MasterModel>
 	{
 		private TestDeleteService(
 				final AggregateDefinition<String, MasterModel, MasterCreate, MasterPatch, MasterResponse> definition,
 				final AggregateLifecycleEngine engine)
 		{
-			super(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
-					AggregateServiceSupportFactory.validationSupport(),
-					AggregateServiceSupportFactory.deleteCoordinator());
+			super(DefaultAggregateDeleteService.create(definition, engine));
 		}
 	}
 

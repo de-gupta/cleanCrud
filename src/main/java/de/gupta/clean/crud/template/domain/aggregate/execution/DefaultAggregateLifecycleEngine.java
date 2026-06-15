@@ -5,6 +5,7 @@ import de.gupta.clean.crud.template.useCases.operationOLD.creation.quarantine.ap
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.quarantine.application.recording.MutationQuarantineRecorder;
 import de.gupta.clean.crud.template.useCases.process.application.execution.DurableProcessExecutionNudge;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStarter;
+import de.gupta.clean.crud.template.useCases.process.domain.model.id.DurableProcessTaskId;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,7 +19,7 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 	private final MutationQuarantineRecorder mutationQuarantineRecorder;
 	private final CreationQuarantineRecorder creationQuarantineRecorder;
 
-	public static DefaultAggregateLifecycleEngine withTransactionRunner(
+	public static AggregateLifecycleEngine withTransactionRunner(
 			final PersistenceTransactionRunner transactionRunner)
 	{
 		return new DefaultAggregateLifecycleEngine(
@@ -38,7 +39,7 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 		};
 	}
 
-	public static DefaultAggregateLifecycleEngine withTransactionRunnerAndMutationQuarantineRecorder(
+	public static AggregateLifecycleEngine withTransactionRunnerAndMutationQuarantineRecorder(
 			final PersistenceTransactionRunner transactionRunner,
 			final MutationQuarantineRecorder mutationQuarantineRecorder)
 	{
@@ -51,7 +52,7 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 				CreationQuarantineRecorder.noop());
 	}
 
-	public static DefaultAggregateLifecycleEngine withTransactionRunnerAndQuarantineRecorders(
+	public static AggregateLifecycleEngine withTransactionRunnerAndQuarantineRecorders(
 			final PersistenceTransactionRunner transactionRunner,
 			final MutationQuarantineRecorder mutationQuarantineRecorder,
 			final CreationQuarantineRecorder creationQuarantineRecorder)
@@ -65,7 +66,7 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 				creationQuarantineRecorder);
 	}
 
-	public static DefaultAggregateLifecycleEngine withTransactionRunnerAndDurableProcessStarter(
+	public static AggregateLifecycleEngine withTransactionRunnerAndDurableProcessStarter(
 			final PersistenceTransactionRunner transactionRunner,
 			final DurableProcessStarter durableProcessStarter)
 	{
@@ -75,7 +76,7 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 				DurableProcessExecutionNudge.noop());
 	}
 
-	public static DefaultAggregateLifecycleEngine withTransactionRunnerAndDurableProcessStarterAndExecutionNudge(
+	public static AggregateLifecycleEngine withTransactionRunnerAndDurableProcessStarterAndExecutionNudge(
 			final PersistenceTransactionRunner transactionRunner,
 			final DurableProcessStarter durableProcessStarter,
 			final DurableProcessExecutionNudge durableProcessExecutionNudge)
@@ -89,7 +90,7 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 				CreationQuarantineRecorder.noop());
 	}
 
-	public static DefaultAggregateLifecycleEngine withTransactionRunnerAndDurableProcessStarterExecutionNudgeAndMutationQuarantineRecorder(
+	public static AggregateLifecycleEngine withTransactionRunnerAndDurableProcessStarterExecutionNudgeAndMutationQuarantineRecorder(
 			final PersistenceTransactionRunner transactionRunner,
 			final DurableProcessStarter durableProcessStarter,
 			final DurableProcessExecutionNudge durableProcessExecutionNudge,
@@ -104,7 +105,7 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 				CreationQuarantineRecorder.noop());
 	}
 
-	public static DefaultAggregateLifecycleEngine withTransactionRunnerAndDurableProcessStarterExecutionNudgeAndQuarantineRecorders(
+	public static AggregateLifecycleEngine withTransactionRunnerAndDurableProcessStarterExecutionNudgeAndQuarantineRecorders(
 			final PersistenceTransactionRunner transactionRunner,
 			final DurableProcessStarter durableProcessStarter,
 			final DurableProcessExecutionNudge durableProcessExecutionNudge,
@@ -120,7 +121,7 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 				creationQuarantineRecorder);
 	}
 
-	static DefaultAggregateLifecycleEngine withTransactionRunnerAndDispatcher(
+	static AggregateLifecycleEngine withTransactionRunnerAndDispatcher(
 			final PersistenceTransactionRunner transactionRunner,
 			final PostCommitMutationDispatcher postCommitMutationDispatcher)
 	{
@@ -133,7 +134,7 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 				CreationQuarantineRecorder.noop());
 	}
 
-	static DefaultAggregateLifecycleEngine withTransactionRunnerDispatcherAndStarter(
+	static AggregateLifecycleEngine withTransactionRunnerDispatcherAndStarter(
 			final PersistenceTransactionRunner transactionRunner,
 			final PostCommitMutationDispatcher postCommitMutationDispatcher,
 			final DurableProcessStarter durableProcessStarter)
@@ -145,7 +146,7 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 				DurableProcessExecutionNudge.noop());
 	}
 
-	static DefaultAggregateLifecycleEngine withTransactionRunnerDispatcherStarterAndExecutionNudge(
+	static AggregateLifecycleEngine withTransactionRunnerDispatcherStarterAndExecutionNudge(
 			final PersistenceTransactionRunner transactionRunner,
 			final PostCommitMutationDispatcher postCommitMutationDispatcher,
 			final DurableProcessStarter durableProcessStarter,
@@ -161,8 +162,7 @@ public final class DefaultAggregateLifecycleEngine implements AggregateLifecycle
 	@Override
 	public <Result> Result execute(final AggregateWorkflow<Result> workflow)
 	{
-		var startedTaskIds =
-				new ArrayList<de.gupta.clean.crud.template.useCases.process.domain.model.id.DurableProcessTaskId>();
+		var startedTaskIds = new ArrayList<DurableProcessTaskId>();
 		var result = transactionRunner.inTransaction(() ->
 		{
 			var transactionalResult = workflow.inTransaction();
