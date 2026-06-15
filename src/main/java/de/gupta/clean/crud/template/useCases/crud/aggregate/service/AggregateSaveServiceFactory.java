@@ -12,7 +12,7 @@ import de.gupta.clean.crud.template.useCases.process.application.registration.Du
 import java.util.Collection;
 import java.util.function.Function;
 
-public enum AggregateSaveServices
+public enum AggregateSaveServiceFactory
 {
 	;
 

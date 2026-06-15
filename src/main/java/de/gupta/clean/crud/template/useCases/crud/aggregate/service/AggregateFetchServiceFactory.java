@@ -7,7 +7,7 @@ import de.gupta.clean.crud.template.domain.service.aggregate.DefaultAggregateFet
 import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.AbstractFetchService;
 import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.FetchService;
 
-public enum AggregateFetchServices
+public enum AggregateFetchServiceFactory
 {
 	;
 

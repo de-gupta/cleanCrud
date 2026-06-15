@@ -22,9 +22,9 @@ import de.gupta.clean.crud.template.domain.service.crud.policy.PatchPolicy;
 import de.gupta.clean.crud.template.domain.service.equality.DuplicateDefinition;
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
 import de.gupta.clean.crud.template.infrastructure.persistence.transaction.PersistenceTransactionRunner;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.service.AggregateDeleteServices;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.service.AggregateSaveServices;
-import de.gupta.clean.crud.template.useCases.crud.aggregate.service.AggregateUpdateServices;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.service.AggregateDeleteServiceFactory;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.service.AggregateSaveServiceFactory;
+import de.gupta.clean.crud.template.useCases.crud.aggregate.service.AggregateUpdateServiceFactory;
 import de.gupta.clean.crud.template.useCases.crud.delete.application.service.AbstractDeleteService;
 import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.AbstractFetchService;
 import de.gupta.clean.crud.template.useCases.crud.save.application.service.AbstractSaveService;
@@ -152,7 +152,7 @@ class AbstractCrudServicesEngineBackedTest
 		var processDefinition = DurableProcessDefinition.of("test-process", SavedTrigger.class, SavedPayload.class);
 		var retryPolicy = new RetryPolicy(2, BackoffPolicy.fixed(java.time.Duration.ofMillis(5)));
 
-		var saveService = AggregateSaveServices.saveService(
+		var saveService = AggregateSaveServiceFactory.saveService(
 				definition,
 				engine,
 				savedModels -> savedModels.stream()
@@ -184,7 +184,7 @@ class AbstractCrudServicesEngineBackedTest
 				SavedPayload.class);
 		var retryPolicy = new RetryPolicy(2, BackoffPolicy.fixed(java.time.Duration.ofMillis(5)));
 
-		var updateService = AggregateUpdateServices.updateService(
+		var updateService = AggregateUpdateServiceFactory.updateService(
 				definition,
 				engine,
 				context -> List.of(new DurableProcessStartRequest<>(
@@ -213,7 +213,7 @@ class AbstractCrudServicesEngineBackedTest
 				SavedPayload.class);
 		var retryPolicy = new RetryPolicy(2, BackoffPolicy.fixed(java.time.Duration.ofMillis(5)));
 
-		var deleteService = AggregateDeleteServices.deleteService(
+		var deleteService = AggregateDeleteServiceFactory.deleteService(
 				definition,
 				engine,
 				context -> List.of(new DurableProcessStartRequest<>(
