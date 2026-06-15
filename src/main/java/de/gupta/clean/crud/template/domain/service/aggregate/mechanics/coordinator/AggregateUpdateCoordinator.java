@@ -1,4 +1,4 @@
-package de.gupta.clean.crud.template.domain.aggregate.graph;
+package de.gupta.clean.crud.template.domain.service.aggregate.mechanics.coordinator;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteMutationIntent;
@@ -10,6 +10,11 @@ import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNot
 import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDeniedException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.relationship.ReconciliationStrategy;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.intent.SatelliteCreateIntentResolver;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.relationship.AggregateRelationshipExecutionNotSupportedException;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.relationship.SatelliteReferenceResolver;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.relationship.SatelliteRelationshipPlanner;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.validator.AggregateMutationValidationSupport;
 import de.gupta.clean.crud.template.useCases.operationOLD.domain.model.OperationSource;
 
 import java.util.ArrayList;

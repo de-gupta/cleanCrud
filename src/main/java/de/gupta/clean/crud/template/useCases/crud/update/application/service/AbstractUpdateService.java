@@ -3,8 +3,8 @@ package de.gupta.clean.crud.template.useCases.crud.update.application.service;
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
-import de.gupta.clean.crud.template.domain.service.aggregate.AggregateBulkOperationMode;
-import de.gupta.clean.crud.template.domain.service.aggregate.AggregateUpdateService;
+import de.gupta.clean.crud.template.domain.service.aggregate.operation.AggregateBulkOperationMode;
+import de.gupta.clean.crud.template.domain.service.aggregate.operation.AggregateUpdateService;
 import de.gupta.clean.crud.template.useCases.crud.common.BulkOperationMode;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 

@@ -1,9 +1,11 @@
-package de.gupta.clean.crud.template.domain.aggregate.graph;
+package de.gupta.clean.crud.template.domain.service.aggregate.mechanics.coordinator;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDeniedException;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.relationship.SatelliteReferenceResolver;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.relationship.SatelliteRelationshipPlanner;
 
 import java.util.List;
 

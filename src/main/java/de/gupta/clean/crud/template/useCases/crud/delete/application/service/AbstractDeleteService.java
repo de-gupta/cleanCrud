@@ -1,8 +1,8 @@
 package de.gupta.clean.crud.template.useCases.crud.delete.application.service;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
-import de.gupta.clean.crud.template.domain.service.aggregate.AggregateBulkOperationMode;
-import de.gupta.clean.crud.template.domain.service.aggregate.AggregateDeleteService;
+import de.gupta.clean.crud.template.domain.service.aggregate.operation.AggregateBulkOperationMode;
+import de.gupta.clean.crud.template.domain.service.aggregate.operation.AggregateDeleteService;
 import de.gupta.clean.crud.template.useCases.crud.common.BulkOperationMode;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 

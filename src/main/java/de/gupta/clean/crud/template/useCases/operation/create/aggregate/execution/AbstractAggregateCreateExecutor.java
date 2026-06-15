@@ -3,12 +3,12 @@ package de.gupta.clean.crud.template.useCases.operation.create.aggregate.executi
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
-import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionRelationshipInspector;
-import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateMutationValidationSupport;
-import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateServiceSupportFactory;
 import de.gupta.clean.crud.template.domain.aggregate.runtime.AggregateWorkflowRunner;
 import de.gupta.clean.crud.template.domain.aggregate.workflow.AggregateWorkflowBuilder;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.AggregateServiceSupportFactory;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.relationship.AggregateDefinitionRelationshipInspector;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.validator.AggregateMutationValidationSupport;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.attempt.PreparedCreationAttempt;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.execution.CreateExecutor;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationPayload;

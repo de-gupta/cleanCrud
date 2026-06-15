@@ -1,10 +1,13 @@
-package de.gupta.clean.crud.template.domain.aggregate.graph;
+package de.gupta.clean.crud.template.domain.service.aggregate.mechanics.coordinator;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.SatellitePersistenceOrder;
 import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDeniedException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.intent.SatelliteCreateIntentResolver;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.relationship.SatelliteRelationshipPlanner;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.validator.AggregateCreateValidator;
 
 import java.util.ArrayList;
 import java.util.Collection;

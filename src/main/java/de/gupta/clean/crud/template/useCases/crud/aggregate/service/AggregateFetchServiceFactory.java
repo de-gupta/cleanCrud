@@ -2,8 +2,8 @@ package de.gupta.clean.crud.template.useCases.crud.aggregate.service;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.runtime.AggregateWorkflowRunner;
-import de.gupta.clean.crud.template.domain.service.aggregate.AggregateFetchService;
-import de.gupta.clean.crud.template.domain.service.aggregate.DefaultAggregateFetchService;
+import de.gupta.clean.crud.template.domain.service.aggregate.operation.AggregateFetchService;
+import de.gupta.clean.crud.template.domain.service.aggregate.operation.DefaultAggregateFetchService;
 import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.AbstractFetchService;
 import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.FetchService;
 

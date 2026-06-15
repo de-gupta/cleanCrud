@@ -1,4 +1,4 @@
-package de.gupta.clean.crud.template.domain.aggregate.graph;
+package de.gupta.clean.crud.template.domain.service.aggregate.mechanics.validator;
 
 @FunctionalInterface
 public interface AggregateCreateValidator<DomainModel>

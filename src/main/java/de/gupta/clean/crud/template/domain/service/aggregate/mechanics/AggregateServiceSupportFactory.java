@@ -1,10 +1,21 @@
-package de.gupta.clean.crud.template.domain.aggregate.graph;
+package de.gupta.clean.crud.template.domain.service.aggregate.mechanics;
+
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.coordinator.AggregateDeleteCoordinator;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.coordinator.AggregateFetchCoordinator;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.coordinator.AggregateSaveCoordinator;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.coordinator.AggregateUpdateCoordinator;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.intent.SatelliteCreateIntentResolver;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.relationship.AggregateDefinitionRelationshipInspector;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.relationship.SatelliteReferenceResolver;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.relationship.SatelliteRelationshipPlanner;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.validator.AggregateMutationValidationSupport;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.validator.SatelliteCreateValidator;
 
 public enum AggregateServiceSupportFactory
 {
 	;
 	private static final AggregateDefinitionRelationshipInspector
-			DEFINITION_GUARD = new AggregateDefinitionRelationshipInspector();
+			RELATIONSHIP_INSPECTOR = new AggregateDefinitionRelationshipInspector();
 	private static final AggregateMutationValidationSupport VALIDATION_SUPPORT =
 			new AggregateMutationValidationSupport();
 	private static final SatelliteRelationshipPlanner RELATIONSHIP_PLANNER = new SatelliteRelationshipPlanner();
@@ -22,7 +33,7 @@ public enum AggregateServiceSupportFactory
 
 	public static AggregateDefinitionRelationshipInspector definitionGuard()
 	{
-		return DEFINITION_GUARD;
+		return RELATIONSHIP_INSPECTOR;
 	}
 
 	public static AggregateMutationValidationSupport validationSupport()

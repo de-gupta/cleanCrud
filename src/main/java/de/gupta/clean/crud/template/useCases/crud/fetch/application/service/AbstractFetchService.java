@@ -1,7 +1,7 @@
 package de.gupta.clean.crud.template.useCases.crud.fetch.application.service;
 
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
-import de.gupta.clean.crud.template.domain.service.aggregate.AggregateFetchService;
+import de.gupta.clean.crud.template.domain.service.aggregate.operation.AggregateFetchService;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 

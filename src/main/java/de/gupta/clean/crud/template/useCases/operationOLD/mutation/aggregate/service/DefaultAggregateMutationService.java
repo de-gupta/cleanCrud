@@ -3,12 +3,12 @@ package de.gupta.clean.crud.template.useCases.operationOLD.mutation.aggregate.se
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
-import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionRelationshipInspector;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.runtime.AggregateWorkflowRunner;
 import de.gupta.clean.crud.template.domain.aggregate.workflow.AggregateWorkflowBuilder;
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.relationship.AggregateDefinitionRelationshipInspector;
 import de.gupta.clean.crud.template.useCases.operationOLD.domain.model.ApplicationOperationPayload;
 import de.gupta.clean.crud.template.useCases.operationOLD.domain.model.OperationSource;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.application.service.AbstractMutationService;

@@ -1,10 +1,10 @@
 package de.gupta.clean.crud.template.useCases.operationOLD.creation.aggregate.service;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
-import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionRelationshipInspector;
-import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateSaveCoordinator;
-import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateServiceSupportFactory;
 import de.gupta.clean.crud.template.domain.aggregate.runtime.AggregateWorkflowRunner;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.AggregateServiceSupportFactory;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.coordinator.AggregateSaveCoordinator;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.relationship.AggregateDefinitionRelationshipInspector;
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.aggregate.policy.AggregateCreationPolicies;
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.application.service.QuarantinableCreationService;
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.handler.CreationHandlerRegistry;

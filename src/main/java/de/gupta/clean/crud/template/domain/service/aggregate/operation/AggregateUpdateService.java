@@ -1,4 +1,4 @@
-package de.gupta.clean.crud.template.domain.service.aggregate;
+package de.gupta.clean.crud.template.domain.service.aggregate.operation;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;

@@ -1,15 +1,15 @@
 package de.gupta.clean.crud.template.useCases.operationOLD.mutation.aggregate.service;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
-import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateMutationValidationSupport;
-import de.gupta.clean.crud.template.domain.aggregate.graph.SatelliteReferenceResolver;
-import de.gupta.clean.crud.template.domain.aggregate.graph.SatelliteRelationshipPlanner;
 import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteMutationIntent;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.Cardinality;
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDeniedException;
 import de.gupta.clean.crud.template.domain.relationship.RelationshipKind;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.relationship.SatelliteReferenceResolver;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.relationship.SatelliteRelationshipPlanner;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.validator.AggregateMutationValidationSupport;
 import de.gupta.clean.crud.template.useCases.operationOLD.domain.model.OperationSource;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.plan.AggregateMutationPlan;
 

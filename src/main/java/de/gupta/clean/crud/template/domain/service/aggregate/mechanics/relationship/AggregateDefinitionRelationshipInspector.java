@@ -1,4 +1,4 @@
-package de.gupta.clean.crud.template.domain.aggregate.graph;
+package de.gupta.clean.crud.template.domain.service.aggregate.mechanics.relationship;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
@@ -13,6 +13,10 @@ import java.util.List;
 // private or package private constructor?
 public final class AggregateDefinitionRelationshipInspector
 {
+	public AggregateDefinitionRelationshipInspector()
+	{
+	}
+
 	public <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse> List<AggregateRelationshipDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, ?, ?, ?, ?>> satelliteRelationships(
 			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition)
 	{
@@ -51,9 +55,5 @@ public final class AggregateDefinitionRelationshipInspector
 			throw AggregateRelationshipExecutionNotSupportedException.withMessage(
 					"Only REPLACE and MERGE_BY_ID are supported for MANY satellite relationships");
 		}
-	}
-
-	AggregateDefinitionRelationshipInspector()
-	{
 	}
 }

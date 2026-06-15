@@ -2,7 +2,7 @@ package de.gupta.clean.crud.template.useCases.crud.save.application.service;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
-import de.gupta.clean.crud.template.domain.service.aggregate.AggregateSaveService;
+import de.gupta.clean.crud.template.domain.service.aggregate.operation.AggregateSaveService;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 
 import java.util.Collection;

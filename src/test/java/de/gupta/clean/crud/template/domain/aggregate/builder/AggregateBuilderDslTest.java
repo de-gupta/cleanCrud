@@ -17,9 +17,9 @@ import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNot
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.relationship.LifecycleSemantics;
 import de.gupta.clean.crud.template.domain.relationship.ReconciliationStrategy;
-import de.gupta.clean.crud.template.domain.service.aggregate.DefaultAggregateFetchService;
-import de.gupta.clean.crud.template.domain.service.aggregate.DefaultAggregateSaveService;
-import de.gupta.clean.crud.template.domain.service.aggregate.DefaultAggregateUpdateService;
+import de.gupta.clean.crud.template.domain.service.aggregate.operation.DefaultAggregateFetchService;
+import de.gupta.clean.crud.template.domain.service.aggregate.operation.DefaultAggregateSaveService;
+import de.gupta.clean.crud.template.domain.service.aggregate.operation.DefaultAggregateUpdateService;
 import de.gupta.clean.crud.template.domain.service.equality.KeyBasedDuplicateDefinition;
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
 import de.gupta.clean.crud.template.infrastructure.persistence.transaction.PersistenceTransactionRunner;

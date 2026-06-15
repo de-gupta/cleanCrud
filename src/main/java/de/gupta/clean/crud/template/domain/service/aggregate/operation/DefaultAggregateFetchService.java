@@ -1,15 +1,15 @@
-package de.gupta.clean.crud.template.domain.service.aggregate;
+package de.gupta.clean.crud.template.domain.service.aggregate.operation;
 
 import de.gupta.aletheia.functional.Unfolding;
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
-import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionRelationshipInspector;
-import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateFetchCoordinator;
-import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateServiceSupportFactory;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.runtime.AggregateWorkflowRunner;
 import de.gupta.clean.crud.template.domain.aggregate.workflow.AggregateWorkflowBuilder;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.AggregateServiceSupportFactory;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.coordinator.AggregateFetchCoordinator;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.relationship.AggregateDefinitionRelationshipInspector;
 import de.gupta.clean.crud.template.useCases.crud.common.utility.PageUtility;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;

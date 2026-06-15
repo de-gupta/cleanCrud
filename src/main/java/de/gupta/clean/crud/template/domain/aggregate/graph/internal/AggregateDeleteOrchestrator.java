@@ -2,7 +2,7 @@ package de.gupta.clean.crud.template.domain.aggregate.graph.internal;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
-import de.gupta.clean.crud.template.domain.service.aggregate.AggregateBulkOperationMode;
+import de.gupta.clean.crud.template.domain.service.aggregate.operation.AggregateBulkOperationMode;
 
 import java.util.Collection;
 

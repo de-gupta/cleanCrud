@@ -1,17 +1,17 @@
-package de.gupta.clean.crud.template.domain.service.aggregate;
+package de.gupta.clean.crud.template.domain.service.aggregate.operation;
 
 import de.gupta.aletheia.functional.Unfolding;
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
-import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionRelationshipInspector;
-import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateMutationValidationSupport;
-import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateSaveCoordinator;
-import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateServiceSupportFactory;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.runtime.AggregateWorkflowRunner;
 import de.gupta.clean.crud.template.domain.aggregate.workflow.AggregateWorkflowBuilder;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.AggregateServiceSupportFactory;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.coordinator.AggregateSaveCoordinator;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.relationship.AggregateDefinitionRelationshipInspector;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.validator.AggregateMutationValidationSupport;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 
 import java.util.Collection;

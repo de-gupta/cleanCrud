@@ -1,9 +1,9 @@
 package de.gupta.clean.crud.template.useCases.operationOLD.mutation.aggregate.service;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
-import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionRelationshipInspector;
-import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateServiceSupportFactory;
 import de.gupta.clean.crud.template.domain.aggregate.runtime.AggregateWorkflowRunner;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.AggregateServiceSupportFactory;
+import de.gupta.clean.crud.template.domain.service.aggregate.mechanics.relationship.AggregateDefinitionRelationshipInspector;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.aggregate.policy.AggregateMutationPolicies;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.application.service.QuarantinableMutationService;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.handler.MutationHandlerRegistry;
