@@ -5,8 +5,8 @@ import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinit
 import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateDefinitionGuard;
 import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateFetchCoordinator;
 import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateServiceSupportFactory;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateWorkflowBuilder;
 import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
+import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateWorkflowBuilder;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;

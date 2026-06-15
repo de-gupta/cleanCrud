@@ -1,6 +1,5 @@
-package de.gupta.clean.crud.template.domain.aggregate.execution;
+package de.gupta.clean.crud.template.domain.aggregate.lifecycle;
 
-import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateWorkflow;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 
 import java.util.Collection;

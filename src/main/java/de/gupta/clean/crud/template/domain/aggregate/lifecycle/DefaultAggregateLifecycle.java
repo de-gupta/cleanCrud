@@ -15,14 +15,10 @@ public final class DefaultAggregateLifecycle implements AggregateLifecycle
 	private final DurableProcessStarter durableProcessStarter;
 	private final DurableProcessExecutionNudge durableProcessExecutionNudge;
 
-	public static AggregateLifecycle withTransactionRunner(
-			final PersistenceTransactionRunner transactionRunner)
+	public static AggregateLifecycle withTransactionRunner(final PersistenceTransactionRunner transactionRunner)
 	{
-		return new DefaultAggregateLifecycle(
-				transactionRunner,
-				PostCommitMutationDispatcher.async(),
-				unsupportedDurableProcessStarter(),
-				DurableProcessExecutionNudge.noop());
+		return new DefaultAggregateLifecycle(transactionRunner, PostCommitMutationDispatcher.async(),
+				unsupportedDurableProcessStarter(), DurableProcessExecutionNudge.noop());
 	}
 
 	private static DurableProcessStarter unsupportedDurableProcessStarter()
@@ -33,93 +29,26 @@ public final class DefaultAggregateLifecycle implements AggregateLifecycle
 		};
 	}
 
-	public static AggregateLifecycle withTransactionRunnerAndMutationQuarantineRecorder(
-			final PersistenceTransactionRunner transactionRunner)
-	{
-		return new DefaultAggregateLifecycle(
-				transactionRunner,
-				PostCommitMutationDispatcher.async(),
-				unsupportedDurableProcessStarter(),
-				DurableProcessExecutionNudge.noop());
-	}
-
-	public static AggregateLifecycle withTransactionRunnerAndQuarantineRecorders(
-			final PersistenceTransactionRunner transactionRunner)
-	{
-		return new DefaultAggregateLifecycle(
-				transactionRunner,
-				PostCommitMutationDispatcher.async(),
-				unsupportedDurableProcessStarter(),
-				DurableProcessExecutionNudge.noop());
-	}
-
 	public static AggregateLifecycle withTransactionRunnerAndDurableProcessStarter(
-			final PersistenceTransactionRunner transactionRunner,
-			final DurableProcessStarter durableProcessStarter)
+			final PersistenceTransactionRunner transactionRunner, final DurableProcessStarter durableProcessStarter)
 	{
-		return withTransactionRunnerAndDurableProcessStarterAndExecutionNudge(
-				transactionRunner,
-				durableProcessStarter,
+		return withTransactionRunnerAndDurableProcessStarterAndExecutionNudge(transactionRunner, durableProcessStarter,
 				DurableProcessExecutionNudge.noop());
 	}
 
 	public static AggregateLifecycle withTransactionRunnerAndDurableProcessStarterAndExecutionNudge(
-			final PersistenceTransactionRunner transactionRunner,
-			final DurableProcessStarter durableProcessStarter,
+			final PersistenceTransactionRunner transactionRunner, final DurableProcessStarter durableProcessStarter,
 			final DurableProcessExecutionNudge durableProcessExecutionNudge)
 	{
-		return new DefaultAggregateLifecycle(
-				transactionRunner,
-				PostCommitMutationDispatcher.async(),
-				durableProcessStarter,
-				durableProcessExecutionNudge);
+		return new DefaultAggregateLifecycle(transactionRunner, PostCommitMutationDispatcher.async(),
+				durableProcessStarter, durableProcessExecutionNudge);
 	}
 
-	public static AggregateLifecycle withTransactionRunnerAndDurableProcessStarterExecutionNudgeAndMutationQuarantineRecorder(
-			final PersistenceTransactionRunner transactionRunner,
-			final DurableProcessStarter durableProcessStarter,
-			final DurableProcessExecutionNudge durableProcessExecutionNudge)
+	static AggregateLifecycle withTransactionRunnerAndDispatcher(final PersistenceTransactionRunner transactionRunner,
+	                                                             final PostCommitMutationDispatcher postCommitMutationDispatcher)
 	{
-		return new DefaultAggregateLifecycle(
-				transactionRunner,
-				PostCommitMutationDispatcher.async(),
-				durableProcessStarter,
-				durableProcessExecutionNudge);
-	}
-
-	public static AggregateLifecycle withTransactionRunnerAndDurableProcessStarterExecutionNudgeAndQuarantineRecorders(
-			final PersistenceTransactionRunner transactionRunner,
-			final DurableProcessStarter durableProcessStarter,
-			final DurableProcessExecutionNudge durableProcessExecutionNudge)
-	{
-		return new DefaultAggregateLifecycle(
-				transactionRunner,
-				PostCommitMutationDispatcher.async(),
-				durableProcessStarter,
-				durableProcessExecutionNudge);
-	}
-
-	static AggregateLifecycle withTransactionRunnerAndDispatcher(
-			final PersistenceTransactionRunner transactionRunner,
-			final PostCommitMutationDispatcher postCommitMutationDispatcher)
-	{
-		return new DefaultAggregateLifecycle(
-				transactionRunner,
-				postCommitMutationDispatcher,
-				unsupportedDurableProcessStarter(),
-				DurableProcessExecutionNudge.noop());
-	}
-
-	static AggregateLifecycle withTransactionRunnerDispatcherAndStarter(
-			final PersistenceTransactionRunner transactionRunner,
-			final PostCommitMutationDispatcher postCommitMutationDispatcher,
-			final DurableProcessStarter durableProcessStarter)
-	{
-		return withTransactionRunnerDispatcherStarterAndExecutionNudge(
-				transactionRunner,
-				postCommitMutationDispatcher,
-				durableProcessStarter,
-				DurableProcessExecutionNudge.noop());
+		return new DefaultAggregateLifecycle(transactionRunner, postCommitMutationDispatcher,
+				unsupportedDurableProcessStarter(), DurableProcessExecutionNudge.noop());
 	}
 
 	static AggregateLifecycle withTransactionRunnerDispatcherStarterAndExecutionNudge(
@@ -128,8 +57,7 @@ public final class DefaultAggregateLifecycle implements AggregateLifecycle
 			final DurableProcessStarter durableProcessStarter,
 			final DurableProcessExecutionNudge durableProcessExecutionNudge)
 	{
-		return new DefaultAggregateLifecycle(transactionRunner, postCommitMutationDispatcher,
-				durableProcessStarter,
+		return new DefaultAggregateLifecycle(transactionRunner, postCommitMutationDispatcher, durableProcessStarter,
 				durableProcessExecutionNudge);
 	}
 
@@ -152,11 +80,10 @@ public final class DefaultAggregateLifecycle implements AggregateLifecycle
 		return result;
 	}
 
-	private DefaultAggregateLifecycle(
-			final PersistenceTransactionRunner transactionRunner,
-			final PostCommitMutationDispatcher postCommitMutationDispatcher,
-			final DurableProcessStarter durableProcessStarter,
-			final DurableProcessExecutionNudge durableProcessExecutionNudge)
+	private DefaultAggregateLifecycle(final PersistenceTransactionRunner transactionRunner,
+	                                  final PostCommitMutationDispatcher postCommitMutationDispatcher,
+	                                  final DurableProcessStarter durableProcessStarter,
+	                                  final DurableProcessExecutionNudge durableProcessExecutionNudge)
 	{
 		this.transactionRunner = transactionRunner;
 		this.postCommitMutationDispatcher = postCommitMutationDispatcher;

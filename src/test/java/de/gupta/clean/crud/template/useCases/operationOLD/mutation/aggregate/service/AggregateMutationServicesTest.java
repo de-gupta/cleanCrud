@@ -123,8 +123,7 @@ class AggregateMutationServicesTest
 		var definition = new QuarantiningAggregateDefinition();
 		definition.store.put("order-1", new OrderModel("SUBMITTED"));
 		var recorder = new RecordingMutationQuarantineRecorder();
-		var engine = DefaultAggregateLifecycle.withTransactionRunnerAndMutationQuarantineRecorder(
-				new InlineTransactionRunner());
+		var engine = DefaultAggregateLifecycle.withTransactionRunner(new InlineTransactionRunner());
 		var service = mutationService("test-aggregate", definition, engine);
 
 		var result = service.mutateWithResult(new MutationRequest<>(
@@ -367,8 +366,7 @@ class AggregateMutationServicesTest
 		var definition = new ReplayQuarantiningAggregateDefinition();
 		definition.store.put("order-1", new OrderModel("SUBMITTED"));
 		var recorder = new RecordingMutationQuarantineRecorder();
-		var engine = DefaultAggregateLifecycle.withTransactionRunnerAndMutationQuarantineRecorder(
-				new InlineTransactionRunner());
+		var engine = DefaultAggregateLifecycle.withTransactionRunner(new InlineTransactionRunner());
 		var service = mutationService("test-aggregate", definition, engine);
 		@SuppressWarnings("unchecked")
 		var replayGateway = (QuarantineReplayGateway<MutationReplayData>) service;
