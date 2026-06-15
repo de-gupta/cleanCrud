@@ -5,7 +5,7 @@ import de.gupta.clean.crud.template.useCases.operation.create.domain.model.Creat
 import de.gupta.clean.crud.template.useCases.operation.create.domain.plan.CreationPlan;
 
 @FunctionalInterface
-public interface CreationHandler<Payload extends CreateOperationPayload, DomainCreateModel>
+public interface CreationHandler<DomainCreatePayload extends CreateOperationPayload, DomainModel>
 {
-	CreationPlan<DomainCreateModel> createPlan(CreateOperationRequest<Payload> request);
+	CreationPlan<DomainModel> createPlan(CreateOperationRequest<DomainCreatePayload> request);
 }

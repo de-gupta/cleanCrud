@@ -7,14 +7,14 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
-final class DefaultCreationHandlerRegistry<DomainCreateModel> implements CreationHandlerRegistry<DomainCreateModel>
+final class DefaultCreationHandlerRegistry<DomainModel> implements CreationHandlerRegistry<DomainModel>
 {
-	private final Map<Class<? extends CreateOperationPayload>, RegisteredCreationHandler<? extends CreateOperationPayload, DomainCreateModel>>
+	private final Map<Class<? extends CreateOperationPayload>, RegisteredCreationHandler<? extends CreateOperationPayload, DomainModel>>
 			handlersByPayloadType;
 
 	@Override
-	public <Payload extends CreateOperationPayload> RegisteredCreationHandler<Payload, DomainCreateModel> resolveHandlerFor(
-			final Class<Payload> payloadType)
+	public <DomainCreatePayload extends CreateOperationPayload> RegisteredCreationHandler<DomainCreatePayload, DomainModel> resolveHandlerFor(
+			final Class<DomainCreatePayload> payloadType)
 	{
 		Objects.requireNonNull(payloadType, "payloadType");
 
@@ -42,14 +42,14 @@ final class DefaultCreationHandlerRegistry<DomainCreateModel> implements Creatio
 	}
 
 	@SuppressWarnings("unchecked")
-	private <Payload extends CreateOperationPayload> RegisteredCreationHandler<Payload, DomainCreateModel> castHandler(
-			final RegisteredCreationHandler<? extends CreateOperationPayload, DomainCreateModel> handler)
+	private <Payload extends CreateOperationPayload> RegisteredCreationHandler<Payload, DomainModel> castHandler(
+			final RegisteredCreationHandler<? extends CreateOperationPayload, DomainModel> handler)
 	{
-		return (RegisteredCreationHandler<Payload, DomainCreateModel>) handler;
+		return (RegisteredCreationHandler<Payload, DomainModel>) handler;
 	}
 
 	private String handlerTypeNames(
-			final Collection<RegisteredCreationHandler<? extends CreateOperationPayload, DomainCreateModel>> handlers)
+			final Collection<RegisteredCreationHandler<? extends CreateOperationPayload, DomainModel>> handlers)
 	{
 		return handlers.stream()
 		               .map(handler -> handler.payloadType().getName())
@@ -58,7 +58,7 @@ final class DefaultCreationHandlerRegistry<DomainCreateModel> implements Creatio
 	}
 
 	DefaultCreationHandlerRegistry(
-			final Collection<? extends RegisteredCreationHandler<? extends CreateOperationPayload, DomainCreateModel>> handlers)
+			final Collection<? extends RegisteredCreationHandler<? extends CreateOperationPayload, DomainModel>> handlers)
 	{
 		Objects.requireNonNull(handlers, "handlers");
 		this.handlersByPayloadType = new LinkedHashMap<>();

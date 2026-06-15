@@ -9,8 +9,9 @@ import java.util.Objects;
 public record RegisteredCreationHandler<DomainCreatePayload extends CreateOperationPayload, DomainModel>(
 		Class<DomainCreatePayload> payloadType, CreationHandler<DomainCreatePayload, DomainModel> handler)
 {
-	public static <Payload extends CreateOperationPayload, DomainCreateModel> RegisteredCreationHandler<Payload, DomainCreateModel> of(
-			final Class<Payload> payloadType, final CreationHandler<Payload, DomainCreateModel> handler)
+	public static <DomainCreatePayload extends CreateOperationPayload, DomainModel>
+	RegisteredCreationHandler<DomainCreatePayload, DomainModel> of(final Class<DomainCreatePayload> payloadType,
+	                                                               final CreationHandler<DomainCreatePayload, DomainModel> handler)
 	{
 		return new RegisteredCreationHandler<>(payloadType, handler);
 	}
