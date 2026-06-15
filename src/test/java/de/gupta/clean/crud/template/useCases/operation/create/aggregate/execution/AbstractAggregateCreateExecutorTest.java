@@ -5,11 +5,11 @@ import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinit
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteCreateIntent;
 import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteMutationIntent;
-import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
-import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateWorkflow;
 import de.gupta.clean.crud.template.domain.aggregate.port.AggregateFetchPort;
 import de.gupta.clean.crud.template.domain.aggregate.port.AggregateMutationPort;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.*;
+import de.gupta.clean.crud.template.domain.aggregate.runtime.AggregateWorkflowRunner;
+import de.gupta.clean.crud.template.domain.aggregate.workflow.AggregateWorkflow;
 import de.gupta.clean.crud.template.domain.mapping.fetch.DomainResponseBuilder;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.relationship.LifecycleSemantics;
@@ -111,12 +111,12 @@ class AbstractAggregateCreateExecutorTest
 		                           .build();
 	}
 
-	private static AggregateLifecycle immediateEngine()
+	private static AggregateWorkflowRunner immediateEngine()
 	{
-		return new AggregateLifecycle()
+		return new AggregateWorkflowRunner()
 		{
 			@Override
-			public <Result> Result execute(
+			public <Result> Result run(
 					final AggregateWorkflow<Result> workflow)
 			{
 				var result = workflow.inTransaction();
@@ -355,7 +355,7 @@ class AbstractAggregateCreateExecutorTest
 	{
 		private TestAggregateCreateExecutor(
 				final AggregateDefinition<String, String, ?, ?, ?> definition,
-				final AggregateLifecycle engine)
+				final AggregateWorkflowRunner engine)
 		{
 			super(definition, engine);
 		}

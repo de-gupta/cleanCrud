@@ -1,9 +1,9 @@
 package de.gupta.clean.crud.template.useCases.operationOLD.mutation.aggregate.service;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateDefinitionGuard;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateServiceSupportFactory;
-import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionGuard;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateServiceSupportFactory;
+import de.gupta.clean.crud.template.domain.aggregate.runtime.AggregateWorkflowRunner;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.aggregate.policy.AggregateMutationPolicies;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.application.service.QuarantinableMutationService;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.handler.MutationHandlerRegistry;
@@ -25,7 +25,7 @@ public enum AggregateMutationServices
 			final String aggregateKey,
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycle engine,
+			final AggregateWorkflowRunner engine,
 			final MutationHandlerRegistry<DomainModel> handlerRegistry,
 			final MutationQuarantineRecorder mutationQuarantineRecorder)
 	{
@@ -45,7 +45,7 @@ public enum AggregateMutationServices
 			final String aggregateKey,
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycle engine,
+			final AggregateWorkflowRunner engine,
 			final MutationHandlerRegistry<DomainModel> handlerRegistry,
 			final Function<MutationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
 					durableProcessStartRequests,
@@ -72,7 +72,7 @@ public enum AggregateMutationServices
 			final String aggregateKey,
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycle engine,
+			final AggregateWorkflowRunner engine,
 			final MutationHandlerRegistry<DomainModel> handlerRegistry,
 			final AggregateDefinitionGuard definitionGuard,
 			final SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy,
@@ -87,7 +87,7 @@ public enum AggregateMutationServices
 			final String aggregateKey,
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycle engine,
+			final AggregateWorkflowRunner engine,
 			final MutationHandlerRegistry<DomainModel> handlerRegistry,
 			final Function<MutationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
 					durableProcessStartRequests, final MutationQuarantineRecorder mutationQuarantineRecorder)

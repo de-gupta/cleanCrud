@@ -4,13 +4,13 @@ import de.gupta.aletheia.functional.Unfolding;
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateDefinitionGuard;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateMutationValidationSupport;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateSaveCoordinator;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateServiceSupportFactory;
-import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
-import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateWorkflowBuilder;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionGuard;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateMutationValidationSupport;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateSaveCoordinator;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateServiceSupportFactory;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
+import de.gupta.clean.crud.template.domain.aggregate.runtime.AggregateWorkflowRunner;
+import de.gupta.clean.crud.template.domain.aggregate.workflow.AggregateWorkflowBuilder;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 
@@ -24,7 +24,7 @@ public final class DefaultAggregateSaveService<DomainId, DomainModel, DomainMode
 {
 	private final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 			DomainModelResponse> definition;
-	private final AggregateLifecycle engine;
+	private final AggregateWorkflowRunner engine;
 	private final AggregateDefinitionGuard definitionGuard;
 	private final AggregateMutationValidationSupport validationSupport;
 	private final AggregateSaveCoordinator saveCoordinator;
@@ -33,7 +33,7 @@ public final class DefaultAggregateSaveService<DomainId, DomainModel, DomainMode
 	AggregateSaveService<DomainId, DomainModel, DomainModelCreate> create(
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycle engine)
+			final AggregateWorkflowRunner engine)
 	{
 		return new DefaultAggregateSaveService<>(definition, engine);
 	}
@@ -45,7 +45,7 @@ public final class DefaultAggregateSaveService<DomainId, DomainModel, DomainMode
 					Collection<DurableProcessStartRequest<?, ?>>> durableProcessStartRequests)
 	{
 		var relationships = definitionGuard.satelliteRelationships(definition);
-		return engine.execute(
+		return engine.run(
 				AggregateWorkflowBuilder.writeFlow(() -> persistAll(models, relationships))
 				                        .startDurableProcesses(durableProcessStartRequests)
 				                        .afterTransaction(this::dispatchCreated)
@@ -103,7 +103,7 @@ public final class DefaultAggregateSaveService<DomainId, DomainModel, DomainMode
 
 	private DefaultAggregateSaveService(
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse> definition,
-			final AggregateLifecycle engine)
+			final AggregateWorkflowRunner engine)
 	{
 		this(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
 				AggregateServiceSupportFactory.validationSupport(),
@@ -113,7 +113,7 @@ public final class DefaultAggregateSaveService<DomainId, DomainModel, DomainMode
 	private DefaultAggregateSaveService(
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycle engine,
+			final AggregateWorkflowRunner engine,
 			final AggregateDefinitionGuard definitionGuard,
 			final AggregateMutationValidationSupport validationSupport,
 			final AggregateSaveCoordinator saveCoordinator)

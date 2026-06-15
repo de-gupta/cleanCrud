@@ -2,7 +2,7 @@ package de.gupta.clean.crud.template.useCases.crud.aggregate.service;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
-import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
+import de.gupta.clean.crud.template.domain.aggregate.runtime.AggregateWorkflowRunner;
 import de.gupta.clean.crud.template.domain.service.aggregate.AggregateUpdateService;
 import de.gupta.clean.crud.template.domain.service.aggregate.DefaultAggregateUpdateService;
 import de.gupta.clean.crud.template.useCases.crud.update.application.service.AbstractUpdateService;
@@ -19,7 +19,7 @@ public enum AggregateUpdateServiceFactory
 
 	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse> UpdateService<MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse, MasterDomainId> updateService(
 			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
-			final AggregateLifecycle engine)
+			final AggregateWorkflowRunner engine)
 	{
 		return updateService(definition, DefaultAggregateUpdateService.create(definition, engine),
 				_ -> List.of());
@@ -35,7 +35,7 @@ public enum AggregateUpdateServiceFactory
 
 	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse> UpdateService<MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse, MasterDomainId> updateService(
 			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
-			final AggregateLifecycle engine,
+			final AggregateWorkflowRunner engine,
 			final Function<PostCommitMutationContext<MasterDomainId, MasterDomainModel>, Collection<DurableProcessStartRequest<?, ?>>> durableProcessStartRequests)
 	{
 		return updateService(definition, DefaultAggregateUpdateService.create(definition, engine),

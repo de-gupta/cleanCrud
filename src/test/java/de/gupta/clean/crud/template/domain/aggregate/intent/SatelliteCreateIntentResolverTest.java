@@ -2,7 +2,7 @@ package de.gupta.clean.crud.template.domain.aggregate.intent;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutation;
-import de.gupta.clean.crud.template.domain.aggregate.execution.*;
+import de.gupta.clean.crud.template.domain.aggregate.graph.*;
 import de.gupta.clean.crud.template.domain.aggregate.port.AggregateFetchPort;
 import de.gupta.clean.crud.template.domain.aggregate.port.AggregateMutationPort;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.*;

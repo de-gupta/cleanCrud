@@ -2,7 +2,7 @@ package de.gupta.clean.crud.template.useCases.crud.aggregate.service;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
-import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
+import de.gupta.clean.crud.template.domain.aggregate.runtime.AggregateWorkflowRunner;
 import de.gupta.clean.crud.template.domain.service.aggregate.AggregateDeleteService;
 import de.gupta.clean.crud.template.domain.service.aggregate.DefaultAggregateDeleteService;
 import de.gupta.clean.crud.template.useCases.crud.delete.application.service.AbstractDeleteService;
@@ -19,7 +19,7 @@ public enum AggregateDeleteServiceFactory
 
 	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse> DeleteService<MasterDomainId> deleteService(
 			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
-			final AggregateLifecycle engine)
+			final AggregateWorkflowRunner engine)
 	{
 		return deleteService(DefaultAggregateDeleteService.create(definition, engine),
 				_ -> java.util.List.of());
@@ -34,7 +34,7 @@ public enum AggregateDeleteServiceFactory
 
 	public static <MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse> DeleteService<MasterDomainId> deleteService(
 			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
-			final AggregateLifecycle engine,
+			final AggregateWorkflowRunner engine,
 			final Function<PostCommitMutationContext<MasterDomainId, MasterDomainModel>, Collection<DurableProcessStartRequest<?, ?>>> durableProcessStartRequests)
 	{
 		return deleteService(DefaultAggregateDeleteService.create(definition, engine),

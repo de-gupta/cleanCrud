@@ -3,12 +3,12 @@ package de.gupta.clean.crud.template.useCases.operationOLD.creation.aggregate.se
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateDefinitionGuard;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateSaveCoordinator;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateServiceSupportFactory;
-import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
-import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateWorkflowBuilder;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionGuard;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateSaveCoordinator;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateServiceSupportFactory;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
+import de.gupta.clean.crud.template.domain.aggregate.runtime.AggregateWorkflowRunner;
+import de.gupta.clean.crud.template.domain.aggregate.workflow.AggregateWorkflowBuilder;
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.aggregate.policy.AggregateCreationPolicies;
@@ -50,7 +50,7 @@ public final class DefaultAggregateCreationService<
 {
 	private final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 			DomainModelResponse> definition;
-	private final AggregateLifecycle engine;
+	private final AggregateWorkflowRunner engine;
 	private final CreationHandlerRegistry<DomainModelCreate> handlerRegistry;
 	private final Function<CreationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
 			durableProcessStartRequests;
@@ -64,7 +64,7 @@ public final class DefaultAggregateCreationService<
 			final String aggregateKey,
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycle engine,
+			final AggregateWorkflowRunner engine,
 			final CreationHandlerRegistry<DomainModelCreate> handlerRegistry,
 			final Function<CreationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
 					durableProcessStartRequests,
@@ -96,7 +96,7 @@ public final class DefaultAggregateCreationService<
 	{
 		try
 		{
-			return engine.execute(
+			return engine.run(
 					AggregateWorkflowBuilder.writeFlow(() -> applyCreation(request, replayQuarantineId))
 					                        .startDurableProcesses(result -> result.created()
 					                                                               .map(_ -> durableProcessStartRequests.apply(

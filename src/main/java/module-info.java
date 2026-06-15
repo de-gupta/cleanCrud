@@ -184,9 +184,10 @@ module de.gupta.clean.crud
 	opens de.gupta.clean.crud.template.infrastructure.web.openapi;
 	exports de.gupta.clean.crud.template.domain.aggregate.port;
 	exports de.gupta.clean.crud.template.domain.aggregate.relationship;
-	exports de.gupta.clean.crud.template.domain.aggregate.execution;
+	exports de.gupta.clean.crud.template.domain.aggregate.graph;
 	exports de.gupta.clean.crud.template.domain.aggregate.builder;
 	exports de.gupta.clean.crud.template.infrastructure.aggregate.adapter;
 	exports de.gupta.clean.crud.template.domain.aggregate.relationship.standard;
-	exports de.gupta.clean.crud.template.domain.aggregate.lifecycle;
+	exports de.gupta.clean.crud.template.domain.aggregate.workflow;
+	exports de.gupta.clean.crud.template.domain.aggregate.runtime;
 }

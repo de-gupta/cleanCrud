@@ -6,11 +6,11 @@ import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutati
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
 import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteCreateIntent;
 import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteMutationIntent;
-import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
-import de.gupta.clean.crud.template.domain.aggregate.lifecycle.DefaultAggregateLifecycle;
 import de.gupta.clean.crud.template.domain.aggregate.port.AggregateFetchPort;
 import de.gupta.clean.crud.template.domain.aggregate.port.AggregateMutationPort;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.*;
+import de.gupta.clean.crud.template.domain.aggregate.runtime.AggregateWorkflowRunner;
+import de.gupta.clean.crud.template.domain.aggregate.runtime.DefaultAggregateWorkflowRunner;
 import de.gupta.clean.crud.template.domain.mapping.fetch.DomainResponseBuilder;
 import de.gupta.clean.crud.template.domain.mapping.save.DomainModelBuilder;
 import de.gupta.clean.crud.template.domain.mapping.update.DomainModelPatcher;
@@ -63,8 +63,8 @@ class AggregateCreationServicesTest
 	void creationServiceCreatesAggregateFromRegisteredHandler()
 	{
 		var definition = new TestAggregateDefinition();
-		AggregateLifecycle engine =
-				DefaultAggregateLifecycle.withTransactionRunner(new InlineTransactionRunner());
+		AggregateWorkflowRunner engine =
+				DefaultAggregateWorkflowRunner.withTransactionRunner(new InlineTransactionRunner());
 		var service = creationService("test-aggregate", definition, engine);
 
 		var created = service.create(new CreationRequest<>(
@@ -79,7 +79,7 @@ class AggregateCreationServicesTest
 	private static DefaultAggregateCreationService<String, OrderModel, OrderCreate, String, String> creationService(
 			final String aggregateKey,
 			final AggregateDefinition<String, OrderModel, OrderCreate, String, String> definition,
-			final AggregateLifecycle engine)
+			final AggregateWorkflowRunner engine)
 	{
 		return (DefaultAggregateCreationService<String, OrderModel, OrderCreate, String, String>)
 				AggregateCreationServices.creationService(
@@ -110,8 +110,8 @@ class AggregateCreationServicesTest
 			contexts.add(context);
 			latch.countDown();
 		};
-		AggregateLifecycle engine =
-				DefaultAggregateLifecycle.withTransactionRunner(new InlineTransactionRunner());
+		AggregateWorkflowRunner engine =
+				DefaultAggregateWorkflowRunner.withTransactionRunner(new InlineTransactionRunner());
 		var service = creationService("test-aggregate", definition, engine);
 
 		service.create(new CreationRequest<>(new OpenOrder("AAPL", 100), OperationSource.INTERNAL_COMMAND));
@@ -128,7 +128,7 @@ class AggregateCreationServicesTest
 	{
 		var definition = new TestAggregateDefinition();
 		var startedRequests = new ArrayList<DurableProcessStartRequest<?, ?>>();
-		var engine = DefaultAggregateLifecycle.withTransactionRunnerAndDurableProcessStarter(
+		var engine = DefaultAggregateWorkflowRunner.withTransactionRunnerAndDurableProcessStarter(
 				new InlineTransactionRunner(),
 				new RecordingDurableProcessStarter(startedRequests));
 		var processDefinition = DurableProcessDefinition.of("order-create-follow-up", OrderCreated.class,
@@ -158,7 +158,7 @@ class AggregateCreationServicesTest
 	{
 		var definition = new TestAggregateDefinition();
 		var observedContexts = new ArrayList<CreationContext<String, OrderModel>>();
-		var engine = DefaultAggregateLifecycle.withTransactionRunner(new InlineTransactionRunner());
+		var engine = DefaultAggregateWorkflowRunner.withTransactionRunner(new InlineTransactionRunner());
 		var service = AggregateCreationServices.creationService(
 				"test-aggregate",
 				definition,
@@ -192,8 +192,8 @@ class AggregateCreationServicesTest
 	void creationServiceRejectsUnknownPayloadType()
 	{
 		var definition = new TestAggregateDefinition();
-		AggregateLifecycle engine =
-				DefaultAggregateLifecycle.withTransactionRunner(new InlineTransactionRunner());
+		AggregateWorkflowRunner engine =
+				DefaultAggregateWorkflowRunner.withTransactionRunner(new InlineTransactionRunner());
 		var service = AggregateCreationServices.creationService("test-aggregate", definition, engine,
 				CreationHandlerRegistry.of(List.of()),
 				CreationQuarantineRecorder.noop());
@@ -211,8 +211,8 @@ class AggregateCreationServicesTest
 	void userIntentCreationsStillRespectAccessPolicy()
 	{
 		var definition = new AccessDeniedAggregateDefinition();
-		AggregateLifecycle engine =
-				DefaultAggregateLifecycle.withTransactionRunner(new InlineTransactionRunner());
+		AggregateWorkflowRunner engine =
+				DefaultAggregateWorkflowRunner.withTransactionRunner(new InlineTransactionRunner());
 		var service = creationService("test-aggregate", definition, engine);
 
 		assertThrows(
@@ -226,8 +226,8 @@ class AggregateCreationServicesTest
 	void authoritativeExternalEventsBypassAccessPolicyButStillCreate()
 	{
 		var definition = new AccessDeniedAggregateDefinition();
-		AggregateLifecycle engine =
-				DefaultAggregateLifecycle.withTransactionRunner(new InlineTransactionRunner());
+		AggregateWorkflowRunner engine =
+				DefaultAggregateWorkflowRunner.withTransactionRunner(new InlineTransactionRunner());
 		var service = creationService("test-aggregate", definition, engine);
 
 		var created = service.create(new CreationRequest<>(
@@ -241,8 +241,8 @@ class AggregateCreationServicesTest
 	void authoritativeExternalEventCanBeQuarantined()
 	{
 		var definition = new QuarantiningAggregateDefinition();
-		AggregateLifecycle engine =
-				DefaultAggregateLifecycle.withTransactionRunner(new InlineTransactionRunner());
+		AggregateWorkflowRunner engine =
+				DefaultAggregateWorkflowRunner.withTransactionRunner(new InlineTransactionRunner());
 		var service = creationService("test-aggregate", definition, engine);
 
 		var result = service.createWithResult(new CreationRequest<>(
@@ -259,7 +259,7 @@ class AggregateCreationServicesTest
 	void creationServicePersistsOwnedInlineSatellites()
 	{
 		var definition = new AggregateOrderDefinition();
-		var engine = DefaultAggregateLifecycle.withTransactionRunner(new InlineTransactionRunner());
+		var engine = DefaultAggregateWorkflowRunner.withTransactionRunner(new InlineTransactionRunner());
 		var service =
 				AggregateCreationServices.creationService(
 						"test-aggregate",
@@ -291,7 +291,7 @@ class AggregateCreationServicesTest
 	void creationServiceCanQuarantineOwnedInlineSatelliteCreation()
 	{
 		var definition = new QuarantiningAggregateOrderDefinition();
-		var engine = DefaultAggregateLifecycle.withTransactionRunner(new InlineTransactionRunner());
+		var engine = DefaultAggregateWorkflowRunner.withTransactionRunner(new InlineTransactionRunner());
 		var service =
 				AggregateCreationServices.creationService(
 						"test-aggregate",

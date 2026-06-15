@@ -4,13 +4,13 @@ import de.gupta.aletheia.functional.Unfolding;
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateDefinitionGuard;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateMutationValidationSupport;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateServiceSupportFactory;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateUpdateCoordinator;
-import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
-import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateWorkflowBuilder;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionGuard;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateMutationValidationSupport;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateServiceSupportFactory;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateUpdateCoordinator;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
+import de.gupta.clean.crud.template.domain.aggregate.runtime.AggregateWorkflowRunner;
+import de.gupta.clean.crud.template.domain.aggregate.workflow.AggregateWorkflowBuilder;
 import de.gupta.clean.crud.template.domain.model.exceptions.DomainException;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
@@ -27,7 +27,7 @@ public final class DefaultAggregateUpdateService<DomainId, DomainModel, DomainMo
 {
 	private final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 			DomainModelResponse> definition;
-	private final AggregateLifecycle engine;
+	private final AggregateWorkflowRunner engine;
 	private final AggregateDefinitionGuard definitionGuard;
 	private final AggregateMutationValidationSupport validationSupport;
 	private final AggregateUpdateCoordinator updateCoordinator;
@@ -35,7 +35,7 @@ public final class DefaultAggregateUpdateService<DomainId, DomainModel, DomainMo
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
 	AggregateUpdateService<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch> create(
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse> definition,
-			final AggregateLifecycle engine)
+			final AggregateWorkflowRunner engine)
 	{
 		return new DefaultAggregateUpdateService<>(definition, engine);
 	}
@@ -48,7 +48,7 @@ public final class DefaultAggregateUpdateService<DomainId, DomainModel, DomainMo
 					Collection<DurableProcessStartRequest<?, ?>>> durableProcessStartRequests)
 	{
 		var relationships = definitionGuard.satelliteRelationships(definition);
-		engine.execute(
+		engine.run(
 				AggregateWorkflowBuilder.writeFlow(() -> replaceModel(id, model, relationships))
 				                        .startDurableProcesses(
 												context -> durableProcessStartRequests.apply(List.of(context)))
@@ -64,7 +64,7 @@ public final class DefaultAggregateUpdateService<DomainId, DomainModel, DomainMo
 					Collection<DurableProcessStartRequest<?, ?>>> durableProcessStartRequests)
 	{
 		var relationships = definitionGuard.satelliteRelationships(definition);
-		return engine.execute(
+		return engine.run(
 				AggregateWorkflowBuilder.writeFlow(() -> patchModel(id, updatePatch, relationships))
 				                        .startDurableProcesses(result -> durableProcessStartRequests.apply(
 												List.of(result.context())))
@@ -82,7 +82,7 @@ public final class DefaultAggregateUpdateService<DomainId, DomainModel, DomainMo
 		var relationships = definitionGuard.satelliteRelationships(definition);
 		return switch (mode)
 		{
-			case ALL_OR_NOTHING -> engine.execute(
+			case ALL_OR_NOTHING -> engine.run(
 					AggregateWorkflowBuilder.writeFlow(() -> patchAllModels(models, relationships))
 					                        .startDurableProcesses(
 													results -> durableProcessStartRequests.apply(
@@ -223,7 +223,7 @@ public final class DefaultAggregateUpdateService<DomainId, DomainModel, DomainMo
 
 	private DefaultAggregateUpdateService(
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse> definition,
-			final AggregateLifecycle engine)
+			final AggregateWorkflowRunner engine)
 	{
 		this(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
 				AggregateServiceSupportFactory.validationSupport(),
@@ -233,7 +233,7 @@ public final class DefaultAggregateUpdateService<DomainId, DomainModel, DomainMo
 	private DefaultAggregateUpdateService(
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycle engine,
+			final AggregateWorkflowRunner engine,
 			final AggregateDefinitionGuard definitionGuard,
 			final AggregateMutationValidationSupport validationSupport,
 			final AggregateUpdateCoordinator updateCoordinator)

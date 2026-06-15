@@ -4,13 +4,13 @@ import de.gupta.aletheia.functional.Unfolding;
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateDefinitionGuard;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateDeleteCoordinator;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateMutationValidationSupport;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateServiceSupportFactory;
-import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
-import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateWorkflowBuilder;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionGuard;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDeleteCoordinator;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateMutationValidationSupport;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateServiceSupportFactory;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
+import de.gupta.clean.crud.template.domain.aggregate.runtime.AggregateWorkflowRunner;
+import de.gupta.clean.crud.template.domain.aggregate.workflow.AggregateWorkflowBuilder;
 import de.gupta.clean.crud.template.domain.model.exceptions.DomainException;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
@@ -27,7 +27,7 @@ public final class DefaultAggregateDeleteService<DomainId, DomainModel, DomainMo
 {
 	private final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 			DomainModelResponse> definition;
-	private final AggregateLifecycle engine;
+	private final AggregateWorkflowRunner engine;
 	private final AggregateDefinitionGuard definitionGuard;
 	private final AggregateMutationValidationSupport validationSupport;
 	private final AggregateDeleteCoordinator deleteCoordinator;
@@ -35,7 +35,7 @@ public final class DefaultAggregateDeleteService<DomainId, DomainModel, DomainMo
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
 	AggregateDeleteService<DomainId, DomainModel> create(
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse> definition,
-			final AggregateLifecycle engine)
+			final AggregateWorkflowRunner engine)
 	{
 		return new DefaultAggregateDeleteService<>(definition, engine);
 	}
@@ -45,7 +45,7 @@ public final class DefaultAggregateDeleteService<DomainId, DomainModel, DomainMo
 	                       final Function<Collection<PostCommitMutationContext<DomainId, DomainModel>>, Collection<DurableProcessStartRequest<?, ?>>> durableProcessStartRequests)
 	{
 		var relationships = definitionGuard.satelliteRelationships(definition);
-		engine.execute(
+		engine.run(
 				AggregateWorkflowBuilder.writeFlow(() -> deleteModel(id, relationships))
 				                        .startDurableProcesses(
 												context -> durableProcessStartRequests.apply(List.of(context)))
@@ -63,7 +63,7 @@ public final class DefaultAggregateDeleteService<DomainId, DomainModel, DomainMo
 		var relationships = definitionGuard.satelliteRelationships(definition);
 		switch (mode)
 		{
-			case ALL_OR_NOTHING -> engine.execute(
+			case ALL_OR_NOTHING -> engine.run(
 					AggregateWorkflowBuilder.writeFlow(() -> deleteModels(ids, relationships))
 					                        .startDurableProcesses(durableProcessStartRequests)
 					                        .afterTransaction(this::dispatchDeleted)
@@ -147,7 +147,7 @@ public final class DefaultAggregateDeleteService<DomainId, DomainModel, DomainMo
 	private DefaultAggregateDeleteService(
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycle engine)
+			final AggregateWorkflowRunner engine)
 	{
 		this(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
 				AggregateServiceSupportFactory.validationSupport(),
@@ -157,7 +157,7 @@ public final class DefaultAggregateDeleteService<DomainId, DomainModel, DomainMo
 	private DefaultAggregateDeleteService(
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycle engine,
+			final AggregateWorkflowRunner engine,
 			final AggregateDefinitionGuard definitionGuard,
 			final AggregateMutationValidationSupport validationSupport,
 			final AggregateDeleteCoordinator deleteCoordinator)

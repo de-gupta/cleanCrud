@@ -3,10 +3,10 @@ package de.gupta.clean.crud.template.useCases.operationOLD.mutation.aggregate.se
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateDefinitionGuard;
-import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
-import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateWorkflowBuilder;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionGuard;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
+import de.gupta.clean.crud.template.domain.aggregate.runtime.AggregateWorkflowRunner;
+import de.gupta.clean.crud.template.domain.aggregate.workflow.AggregateWorkflowBuilder;
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.useCases.operationOLD.domain.model.ApplicationOperationPayload;
@@ -49,7 +49,7 @@ public final class DefaultAggregateMutationService<
 
 	private final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 			DomainModelResponse> definition;
-	private final AggregateLifecycle engine;
+	private final AggregateWorkflowRunner engine;
 	private final MutationHandlerRegistry<DomainModel> handlerRegistry;
 	private final Function<MutationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
 			durableProcessStartRequests;
@@ -63,7 +63,7 @@ public final class DefaultAggregateMutationService<
 			final String aggregateKey,
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycle engine,
+			final AggregateWorkflowRunner engine,
 			final MutationHandlerRegistry<DomainModel> handlerRegistry,
 			final Function<MutationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
 					durableProcessStartRequests,
@@ -93,7 +93,7 @@ public final class DefaultAggregateMutationService<
 			final MutationRequest<DomainId, ?> request,
 			final Optional<QuarantineId> replayQuarantineId)
 	{
-		return engine.execute(
+		return engine.run(
 				AggregateWorkflowBuilder.writeFlow(() -> applyMutation(request, replayQuarantineId))
 				                        .startDurableProcesses(result -> result.updated()
 				                                                               .map(_ -> durableProcessStartRequests.apply(

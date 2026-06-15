@@ -6,13 +6,13 @@ import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutati
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
 import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteCreateIntent;
 import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteMutationIntent;
-import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
-import de.gupta.clean.crud.template.domain.aggregate.lifecycle.DefaultAggregateLifecycle;
 import de.gupta.clean.crud.template.domain.aggregate.port.AggregateFetchPort;
 import de.gupta.clean.crud.template.domain.aggregate.port.AggregateMutationPort;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.*;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.standard.SatelliteUpdatePatchItem;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.standard.StandardSatelliteLifecycleSemantics;
+import de.gupta.clean.crud.template.domain.aggregate.runtime.AggregateWorkflowRunner;
+import de.gupta.clean.crud.template.domain.aggregate.runtime.DefaultAggregateWorkflowRunner;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.relationship.LifecycleSemantics;
@@ -486,8 +486,8 @@ final class AggregateBuilderDslTest
 	{
 		private final Map<String, MasterModel> masterStore = new LinkedHashMap<>();
 		private final Map<Long, SatelliteModel> satelliteStore = new LinkedHashMap<>();
-		private final AggregateLifecycle engine =
-				DefaultAggregateLifecycle.withTransactionRunner(new InlineTransactionRunner());
+		private final AggregateWorkflowRunner engine =
+				DefaultAggregateWorkflowRunner.withTransactionRunner(new InlineTransactionRunner());
 		private final AtomicInteger generatedMasterIds = new AtomicInteger();
 		private final AtomicInteger generatedSatelliteIds = new AtomicInteger();
 		private final AggregateDefinition<Long, SatelliteModel, SatelliteCreate, SatellitePatch, String>
@@ -781,8 +781,8 @@ final class AggregateBuilderDslTest
 	{
 		private final Map<String, StandardMasterModel> masterStore = new LinkedHashMap<>();
 		private final Map<Long, StandardSatelliteDomainModel> satelliteStore = new LinkedHashMap<>();
-		private final AggregateLifecycle engine =
-				DefaultAggregateLifecycle.withTransactionRunner(new InlineTransactionRunner());
+		private final AggregateWorkflowRunner engine =
+				DefaultAggregateWorkflowRunner.withTransactionRunner(new InlineTransactionRunner());
 		private final AtomicInteger generatedMasterIds = new AtomicInteger();
 		private final AtomicInteger generatedSatelliteIds = new AtomicInteger();
 		private final AggregateDefinition<Long, StandardSatelliteDomainModel, StandardSatelliteDomainCreate,
@@ -1244,7 +1244,7 @@ final class AggregateBuilderDslTest
 		private TestStandardSaveService(
 				final AggregateDefinition<String, StandardMasterModel, StandardMasterCreate, StandardMasterPatch,
 						StandardMasterResponse> definition,
-				final AggregateLifecycle engine)
+				final AggregateWorkflowRunner engine)
 		{
 			super(definition, DefaultAggregateSaveService.create(definition, engine));
 		}
@@ -1257,7 +1257,7 @@ final class AggregateBuilderDslTest
 		private TestStandardUpdateService(
 				final AggregateDefinition<String, StandardMasterModel, StandardMasterCreate, StandardMasterPatch,
 						StandardMasterResponse> definition,
-				final AggregateLifecycle engine)
+				final AggregateWorkflowRunner engine)
 		{
 			super(definition, DefaultAggregateUpdateService.create(definition, engine));
 		}
@@ -1269,7 +1269,7 @@ final class AggregateBuilderDslTest
 		private TestStandardFetchService(
 				final AggregateDefinition<String, StandardMasterModel, StandardMasterCreate, StandardMasterPatch,
 						StandardMasterResponse> definition,
-				final AggregateLifecycle engine)
+				final AggregateWorkflowRunner engine)
 		{
 			super(DefaultAggregateFetchService.create(definition, engine));
 		}
@@ -1282,7 +1282,7 @@ final class AggregateBuilderDslTest
 		private TestStandardReferencedSaveService(
 				final AggregateDefinition<String, StandardMasterModel, StandardReferenceMasterCreate,
 						StandardReferenceMasterPatch, StandardMasterResponse> definition,
-				final AggregateLifecycle engine)
+				final AggregateWorkflowRunner engine)
 		{
 			super(definition, DefaultAggregateSaveService.create(definition, engine));
 		}
@@ -1295,7 +1295,7 @@ final class AggregateBuilderDslTest
 		private TestStandardReferencedUpdateService(
 				final AggregateDefinition<String, StandardMasterModel, StandardReferenceMasterCreate,
 						StandardReferenceMasterPatch, StandardMasterResponse> definition,
-				final AggregateLifecycle engine)
+				final AggregateWorkflowRunner engine)
 		{
 			super(definition, DefaultAggregateUpdateService.create(definition, engine));
 		}
@@ -1306,7 +1306,7 @@ final class AggregateBuilderDslTest
 	{
 		private TestSaveService(
 				final AggregateDefinition<String, MasterModel, MasterCreate, MasterPatch, MasterResponse> definition,
-				final AggregateLifecycle engine)
+				final AggregateWorkflowRunner engine)
 		{
 			super(definition, DefaultAggregateSaveService.create(definition, engine));
 		}
@@ -1317,7 +1317,7 @@ final class AggregateBuilderDslTest
 	{
 		private TestUpdateService(
 				final AggregateDefinition<String, MasterModel, MasterCreate, MasterPatch, MasterResponse> definition,
-				final AggregateLifecycle engine)
+				final AggregateWorkflowRunner engine)
 		{
 			super(definition, DefaultAggregateUpdateService.create(definition, engine));
 		}
@@ -1328,7 +1328,7 @@ final class AggregateBuilderDslTest
 	{
 		private TestFetchService(
 				final AggregateDefinition<String, MasterModel, MasterCreate, MasterPatch, MasterResponse> definition,
-				final AggregateLifecycle engine)
+				final AggregateWorkflowRunner engine)
 		{
 			super(DefaultAggregateFetchService.create(definition, engine));
 		}

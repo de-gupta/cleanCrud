@@ -1,10 +1,10 @@
 package de.gupta.clean.crud.template.useCases.operationOLD.creation.aggregate.service;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateDefinitionGuard;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateSaveCoordinator;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateServiceSupportFactory;
-import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateDefinitionGuard;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateSaveCoordinator;
+import de.gupta.clean.crud.template.domain.aggregate.graph.AggregateServiceSupportFactory;
+import de.gupta.clean.crud.template.domain.aggregate.runtime.AggregateWorkflowRunner;
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.aggregate.policy.AggregateCreationPolicies;
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.application.service.QuarantinableCreationService;
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.handler.CreationHandlerRegistry;
@@ -26,7 +26,7 @@ public enum AggregateCreationServices
 			final String aggregateKey,
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycle engine,
+			final AggregateWorkflowRunner engine,
 			final CreationHandlerRegistry<DomainModelCreate> handlerRegistry,
 			final CreationQuarantineRecorder creationQuarantineRecorder)
 	{
@@ -47,7 +47,7 @@ public enum AggregateCreationServices
 			final String aggregateKey,
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycle engine,
+			final AggregateWorkflowRunner engine,
 			final CreationHandlerRegistry<DomainModelCreate> handlerRegistry,
 			final Function<CreationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
 					durableProcessStartRequests,
@@ -74,7 +74,7 @@ public enum AggregateCreationServices
 			final String aggregateKey,
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycle engine,
+			final AggregateWorkflowRunner engine,
 			final CreationHandlerRegistry<DomainModelCreate> handlerRegistry,
 			final Function<CreationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
 					durableProcessStartRequests,
@@ -98,7 +98,7 @@ public enum AggregateCreationServices
 			final String aggregateKey,
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycle engine,
+			final AggregateWorkflowRunner engine,
 			final CreationHandlerRegistry<DomainModelCreate> handlerRegistry,
 			final AggregateDefinitionGuard definitionGuard,
 			final AggregateSaveCoordinator saveCoordinator,

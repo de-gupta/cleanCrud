@@ -1,7 +1,7 @@
 package de.gupta.clean.crud.template.useCases.crud.aggregate.service;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
-import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
+import de.gupta.clean.crud.template.domain.aggregate.runtime.AggregateWorkflowRunner;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.domain.service.aggregate.AggregateSaveService;
 import de.gupta.clean.crud.template.domain.service.aggregate.DefaultAggregateSaveService;
@@ -20,7 +20,7 @@ public enum AggregateSaveServiceFactory
 	SaveService<MasterDomainModelCreate, MasterDomainModelResponse, MasterDomainId>
 	saveService(
 			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate, MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
-			final AggregateLifecycle engine)
+			final AggregateWorkflowRunner engine)
 	{
 		return saveService(definition, DefaultAggregateSaveService.create(definition, engine));
 	}
@@ -52,7 +52,7 @@ public enum AggregateSaveServiceFactory
 	SaveService<MasterDomainModelCreate, MasterDomainModelResponse, MasterDomainId> saveService(
 			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
-			final AggregateLifecycle engine,
+			final AggregateWorkflowRunner engine,
 			final Function<Collection<IdentifiedModel<MasterDomainId, MasterDomainModel>>,
 					Collection<DurableProcessStartRequest<?, ?>>> durableProcessStartRequests)
 	{

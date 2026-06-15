@@ -1,7 +1,7 @@
 package de.gupta.clean.crud.template.useCases.operationOLD.creation.aggregate.policy;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
-import de.gupta.clean.crud.template.domain.aggregate.execution.SatelliteCreateValidator;
+import de.gupta.clean.crud.template.domain.aggregate.graph.SatelliteCreateValidator;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.domain.model.exceptions.security.AccessDeniedException;
