@@ -114,7 +114,27 @@ class AggregateMutationServicesTest
 	{
 		return MutationHandlerRegistry.of(List.of(
 				RegisteredMutationHandler.of(AcknowledgeOrder.class,
-						(currentModel, _) -> AggregateMutationPlan.rootOnly(new OrderModel("ACKNOWLEDGED")))));
+						(_, _) -> AggregateMutationPlan.rootOnly(new OrderModel("ACKNOWLEDGED")))));
+	}
+
+	@Test
+	void mutateWithResultPersistsQuarantineIdWhenRecorderConfigured()
+	{
+		var definition = new QuarantiningAggregateDefinition();
+		definition.store.put("order-1", new OrderModel("SUBMITTED"));
+		var recorder = new RecordingMutationQuarantineRecorder();
+		var engine = DefaultAggregateLifecycle.withTransactionRunnerAndMutationQuarantineRecorder(
+				new InlineTransactionRunner());
+		var service = mutationService("test-aggregate", definition, engine);
+
+		var result = service.mutateWithResult(new MutationRequest<>(
+				"order-1",
+				new AcknowledgeOrder(),
+				OperationSource.AUTHORITATIVE_EXTERNAL_EVENT));
+
+		assertTrue(result.quarantined());
+		assertTrue(result.quarantineRequest().orElseThrow().quarantineId().isPresent());
+		assertEquals(1, recorder.submissions.size());
 	}
 
 	@Test
@@ -342,35 +362,13 @@ class AggregateMutationServicesTest
 	}
 
 	@Test
-	void mutateWithResultPersistsQuarantineIdWhenRecorderConfigured()
-	{
-		var definition = new QuarantiningAggregateDefinition();
-		definition.store.put("order-1", new OrderModel("SUBMITTED"));
-		var recorder = new RecordingMutationQuarantineRecorder();
-		var engine = DefaultAggregateLifecycle.withTransactionRunnerAndMutationQuarantineRecorder(
-				new InlineTransactionRunner(),
-				recorder);
-		var service = mutationService("test-aggregate", definition, engine);
-
-		var result = service.mutateWithResult(new MutationRequest<>(
-				"order-1",
-				new AcknowledgeOrder(),
-				OperationSource.AUTHORITATIVE_EXTERNAL_EVENT));
-
-		assertTrue(result.quarantined());
-		assertTrue(result.quarantineRequest().orElseThrow().quarantineId().isPresent());
-		assertEquals(1, recorder.submissions.size());
-	}
-
-	@Test
 	void replayGatewayDoesNotCreateNestedQuarantineRecordsWhenReplayQuarantinesAgain()
 	{
 		var definition = new ReplayQuarantiningAggregateDefinition();
 		definition.store.put("order-1", new OrderModel("SUBMITTED"));
 		var recorder = new RecordingMutationQuarantineRecorder();
 		var engine = DefaultAggregateLifecycle.withTransactionRunnerAndMutationQuarantineRecorder(
-				new InlineTransactionRunner(),
-				recorder);
+				new InlineTransactionRunner());
 		var service = mutationService("test-aggregate", definition, engine);
 		@SuppressWarnings("unchecked")
 		var replayGateway = (QuarantineReplayGateway<MutationReplayData>) service;
@@ -386,6 +384,20 @@ class AggregateMutationServicesTest
 
 		assertTrue(result.quarantined());
 		assertEquals(0, recorder.submissions.size());
+	}
+
+	@Test
+	void registryRejectsDuplicatePayloadTypeRegistrations()
+	{
+		assertThrows(
+				IllegalArgumentException.class,
+				() -> MutationHandlerRegistry.of(List.of(
+						RegisteredMutationHandler.of(AcknowledgeOrder.class, (OrderModel _,
+						                                                      AcknowledgeOrder ignored) -> AggregateMutationPlan.rootOnly(
+								new OrderModel("ACKNOWLEDGED"))),
+						RegisteredMutationHandler.of(AcknowledgeOrder.class, (OrderModel currentModel,
+						                                                      AcknowledgeOrder ignored) -> AggregateMutationPlan.rootOnly(
+								currentModel)))));
 	}
 
 	@Test
@@ -455,20 +467,6 @@ class AggregateMutationServicesTest
 				OperationSource.INTERNAL_COMMAND)).updatedOrThrow();
 
 		assertEquals("ACKNOWLEDGED", updated.model().status());
-	}
-
-	@Test
-	void registryRejectsDuplicatePayloadTypeRegistrations()
-	{
-		assertThrows(
-				IllegalArgumentException.class,
-				() -> MutationHandlerRegistry.of(List.of(
-						RegisteredMutationHandler.of(AcknowledgeOrder.class, (OrderModel currentModel,
-						                                                      AcknowledgeOrder ignored) -> AggregateMutationPlan.rootOnly(
-								new OrderModel("ACKNOWLEDGED"))),
-						RegisteredMutationHandler.of(AcknowledgeOrder.class, (OrderModel currentModel,
-						                                                      AcknowledgeOrder ignored) -> AggregateMutationPlan.rootOnly(
-								currentModel)))));
 	}
 
 	private record OrderModel(String status)
