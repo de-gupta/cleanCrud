@@ -3,8 +3,8 @@ package de.gupta.clean.crud.template.useCases.operation.create.application.adapt
 import de.gupta.clean.crud.template.useCases.operation.common.domain.model.OperationSource;
 import de.gupta.clean.crud.template.useCases.operation.create.application.model.*;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationContext;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreationOperationResults;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreationOperationViolation;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreateOperationResults;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreateOperationViolation;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -19,8 +19,8 @@ class AbstractCreateOperationResultAdapterTest
 	@Test
 	void mapToApiResult_mapsCreatedDomainResult()
 	{
-		var tolerated = CreationOperationViolation.externalConsistency("accepted with warning");
-		var result = adapter.mapToAPIResult(CreationOperationResults.created(context(), "domain-created", List.of(
+		var tolerated = CreateOperationViolation.externalConsistency("accepted with warning");
+		var result = adapter.mapToAPIResult(CreateOperationResults.created(context(), "domain-created", List.of(
 				tolerated)));
 
 		assertThat(result).isInstanceOf(CreatedCreateApplicationResult.class);
@@ -47,9 +47,9 @@ class AbstractCreateOperationResultAdapterTest
 	@Test
 	void mapToApiResult_mapsRejectedDomainResult_withViolationsAndContextPreserved()
 	{
-		var blocking = CreationOperationViolation.core("core rule failed");
-		var tolerated = CreationOperationViolation.invariant("soft warning");
-		var result = adapter.mapToAPIResult(CreationOperationResults.rejected(
+		var blocking = CreateOperationViolation.core("core rule failed");
+		var tolerated = CreateOperationViolation.invariant("soft warning");
+		var result = adapter.mapToAPIResult(CreateOperationResults.rejected(
 				context(),
 				List.of(blocking),
 				List.of(tolerated)));
@@ -68,8 +68,8 @@ class AbstractCreateOperationResultAdapterTest
 	@Test
 	void mapToApiResult_mapsQuarantinedDomainResult_withReferenceAndContextPreserved()
 	{
-		var blocking = CreationOperationViolation.access("manual review needed");
-		var result = adapter.mapToAPIResult(CreationOperationResults.quarantined(
+		var blocking = CreateOperationViolation.access("manual review needed");
+		var result = adapter.mapToAPIResult(CreateOperationResults.quarantined(
 				context(),
 				List.of(blocking),
 				List.of(),

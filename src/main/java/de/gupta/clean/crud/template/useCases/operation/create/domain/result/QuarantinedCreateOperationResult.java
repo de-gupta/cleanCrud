@@ -9,8 +9,8 @@ import java.util.Optional;
 
 public record QuarantinedCreateOperationResult<Model>(
 		CreateOperationContext context,
-		Collection<CreationOperationViolation> blockingViolations,
-		Collection<CreationOperationViolation> toleratedViolations,
+		Collection<CreateOperationViolation> blockingViolations,
+		Collection<CreateOperationViolation> toleratedViolations,
 		Optional<String> quarantineReference) implements CreateOperationResult<Model>
 {
 	public QuarantinedCreateOperationResult

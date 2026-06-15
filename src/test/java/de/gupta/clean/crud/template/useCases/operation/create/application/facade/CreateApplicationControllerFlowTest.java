@@ -14,7 +14,7 @@ import de.gupta.clean.crud.template.useCases.operation.create.domain.model.Creat
 import de.gupta.clean.crud.template.useCases.operation.create.domain.plan.CreationPlan;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.policy.CreationPolicyEvaluation;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.policy.CreationPolicyEvaluator;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreationOperationViolation;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreateOperationViolation;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -35,8 +35,8 @@ class CreateApplicationControllerFlowTest
 					selectedPayloadName.set(request.payload().name());
 					return CreationPlan.of("aggregate.Task", "domain:" + request.payload().name());
 				})));
-		var evaluator = CreationPolicyEvaluator.of(List.of(_ -> CreationPolicyEvaluation.allow(List.of(
-				CreationOperationViolation.externalConsistency("accepted with warning")))));
+		var evaluator = CreationPolicyEvaluator.<String>of(List.of(_ -> CreationPolicyEvaluation.allow(List.of(
+				CreateOperationViolation.externalConsistency("accepted with warning")))));
 		CreateExecutor<DomainPayload, String> executor = attempt ->
 		{
 			executedAttempt.set(attempt);
@@ -83,7 +83,7 @@ class CreateApplicationControllerFlowTest
 	{
 		private TestCreateApplicationService(
 				final CreationHandlerRegistry<String> handlerRegistry,
-				final CreationPolicyEvaluator policyEvaluator,
+				final CreationPolicyEvaluator<String> policyEvaluator,
 				final CreateExecutor<DomainPayload, String> createExecutor)
 		{
 			super(handlerRegistry, policyEvaluator, createExecutor);

@@ -1,6 +1,6 @@
 package de.gupta.clean.crud.template.useCases.operation.create.domain.policy;
 
-import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreationOperationViolation;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreateOperationViolation;
 
 import java.util.Collection;
 import java.util.List;
@@ -9,8 +9,8 @@ import java.util.Optional;
 
 public record CreationPolicyEvaluation(
 		CreationDecision decision,
-		Collection<CreationOperationViolation> blockingViolations,
-		Collection<CreationOperationViolation> toleratedViolations,
+		Collection<CreateOperationViolation> blockingViolations,
+		Collection<CreateOperationViolation> toleratedViolations,
 		Optional<String> quarantineReference)
 {
 	public static CreationPolicyEvaluation allow()
@@ -18,19 +18,19 @@ public record CreationPolicyEvaluation(
 		return allow(List.of());
 	}
 
-	public static CreationPolicyEvaluation allow(final Collection<CreationOperationViolation> toleratedViolations)
+	public static CreationPolicyEvaluation allow(final Collection<CreateOperationViolation> toleratedViolations)
 	{
 		return new CreationPolicyEvaluation(CreationDecision.ALLOW, List.of(), toleratedViolations, Optional.empty());
 	}
 
-	public static CreationPolicyEvaluation reject(final Collection<CreationOperationViolation> blockingViolations)
+	public static CreationPolicyEvaluation reject(final Collection<CreateOperationViolation> blockingViolations)
 	{
 		return reject(blockingViolations, List.of());
 	}
 
 	public static CreationPolicyEvaluation reject(
-			final Collection<CreationOperationViolation> blockingViolations,
-			final Collection<CreationOperationViolation> toleratedViolations)
+			final Collection<CreateOperationViolation> blockingViolations,
+			final Collection<CreateOperationViolation> toleratedViolations)
 	{
 		return new CreationPolicyEvaluation(
 				CreationDecision.REJECT,
@@ -39,14 +39,14 @@ public record CreationPolicyEvaluation(
 				Optional.empty());
 	}
 
-	public static CreationPolicyEvaluation quarantine(final Collection<CreationOperationViolation> blockingViolations)
+	public static CreationPolicyEvaluation quarantine(final Collection<CreateOperationViolation> blockingViolations)
 	{
 		return quarantine(blockingViolations, List.of(), Optional.empty());
 	}
 
 	public static CreationPolicyEvaluation quarantine(
-			final Collection<CreationOperationViolation> blockingViolations,
-			final Collection<CreationOperationViolation> toleratedViolations,
+			final Collection<CreateOperationViolation> blockingViolations,
+			final Collection<CreateOperationViolation> toleratedViolations,
 			final Optional<String> quarantineReference)
 	{
 		return new CreationPolicyEvaluation(
@@ -57,8 +57,8 @@ public record CreationPolicyEvaluation(
 	}
 
 	public static CreationPolicyEvaluation quarantine(
-			final Collection<CreationOperationViolation> blockingViolations,
-			final Collection<CreationOperationViolation> toleratedViolations)
+			final Collection<CreateOperationViolation> blockingViolations,
+			final Collection<CreateOperationViolation> toleratedViolations)
 	{
 		return quarantine(blockingViolations, toleratedViolations, Optional.empty());
 	}

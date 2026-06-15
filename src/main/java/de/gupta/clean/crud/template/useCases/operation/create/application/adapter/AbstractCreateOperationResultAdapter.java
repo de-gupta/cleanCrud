@@ -46,14 +46,14 @@ public abstract class AbstractCreateOperationResultAdapter<DomainModel, APIModel
 
 	protected abstract APIModel mapCreatedModel(DomainModel domainModel);
 
-	private List<CreateApplicationViolation> mapViolations(final Collection<CreationOperationViolation> violations)
+	private List<CreateApplicationViolation> mapViolations(final Collection<CreateOperationViolation> violations)
 	{
 		return violations.stream()
 		                 .map(this::mapViolation)
 		                 .toList();
 	}
 
-	private CreateApplicationViolation mapViolation(final CreationOperationViolation violation)
+	private CreateApplicationViolation mapViolation(final CreateOperationViolation violation)
 	{
 		return new CreateApplicationViolation(
 				CreateApplicationViolationKind.valueOf(violation.kind().name()), violation.message());

@@ -10,7 +10,7 @@ import de.gupta.clean.crud.template.useCases.operation.create.domain.model.Creat
 import de.gupta.clean.crud.template.useCases.operation.create.domain.policy.CreationPolicyEvaluator;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.quarantine.CreationQuarantineRecorder;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreateOperationResult;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreationOperationResults;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreateOperationResults;
 
 import java.util.List;
 import java.util.Objects;
@@ -20,7 +20,7 @@ public abstract class AbstractCreateApplicationService<DomainCreatePayload exten
 		implements CreateApplicationService<DomainCreatePayload, DomainModel>
 {
 	private final CreationHandlerRegistry<DomainModel> handlerRegistry;
-	private final CreationPolicyEvaluator policyEvaluator;
+	private final CreationPolicyEvaluator<DomainModel> policyEvaluator;
 	private final CreateExecutor<DomainCreatePayload, DomainModel> createExecutor;
 	private final CreationQuarantineRecorder quarantineRecorder;
 
@@ -59,7 +59,7 @@ public abstract class AbstractCreateApplicationService<DomainCreatePayload exten
 	private CreateOperationResult<DomainModel> createAllowedResult(
 			final EvaluatedCreationAttempt<DomainCreatePayload, DomainModel> evaluatedAttempt)
 	{
-		return CreationOperationResults.created(evaluatedAttempt.context(),
+		return CreateOperationResults.created(evaluatedAttempt.context(),
 				createExecutor.create(evaluatedAttempt.preparedAttempt()),
 				List.copyOf(evaluatedAttempt.toleratedViolations()));
 	}
@@ -67,7 +67,7 @@ public abstract class AbstractCreateApplicationService<DomainCreatePayload exten
 	private CreateOperationResult<DomainModel> createRejectedResult(
 			final EvaluatedCreationAttempt<DomainCreatePayload, DomainModel> evaluatedAttempt)
 	{
-		return CreationOperationResults.rejected(evaluatedAttempt.context(),
+		return CreateOperationResults.rejected(evaluatedAttempt.context(),
 				List.copyOf(evaluatedAttempt.blockingViolations()),
 				List.copyOf(evaluatedAttempt.toleratedViolations()));
 	}
@@ -75,7 +75,7 @@ public abstract class AbstractCreateApplicationService<DomainCreatePayload exten
 	private CreateOperationResult<DomainModel> createQuarantinedResult(
 			final EvaluatedCreationAttempt<DomainCreatePayload, DomainModel> evaluatedAttempt)
 	{
-		return CreationOperationResults.quarantined(evaluatedAttempt.context(),
+		return CreateOperationResults.quarantined(evaluatedAttempt.context(),
 				List.copyOf(evaluatedAttempt.blockingViolations()), List.copyOf(evaluatedAttempt.toleratedViolations()),
 				recordQuarantine(evaluatedAttempt));
 	}
@@ -93,14 +93,14 @@ public abstract class AbstractCreateApplicationService<DomainCreatePayload exten
 	}
 
 	protected AbstractCreateApplicationService(final CreationHandlerRegistry<DomainModel> handlerRegistry,
-	                                           final CreationPolicyEvaluator policyEvaluator,
+	                                           final CreationPolicyEvaluator<DomainModel> policyEvaluator,
 	                                           final CreateExecutor<DomainCreatePayload, DomainModel> createExecutor)
 	{
 		this(handlerRegistry, policyEvaluator, createExecutor, CreationQuarantineRecorder.noop());
 	}
 
 	protected AbstractCreateApplicationService(final CreationHandlerRegistry<DomainModel> handlerRegistry,
-	                                           final CreationPolicyEvaluator policyEvaluator,
+	                                           final CreationPolicyEvaluator<DomainModel> policyEvaluator,
 	                                           final CreateExecutor<DomainCreatePayload, DomainModel> createExecutor,
 	                                           final CreationQuarantineRecorder quarantineRecorder)
 	{

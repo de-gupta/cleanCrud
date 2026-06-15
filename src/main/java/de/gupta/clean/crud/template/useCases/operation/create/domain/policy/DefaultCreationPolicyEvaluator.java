@@ -1,7 +1,7 @@
 package de.gupta.clean.crud.template.useCases.operation.create.domain.policy;
 
 import de.gupta.clean.crud.template.useCases.operation.create.domain.attempt.PreparedCreationAttempt;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreationOperationViolation;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreateOperationViolation;
 
 import java.util.*;
 
@@ -20,8 +20,8 @@ final class DefaultCreationPolicyEvaluator<DomainModel> implements CreationPolic
 	{
 		Objects.requireNonNull(preparedAttempt, "preparedAttempt");
 
-		var blockingViolations = new ArrayList<CreationOperationViolation>();
-		var toleratedViolations = new ArrayList<CreationOperationViolation>();
+		var blockingViolations = new ArrayList<CreateOperationViolation>();
+		var toleratedViolations = new ArrayList<CreateOperationViolation>();
 		var decision = CreationDecision.ALLOW;
 		var quarantineReference = Optional.<String>empty();
 

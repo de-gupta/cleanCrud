@@ -15,8 +15,8 @@ import de.gupta.clean.crud.template.useCases.operation.create.domain.plan.Creati
 import de.gupta.clean.crud.template.useCases.operation.create.domain.policy.CreationPolicyEvaluation;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.policy.CreationPolicyEvaluator;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.quarantine.CreationQuarantineRecorder;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreateOperationViolation;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreatedCreateOperationResult;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreationOperationViolation;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.result.QuarantinedCreateOperationResult;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.result.RejectedCreateOperationResult;
 import org.junit.jupiter.api.Test;
@@ -34,7 +34,7 @@ class AbstractCreateApplicationServiceTest
 	@Test
 	void create_returnsCreatedResult_whenDecisionAllows()
 	{
-		var tolerated = CreationOperationViolation.externalConsistency("accepted with warning");
+		var tolerated = CreateOperationViolation.externalConsistency("accepted with warning");
 		var executedAttempts = new ArrayList<PreparedCreationAttempt<TestPayload, String>>();
 		var service = new TestCreateApplicationService(
 				registryFor(request -> CreationPlan.of("aggregate.Task", request.payload().name())),
@@ -82,8 +82,8 @@ class AbstractCreateApplicationServiceTest
 	@Test
 	void create_returnsRejectedResult_whenDecisionRejects()
 	{
-		var blocking = CreationOperationViolation.core("core rule failed");
-		var tolerated = CreationOperationViolation.invariant("soft invariant warning");
+		var blocking = CreateOperationViolation.core("core rule failed");
+		var tolerated = CreateOperationViolation.invariant("soft invariant warning");
 		var executorCalls = new AtomicInteger();
 		var service = new TestCreateApplicationService(
 				registryFor(request -> CreationPlan.of("aggregate.Task", request.payload().name())),
@@ -107,8 +107,8 @@ class AbstractCreateApplicationServiceTest
 	@Test
 	void create_returnsQuarantinedResultWithoutReference_whenRecorderDoesNotPersist()
 	{
-		var blocking = CreationOperationViolation.access("manual review needed");
-		var tolerated = CreationOperationViolation.invariant("soft warning");
+		var blocking = CreateOperationViolation.access("manual review needed");
+		var tolerated = CreateOperationViolation.invariant("soft warning");
 		var recorder = new TrackingQuarantineRecorder(Optional.empty());
 		var service = new TestCreateApplicationService(
 				registryFor(request -> CreationPlan.of("aggregate.Task", request.payload().name())),
@@ -134,7 +134,7 @@ class AbstractCreateApplicationServiceTest
 	@Test
 	void create_returnsQuarantinedResultWithReference_whenRecorderPersists()
 	{
-		var blocking = CreationOperationViolation.access("manual review needed");
+		var blocking = CreateOperationViolation.access("manual review needed");
 		var recorder = new TrackingQuarantineRecorder(Optional.of("Q-42"));
 		var service = new TestCreateApplicationService(
 				registryFor(request -> CreationPlan.of("aggregate.Task", request.payload().name())),
@@ -153,7 +153,7 @@ class AbstractCreateApplicationServiceTest
 	@Test
 	void create_preservesPreexistingQuarantineReference_withoutCallingRecorder()
 	{
-		var blocking = CreationOperationViolation.access("manual review needed");
+		var blocking = CreateOperationViolation.access("manual review needed");
 		var recorder = new TrackingQuarantineRecorder(Optional.of("Q-recorder"));
 		var service = new TestCreateApplicationService(
 				registryFor(request -> CreationPlan.of("aggregate.Task", request.payload().name())),
@@ -201,7 +201,7 @@ class AbstractCreateApplicationServiceTest
 	{
 		private TestCreateApplicationService(
 				final CreationHandlerRegistry<String> handlerRegistry,
-				final CreationPolicyEvaluator policyEvaluator,
+				final CreationPolicyEvaluator<String> policyEvaluator,
 				final CreateExecutor<TestPayload, String> createExecutor)
 		{
 			super(handlerRegistry, policyEvaluator, createExecutor);
@@ -209,7 +209,7 @@ class AbstractCreateApplicationServiceTest
 
 		private TestCreateApplicationService(
 				final CreationHandlerRegistry<String> handlerRegistry,
-				final CreationPolicyEvaluator policyEvaluator,
+				final CreationPolicyEvaluator<String> policyEvaluator,
 				final CreateExecutor<TestPayload, String> createExecutor,
 				final CreationQuarantineRecorder quarantineRecorder)
 		{

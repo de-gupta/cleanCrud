@@ -8,8 +8,8 @@ import java.util.Objects;
 
 public record RejectedCreateOperationResult<Model>(
 		CreateOperationContext context,
-		Collection<CreationOperationViolation> blockingViolations,
-		Collection<CreationOperationViolation> toleratedViolations) implements CreateOperationResult<Model>
+		Collection<CreateOperationViolation> blockingViolations,
+		Collection<CreateOperationViolation> toleratedViolations) implements CreateOperationResult<Model>
 {
 	public RejectedCreateOperationResult
 	{

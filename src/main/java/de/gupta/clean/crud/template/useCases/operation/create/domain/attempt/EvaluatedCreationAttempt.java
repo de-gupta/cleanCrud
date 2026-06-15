@@ -6,7 +6,7 @@ import de.gupta.clean.crud.template.useCases.operation.create.domain.model.Creat
 import de.gupta.clean.crud.template.useCases.operation.create.domain.plan.CreationPlan;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.policy.CreationDecision;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.policy.CreationPolicyEvaluation;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreationOperationViolation;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreateOperationViolation;
 
 import java.util.Collection;
 import java.util.Objects;
@@ -54,12 +54,12 @@ public record EvaluatedCreationAttempt<DomainCreatePayload extends CreateOperati
 		return evaluation.decision();
 	}
 
-	public Collection<CreationOperationViolation> blockingViolations()
+	public Collection<CreateOperationViolation> blockingViolations()
 	{
 		return evaluation.blockingViolations();
 	}
 
-	public Collection<CreationOperationViolation> toleratedViolations()
+	public Collection<CreateOperationViolation> toleratedViolations()
 	{
 		return evaluation.toleratedViolations();
 	}

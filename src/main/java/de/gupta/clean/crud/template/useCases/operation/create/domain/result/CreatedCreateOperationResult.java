@@ -8,7 +8,7 @@ import java.util.Objects;
 public record CreatedCreateOperationResult<Model>(
 		CreateOperationContext context,
 		Model createdModel,
-		List<CreationOperationViolation> toleratedViolations)
+		List<CreateOperationViolation> toleratedViolations)
 		implements CreateOperationResult<Model>
 {
 	public CreatedCreateOperationResult

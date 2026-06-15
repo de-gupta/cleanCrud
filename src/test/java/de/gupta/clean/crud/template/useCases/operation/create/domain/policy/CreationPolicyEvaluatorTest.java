@@ -8,7 +8,7 @@ import de.gupta.clean.crud.template.useCases.operation.create.domain.model.Creat
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationPayload;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.model.CreateOperationRequest;
 import de.gupta.clean.crud.template.useCases.operation.create.domain.plan.CreationPlan;
-import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreationOperationViolation;
+import de.gupta.clean.crud.template.useCases.operation.create.domain.result.CreateOperationViolation;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -51,7 +51,7 @@ class CreationPolicyEvaluatorTest
 	@Test
 	void evaluate_returnsAllowDecision_whenOnlyToleratedViolationsExist()
 	{
-		var tolerated = CreationOperationViolation.invariant("soft invariant warning");
+		var tolerated = CreateOperationViolation.invariant("soft invariant warning");
 		var evaluation = CreationPolicyEvaluator.<String>of(List.of(
 														_ -> CreationPolicyEvaluation.allow(List.of(
 																tolerated))))
@@ -65,8 +65,8 @@ class CreationPolicyEvaluatorTest
 	@Test
 	void evaluate_returnsRejectDecision_whenBlockingViolationsExist()
 	{
-		var blocking = CreationOperationViolation.core("core rule failed");
-		var tolerated = CreationOperationViolation.invariant("soft warning");
+		var blocking = CreateOperationViolation.core("core rule failed");
+		var tolerated = CreateOperationViolation.invariant("soft warning");
 		var evaluation = CreationPolicyEvaluator.<String>of(List.of(
 														_ -> CreationPolicyEvaluation.reject(
 																List.of(blocking),
@@ -84,7 +84,7 @@ class CreationPolicyEvaluatorTest
 	{
 		assertThatThrownBy(() -> new CreationPolicyEvaluation(
 				CreationDecision.ALLOW,
-				List.of(CreationOperationViolation.core("blocked")),
+				List.of(CreateOperationViolation.core("blocked")),
 				List.of(),
 				Optional.empty()))
 				.isInstanceOf(IllegalArgumentException.class)
@@ -94,8 +94,8 @@ class CreationPolicyEvaluatorTest
 	@Test
 	void evaluate_returnsQuarantineDecision_whenQuarantineViolationsExist()
 	{
-		var blocking = CreationOperationViolation.access("manual review needed");
-		var tolerated = CreationOperationViolation.externalConsistency("eventual consistency risk");
+		var blocking = CreateOperationViolation.access("manual review needed");
+		var tolerated = CreateOperationViolation.externalConsistency("eventual consistency risk");
 		var evaluation = CreationPolicyEvaluator.<String>of(List.of(
 														_ -> CreationPolicyEvaluation.quarantine(
 																List.of(blocking),
