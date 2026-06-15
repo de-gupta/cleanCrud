@@ -1,9 +1,8 @@
-package de.gupta.clean.crud.template.domain.aggregate.execution;
+package de.gupta.clean.crud.template.domain.aggregate.intent;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutation;
-import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteCreateIntent;
-import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteMutationIntent;
+import de.gupta.clean.crud.template.domain.aggregate.execution.*;
 import de.gupta.clean.crud.template.domain.aggregate.port.AggregateFetchPort;
 import de.gupta.clean.crud.template.domain.aggregate.port.AggregateMutationPort;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.*;
@@ -17,6 +16,7 @@ import de.gupta.clean.crud.template.domain.service.crud.policy.InsertionPolicy;
 import de.gupta.clean.crud.template.domain.service.crud.policy.PatchPolicy;
 import de.gupta.clean.crud.template.domain.service.equality.DuplicateDefinition;
 import de.gupta.clean.crud.template.domain.service.security.DomainSecurityPolicy;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
@@ -25,7 +25,8 @@ import org.springframework.data.domain.SliceImpl;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class SatelliteCreateIntentResolverTest
 {
@@ -83,7 +84,7 @@ class SatelliteCreateIntentResolverTest
 				scenario.relationship(),
 				new MasterCreate(List.of(new SatelliteCreateIntent.NoSatelliteCreateIntent<>())));
 
-		assertTrue(ids.isEmpty());
+		Assertions.assertTrue(ids.isEmpty());
 	}
 
 	@Test
@@ -424,7 +425,7 @@ class SatelliteCreateIntentResolverTest
 				@Override
 				public SatelliteHydrationStrategy<String, MasterModel, Long, SatelliteModel> hydrationStrategy()
 				{
-					return (master, satelliteFetchPort, satelliteLinkStrategy) -> master.model();
+					return (master, _, _) -> master.model();
 				}
 			};
 		}
