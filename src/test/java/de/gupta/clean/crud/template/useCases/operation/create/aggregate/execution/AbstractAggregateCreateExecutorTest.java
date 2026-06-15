@@ -3,10 +3,10 @@ package de.gupta.clean.crud.template.useCases.operation.create.aggregate.executi
 import de.gupta.clean.crud.template.domain.aggregate.builder.AggregateDefinitions;
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateLifecycleEngine;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateWorkflow;
 import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteCreateIntent;
 import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteMutationIntent;
+import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
+import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateWorkflow;
 import de.gupta.clean.crud.template.domain.aggregate.port.AggregateFetchPort;
 import de.gupta.clean.crud.template.domain.aggregate.port.AggregateMutationPort;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.*;
@@ -111,9 +111,9 @@ class AbstractAggregateCreateExecutorTest
 		                           .build();
 	}
 
-	private static AggregateLifecycleEngine immediateEngine()
+	private static AggregateLifecycle immediateEngine()
 	{
-		return new AggregateLifecycleEngine()
+		return new AggregateLifecycle()
 		{
 			@Override
 			public <Result> Result execute(
@@ -355,7 +355,7 @@ class AbstractAggregateCreateExecutorTest
 	{
 		private TestAggregateCreateExecutor(
 				final AggregateDefinition<String, String, ?, ?, ?> definition,
-				final AggregateLifecycleEngine engine)
+				final AggregateLifecycle engine)
 		{
 			super(definition, engine);
 		}

@@ -1,9 +1,10 @@
-package de.gupta.clean.crud.template.domain.aggregate.execution;
+package de.gupta.clean.crud.template.domain.aggregate.lifecycle;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutation;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
+import de.gupta.clean.crud.template.domain.aggregate.execution.*;
 import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteCreateIntent;
 import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteMutationIntent;
 import de.gupta.clean.crud.template.domain.aggregate.port.AggregateFetchPort;
@@ -38,7 +39,7 @@ import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class DefaultAggregateLifecycleEngineTest
+class DefaultAggregateLifecycleTest
 {
 	@Test
 	void zeroRelationshipCrudStillWorks()
@@ -565,7 +566,7 @@ class DefaultAggregateLifecycleEngineTest
 	private static final class TestScenario
 	{
 		private final TestTransactionRunner transactionRunner = new TestTransactionRunner();
-		private final AggregateLifecycleEngine workflowEngine;
+		private final AggregateLifecycle workflowEngine;
 		private final TestEngineFacade engine;
 		private final Map<String, MasterModel> masterStore = new LinkedHashMap<>();
 		private final Map<Long, SatelliteModel> satelliteStore = new LinkedHashMap<>();
@@ -596,7 +597,7 @@ class DefaultAggregateLifecycleEngineTest
 		{
 			this.satelliteDefinition = new TestSatelliteAggregateDefinition();
 			this.masterDefinition = new TestMasterAggregateDefinition(relationshipDefinitions);
-			this.workflowEngine = DefaultAggregateLifecycleEngine.withTransactionRunnerAndDispatcher(transactionRunner,
+			this.workflowEngine = DefaultAggregateLifecycle.withTransactionRunnerAndDispatcher(transactionRunner,
 					postCommitMutationDispatcher);
 			this.engine = new TestEngineFacade(workflowEngine);
 		}
@@ -1070,7 +1071,7 @@ class DefaultAggregateLifecycleEngineTest
 
 	private static final class TestEngineFacade
 	{
-		private final AggregateLifecycleEngine engine;
+		private final AggregateLifecycle engine;
 		private final AggregateDefinitionGuard definitionGuard;
 		private final AggregateMutationValidationSupport validationSupport;
 		private final AggregateSaveCoordinator saveCoordinator;
@@ -1549,7 +1550,7 @@ class DefaultAggregateLifecycleEngineTest
 			});
 		}
 
-		private TestEngineFacade(final AggregateLifecycleEngine engine)
+		private TestEngineFacade(final AggregateLifecycle engine)
 		{
 			this.engine = engine;
 			this.definitionGuard = new AggregateDefinitionGuard();

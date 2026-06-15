@@ -1,7 +1,7 @@
 package de.gupta.clean.crud.template.useCases.crud.aggregate.service;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateLifecycleEngine;
+import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
 import de.gupta.clean.crud.template.domain.service.aggregate.AggregateFetchService;
 import de.gupta.clean.crud.template.domain.service.aggregate.DefaultAggregateFetchService;
 import de.gupta.clean.crud.template.useCases.crud.fetch.application.service.AbstractFetchService;
@@ -15,7 +15,7 @@ public enum AggregateFetchServiceFactory
 	FetchService<MasterDomainModel, MasterDomainId> fetchService(
 			final AggregateDefinition<MasterDomainId, MasterDomainModel, MasterDomainModelCreate,
 					MasterDomainModelUpdatePatch, MasterDomainModelResponse> definition,
-			final AggregateLifecycleEngine engine)
+			final AggregateLifecycle engine)
 	{
 		return fetchService(DefaultAggregateFetchService.create(definition, engine));
 	}

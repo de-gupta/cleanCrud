@@ -4,6 +4,8 @@ import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinit
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutation;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
+import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
+import de.gupta.clean.crud.template.domain.aggregate.lifecycle.DefaultAggregateLifecycle;
 import de.gupta.clean.crud.template.domain.aggregate.port.AggregateFetchPort;
 import de.gupta.clean.crud.template.domain.aggregate.port.AggregateMutationPort;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinitionContract;
@@ -59,8 +61,8 @@ class AbstractCrudServicesEngineBackedTest
 	void saveAndUpdateServicesMapDomainResultsToResponseModels()
 	{
 		TestAggregateDefinition definition = new TestAggregateDefinition();
-		AggregateLifecycleEngine engine =
-				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
+		AggregateLifecycle engine =
+				DefaultAggregateLifecycle.withTransactionRunner(new InlineTransactionRunner());
 
 		TestSaveService saveService = new TestSaveService(definition, engine);
 		TestUpdateService updateService = new TestUpdateService(definition, engine);
@@ -75,8 +77,8 @@ class AbstractCrudServicesEngineBackedTest
 	{
 		TestAggregateDefinition definition = new TestAggregateDefinition();
 		definition.store.put("id", "value");
-		AggregateLifecycleEngine engine =
-				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
+		AggregateLifecycle engine =
+				DefaultAggregateLifecycle.withTransactionRunner(new InlineTransactionRunner());
 
 		TestFetchService fetchService = new TestFetchService(definition, engine);
 		TestDeleteService deleteService = new TestDeleteService(definition, engine);
@@ -99,8 +101,8 @@ class AbstractCrudServicesEngineBackedTest
 			contexts.add(context);
 			latch.countDown();
 		};
-		AggregateLifecycleEngine engine =
-				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
+		AggregateLifecycle engine =
+				DefaultAggregateLifecycle.withTransactionRunner(new InlineTransactionRunner());
 
 		TestSaveService saveService = new TestSaveService(definition, engine);
 		TestUpdateService updateService = new TestUpdateService(definition, engine);
@@ -121,8 +123,8 @@ class AbstractCrudServicesEngineBackedTest
 	void updateServiceThrowsResourceNotFoundWhenPatchingMissingModel()
 	{
 		TestAggregateDefinition definition = new TestAggregateDefinition();
-		AggregateLifecycleEngine engine =
-				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
+		AggregateLifecycle engine =
+				DefaultAggregateLifecycle.withTransactionRunner(new InlineTransactionRunner());
 
 		TestUpdateService updateService = new TestUpdateService(definition, engine);
 
@@ -133,8 +135,8 @@ class AbstractCrudServicesEngineBackedTest
 	void deleteServiceThrowsResourceNotFoundWhenDeletingMissingModel()
 	{
 		TestAggregateDefinition definition = new TestAggregateDefinition();
-		AggregateLifecycleEngine engine =
-				DefaultAggregateLifecycleEngine.withTransactionRunner(new InlineTransactionRunner());
+		AggregateLifecycle engine =
+				DefaultAggregateLifecycle.withTransactionRunner(new InlineTransactionRunner());
 
 		TestDeleteService deleteService = new TestDeleteService(definition, engine);
 
@@ -146,7 +148,7 @@ class AbstractCrudServicesEngineBackedTest
 	{
 		TestAggregateDefinition definition = new TestAggregateDefinition();
 		var startedRequests = new java.util.ArrayList<DurableProcessStartRequest<?, ?>>();
-		var engine = DefaultAggregateLifecycleEngine.withTransactionRunnerAndDurableProcessStarter(
+		var engine = DefaultAggregateLifecycle.withTransactionRunnerAndDurableProcessStarter(
 				new InlineTransactionRunner(),
 				new RecordingDurableProcessStarter(startedRequests));
 		var processDefinition = DurableProcessDefinition.of("test-process", SavedTrigger.class, SavedPayload.class);
@@ -177,7 +179,7 @@ class AbstractCrudServicesEngineBackedTest
 		TestAggregateDefinition definition = new TestAggregateDefinition();
 		definition.store.put("id", "before");
 		var startedRequests = new java.util.ArrayList<DurableProcessStartRequest<?, ?>>();
-		var engine = DefaultAggregateLifecycleEngine.withTransactionRunnerAndDurableProcessStarter(
+		var engine = DefaultAggregateLifecycle.withTransactionRunnerAndDurableProcessStarter(
 				new InlineTransactionRunner(),
 				new RecordingDurableProcessStarter(startedRequests));
 		var processDefinition = DurableProcessDefinition.of("test-update-process", SavedTrigger.class,
@@ -206,7 +208,7 @@ class AbstractCrudServicesEngineBackedTest
 		TestAggregateDefinition definition = new TestAggregateDefinition();
 		definition.store.put("id", "before");
 		var startedRequests = new java.util.ArrayList<DurableProcessStartRequest<?, ?>>();
-		var engine = DefaultAggregateLifecycleEngine.withTransactionRunnerAndDurableProcessStarter(
+		var engine = DefaultAggregateLifecycle.withTransactionRunnerAndDurableProcessStarter(
 				new InlineTransactionRunner(),
 				new RecordingDurableProcessStarter(startedRequests));
 		var processDefinition = DurableProcessDefinition.of("test-delete-process", SavedTrigger.class,
@@ -234,7 +236,7 @@ class AbstractCrudServicesEngineBackedTest
 	{
 		private TestSaveService(
 				final AggregateDefinition<String, String, String, String, String> definition,
-				final AggregateLifecycleEngine engine)
+				final AggregateLifecycle engine)
 		{
 			super(definition, DefaultAggregateSaveService.create(definition, engine));
 		}
@@ -245,7 +247,7 @@ class AbstractCrudServicesEngineBackedTest
 	{
 		private TestUpdateService(
 				final AggregateDefinition<String, String, String, String, String> definition,
-				final AggregateLifecycleEngine engine)
+				final AggregateLifecycle engine)
 		{
 			super(definition, DefaultAggregateUpdateService.create(definition, engine));
 		}
@@ -256,7 +258,7 @@ class AbstractCrudServicesEngineBackedTest
 	{
 		private TestFetchService(
 				final AggregateDefinition<String, String, String, String, String> definition,
-				final AggregateLifecycleEngine engine)
+				final AggregateLifecycle engine)
 		{
 			super(DefaultAggregateFetchService.create(definition, engine));
 		}
@@ -267,7 +269,7 @@ class AbstractCrudServicesEngineBackedTest
 	{
 		private TestDeleteService(
 				final AggregateDefinition<String, String, String, String, String> definition,
-				final AggregateLifecycleEngine engine)
+				final AggregateLifecycle engine)
 		{
 			super(DefaultAggregateDeleteService.create(definition, engine));
 		}

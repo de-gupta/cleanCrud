@@ -2,13 +2,14 @@ package de.gupta.clean.crud.template.useCases.operationOLD.mutation.aggregate.se
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateDefinitionGuard;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateLifecycleEngine;
 import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateServiceSupportFactory;
+import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.aggregate.policy.AggregateMutationPolicies;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.application.service.QuarantinableMutationService;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.handler.MutationHandlerRegistry;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.model.MutationContext;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.policy.evaluation.SourceAwareMutationPolicy;
+import de.gupta.clean.crud.template.useCases.operationOLD.mutation.quarantine.application.recording.MutationQuarantineRecorder;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 
 import java.util.Collection;
@@ -24,8 +25,9 @@ public enum AggregateMutationServices
 			final String aggregateKey,
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycleEngine engine,
-			final MutationHandlerRegistry<DomainModel> handlerRegistry)
+			final AggregateLifecycle engine,
+			final MutationHandlerRegistry<DomainModel> handlerRegistry,
+			final MutationQuarantineRecorder mutationQuarantineRecorder)
 	{
 		return mutationService(
 				aggregateKey,
@@ -34,7 +36,8 @@ public enum AggregateMutationServices
 				handlerRegistry,
 				_ -> List.of(),
 				AggregateServiceSupportFactory.definitionGuard(),
-				AggregateMutationPolicies.sourceAwarePolicy(definition));
+				AggregateMutationPolicies.sourceAwarePolicy(definition),
+				mutationQuarantineRecorder);
 	}
 
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
@@ -42,12 +45,13 @@ public enum AggregateMutationServices
 			final String aggregateKey,
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycleEngine engine,
+			final AggregateLifecycle engine,
 			final MutationHandlerRegistry<DomainModel> handlerRegistry,
 			final Function<MutationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
 					durableProcessStartRequests,
 			final AggregateDefinitionGuard definitionGuard,
-			final SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy)
+			final SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy,
+			final MutationQuarantineRecorder mutationQuarantineRecorder)
 	{
 		return new DefaultAggregateMutationService<>(
 				aggregateKey,
@@ -60,7 +64,7 @@ public enum AggregateMutationServices
 				AggregateMutationCoordinator.with(
 						AggregateServiceSupportFactory.relationshipPlanner(),
 						AggregateServiceSupportFactory.referenceResolver(),
-						AggregateServiceSupportFactory.validationSupport()));
+						AggregateServiceSupportFactory.validationSupport()), mutationQuarantineRecorder);
 	}
 
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
@@ -68,10 +72,25 @@ public enum AggregateMutationServices
 			final String aggregateKey,
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycleEngine engine,
+			final AggregateLifecycle engine,
+			final MutationHandlerRegistry<DomainModel> handlerRegistry,
+			final AggregateDefinitionGuard definitionGuard,
+			final SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy,
+			final MutationQuarantineRecorder mutationQuarantineRecorder)
+	{
+		return mutationService(aggregateKey, definition, engine, handlerRegistry, _ -> List.of(), definitionGuard,
+				sourceAwareMutationPolicy, mutationQuarantineRecorder);
+	}
+
+	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
+	QuarantinableMutationService<DomainId, DomainModel> mutationService(
+			final String aggregateKey,
+			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
+					DomainModelResponse> definition,
+			final AggregateLifecycle engine,
 			final MutationHandlerRegistry<DomainModel> handlerRegistry,
 			final Function<MutationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
-					durableProcessStartRequests)
+					durableProcessStartRequests, final MutationQuarantineRecorder mutationQuarantineRecorder)
 	{
 		return mutationService(
 				aggregateKey,
@@ -80,21 +99,8 @@ public enum AggregateMutationServices
 				handlerRegistry,
 				durableProcessStartRequests,
 				AggregateServiceSupportFactory.definitionGuard(),
-				AggregateMutationPolicies.sourceAwarePolicy(definition));
-	}
-
-	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
-	QuarantinableMutationService<DomainId, DomainModel> mutationService(
-			final String aggregateKey,
-			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
-					DomainModelResponse> definition,
-			final AggregateLifecycleEngine engine,
-			final MutationHandlerRegistry<DomainModel> handlerRegistry,
-			final AggregateDefinitionGuard definitionGuard,
-			final SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy)
-	{
-		return mutationService(aggregateKey, definition, engine, handlerRegistry, _ -> List.of(), definitionGuard,
-				sourceAwareMutationPolicy);
+				AggregateMutationPolicies.sourceAwarePolicy(definition),
+				mutationQuarantineRecorder);
 	}
 
 }

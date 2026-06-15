@@ -1,7 +1,8 @@
-package de.gupta.clean.crud.template.domain.aggregate.execution;
+package de.gupta.clean.crud.template.domain.aggregate.lifecycle;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutation;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
+import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateWorkflowBuilder;
 import de.gupta.clean.crud.template.infrastructure.persistence.transaction.PersistenceTransactionRunner;
 import de.gupta.clean.crud.template.useCases.process.application.execution.DurableProcessExecutionNudge;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
@@ -33,7 +34,7 @@ class DurableProcessWorkflowIntegrationTest
 		var events = new ArrayList<String>();
 		var startedRequests = new ArrayList<DurableProcessStartRequest<?, ?>>();
 		var nudgedTaskIds = new ArrayList<DurableProcessTaskId>();
-		var engine = DefaultAggregateLifecycleEngine.withTransactionRunnerDispatcherStarterAndExecutionNudge(
+		var engine = DefaultAggregateLifecycle.withTransactionRunnerDispatcherStarterAndExecutionNudge(
 				transactionRunner,
 				new RecordingDispatcher(transactionRunner),
 				new RecordingDurableProcessStarter(startedRequests, transactionRunner, events),

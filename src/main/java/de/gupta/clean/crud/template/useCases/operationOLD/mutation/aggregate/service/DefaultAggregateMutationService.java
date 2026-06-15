@@ -4,8 +4,8 @@ import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinit
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
 import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateDefinitionGuard;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateLifecycleEngine;
 import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateWorkflowBuilder;
+import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
@@ -20,6 +20,7 @@ import de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.model.
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.model.MutationResult;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.plan.AggregateMutationPlan;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.policy.evaluation.SourceAwareMutationPolicy;
+import de.gupta.clean.crud.template.useCases.operationOLD.mutation.quarantine.application.recording.MutationQuarantineRecorder;
 import de.gupta.clean.crud.template.useCases.operationOLD.mutation.quarantine.application.recording.MutationQuarantineSubmission;
 import de.gupta.clean.crud.template.useCases.operationOLD.quarantine.application.service.QuarantineReplayCommand;
 import de.gupta.clean.crud.template.useCases.operationOLD.quarantine.application.service.ReplayOutcome;
@@ -48,7 +49,7 @@ public final class DefaultAggregateMutationService<
 
 	private final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 			DomainModelResponse> definition;
-	private final AggregateLifecycleEngine engine;
+	private final AggregateLifecycle engine;
 	private final MutationHandlerRegistry<DomainModel> handlerRegistry;
 	private final Function<MutationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
 			durableProcessStartRequests;
@@ -56,18 +57,20 @@ public final class DefaultAggregateMutationService<
 	private final SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy;
 	private final AggregateMutationCoordinator mutationCoordinator;
 	private final String aggregateType;
+	private final MutationQuarantineRecorder mutationQuarantineRecorder;
 
 	public DefaultAggregateMutationService(
 			final String aggregateKey,
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycleEngine engine,
+			final AggregateLifecycle engine,
 			final MutationHandlerRegistry<DomainModel> handlerRegistry,
 			final Function<MutationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
 					durableProcessStartRequests,
 			final AggregateDefinitionGuard definitionGuard,
 			final SourceAwareMutationPolicy<DomainModel> sourceAwareMutationPolicy,
-			final AggregateMutationCoordinator mutationCoordinator)
+			final AggregateMutationCoordinator mutationCoordinator,
+			final MutationQuarantineRecorder mutationQuarantineRecorder)
 	{
 		this.aggregateType = Objects.requireNonNull(aggregateKey, "aggregateKey");
 		this.definition = definition;
@@ -77,6 +80,7 @@ public final class DefaultAggregateMutationService<
 		this.definitionGuard = definitionGuard;
 		this.sourceAwareMutationPolicy = sourceAwareMutationPolicy;
 		this.mutationCoordinator = mutationCoordinator;
+		this.mutationQuarantineRecorder = mutationQuarantineRecorder;
 	}
 
 	@Override
@@ -178,8 +182,7 @@ public final class DefaultAggregateMutationService<
 			final MutationRequest<DomainId, ?> request,
 			final de.gupta.clean.crud.template.useCases.operationOLD.mutation.domain.policy.evaluation.MutationPolicyDecision policyDecision)
 	{
-		var persistedRequest = engine.mutationQuarantineRecorder().record(new MutationQuarantineSubmission(
-				aggregateType,
+		var persistedRequest = mutationQuarantineRecorder.record(new MutationQuarantineSubmission(aggregateType,
 				request,
 				policyDecision.quarantineRequest().orElseThrow()));
 		return policyDecision.withQuarantineRequest(persistedRequest);

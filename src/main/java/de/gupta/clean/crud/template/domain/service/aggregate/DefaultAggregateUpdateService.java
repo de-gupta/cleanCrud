@@ -5,6 +5,7 @@ import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinit
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
 import de.gupta.clean.crud.template.domain.aggregate.execution.*;
+import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.domain.model.exceptions.DomainException;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
@@ -22,7 +23,7 @@ public final class DefaultAggregateUpdateService<DomainId, DomainModel, DomainMo
 {
 	private final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 			DomainModelResponse> definition;
-	private final AggregateLifecycleEngine engine;
+	private final AggregateLifecycle engine;
 	private final AggregateDefinitionGuard definitionGuard;
 	private final AggregateMutationValidationSupport validationSupport;
 	private final AggregateUpdateCoordinator updateCoordinator;
@@ -30,7 +31,7 @@ public final class DefaultAggregateUpdateService<DomainId, DomainModel, DomainMo
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
 	AggregateUpdateService<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch> create(
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse> definition,
-			final AggregateLifecycleEngine engine)
+			final AggregateLifecycle engine)
 	{
 		return new DefaultAggregateUpdateService<>(definition, engine);
 	}
@@ -218,7 +219,7 @@ public final class DefaultAggregateUpdateService<DomainId, DomainModel, DomainMo
 
 	private DefaultAggregateUpdateService(
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse> definition,
-			final AggregateLifecycleEngine engine)
+			final AggregateLifecycle engine)
 	{
 		this(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
 				AggregateServiceSupportFactory.validationSupport(),
@@ -228,7 +229,7 @@ public final class DefaultAggregateUpdateService<DomainId, DomainModel, DomainMo
 	private DefaultAggregateUpdateService(
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycleEngine engine,
+			final AggregateLifecycle engine,
 			final AggregateDefinitionGuard definitionGuard,
 			final AggregateMutationValidationSupport validationSupport,
 			final AggregateUpdateCoordinator updateCoordinator)

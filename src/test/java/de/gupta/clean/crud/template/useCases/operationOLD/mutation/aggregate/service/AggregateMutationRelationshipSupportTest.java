@@ -2,9 +2,9 @@ package de.gupta.clean.crud.template.useCases.operationOLD.mutation.aggregate.se
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutation;
-import de.gupta.clean.crud.template.domain.aggregate.execution.DefaultAggregateLifecycleEngine;
 import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteCreateIntent;
 import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteMutationIntent;
+import de.gupta.clean.crud.template.domain.aggregate.lifecycle.DefaultAggregateLifecycle;
 import de.gupta.clean.crud.template.domain.aggregate.port.AggregateFetchPort;
 import de.gupta.clean.crud.template.domain.aggregate.port.AggregateMutationPort;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.*;
@@ -64,7 +64,7 @@ class AggregateMutationRelationshipSupportTest
 			final MutationHandlerRegistry<MasterModel> registry)
 	{
 		var engine =
-				DefaultAggregateLifecycleEngine.withTransactionRunner(
+				DefaultAggregateLifecycle.withTransactionRunner(
 						new InlineTransactionRunner());
 		return AggregateMutationServices.mutationService("test-aggregate", definition, engine, registry);
 	}

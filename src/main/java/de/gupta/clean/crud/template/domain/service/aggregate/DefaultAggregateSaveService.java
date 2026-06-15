@@ -5,6 +5,7 @@ import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinit
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
 import de.gupta.clean.crud.template.domain.aggregate.execution.*;
+import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
@@ -19,7 +20,7 @@ public final class DefaultAggregateSaveService<DomainId, DomainModel, DomainMode
 {
 	private final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 			DomainModelResponse> definition;
-	private final AggregateLifecycleEngine engine;
+	private final AggregateLifecycle engine;
 	private final AggregateDefinitionGuard definitionGuard;
 	private final AggregateMutationValidationSupport validationSupport;
 	private final AggregateSaveCoordinator saveCoordinator;
@@ -28,7 +29,7 @@ public final class DefaultAggregateSaveService<DomainId, DomainModel, DomainMode
 	AggregateSaveService<DomainId, DomainModel, DomainModelCreate> create(
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycleEngine engine)
+			final AggregateLifecycle engine)
 	{
 		return new DefaultAggregateSaveService<>(definition, engine);
 	}
@@ -98,7 +99,7 @@ public final class DefaultAggregateSaveService<DomainId, DomainModel, DomainMode
 
 	private DefaultAggregateSaveService(
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse> definition,
-			final AggregateLifecycleEngine engine)
+			final AggregateLifecycle engine)
 	{
 		this(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
 				AggregateServiceSupportFactory.validationSupport(),
@@ -108,7 +109,7 @@ public final class DefaultAggregateSaveService<DomainId, DomainModel, DomainMode
 	private DefaultAggregateSaveService(
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycleEngine engine,
+			final AggregateLifecycle engine,
 			final AggregateDefinitionGuard definitionGuard,
 			final AggregateMutationValidationSupport validationSupport,
 			final AggregateSaveCoordinator saveCoordinator)

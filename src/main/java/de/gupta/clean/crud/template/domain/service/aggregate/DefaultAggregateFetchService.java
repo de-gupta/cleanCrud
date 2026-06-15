@@ -2,7 +2,11 @@ package de.gupta.clean.crud.template.domain.service.aggregate;
 
 import de.gupta.aletheia.functional.Unfolding;
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
-import de.gupta.clean.crud.template.domain.aggregate.execution.*;
+import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateDefinitionGuard;
+import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateFetchCoordinator;
+import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateServiceSupportFactory;
+import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateWorkflowBuilder;
+import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
@@ -19,7 +23,7 @@ public final class DefaultAggregateFetchService<DomainId, DomainModel, DomainMod
 {
 	private final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 			DomainModelResponse> definition;
-	private final AggregateLifecycleEngine engine;
+	private final AggregateLifecycle engine;
 	private final AggregateDefinitionGuard definitionGuard;
 	private final AggregateFetchCoordinator fetchCoordinator;
 
@@ -27,7 +31,7 @@ public final class DefaultAggregateFetchService<DomainId, DomainModel, DomainMod
 	AggregateFetchService<DomainId, DomainModel> create(
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycleEngine engine)
+			final AggregateLifecycle engine)
 	{
 		return new DefaultAggregateFetchService<>(definition, engine);
 	}
@@ -168,7 +172,7 @@ public final class DefaultAggregateFetchService<DomainId, DomainModel, DomainMod
 	private DefaultAggregateFetchService(
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycleEngine engine)
+			final AggregateLifecycle engine)
 	{
 		this(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
 				AggregateServiceSupportFactory.fetchCoordinator());
@@ -177,7 +181,7 @@ public final class DefaultAggregateFetchService<DomainId, DomainModel, DomainMod
 	private DefaultAggregateFetchService(
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycleEngine engine,
+			final AggregateLifecycle engine,
 			final AggregateDefinitionGuard definitionGuard,
 			final AggregateFetchCoordinator fetchCoordinator)
 	{

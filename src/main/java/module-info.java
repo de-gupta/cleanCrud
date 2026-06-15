@@ -188,4 +188,5 @@ module de.gupta.clean.crud
 	exports de.gupta.clean.crud.template.domain.aggregate.builder;
 	exports de.gupta.clean.crud.template.infrastructure.aggregate.adapter;
 	exports de.gupta.clean.crud.template.domain.aggregate.relationship.standard;
+	exports de.gupta.clean.crud.template.domain.aggregate.lifecycle;
 }

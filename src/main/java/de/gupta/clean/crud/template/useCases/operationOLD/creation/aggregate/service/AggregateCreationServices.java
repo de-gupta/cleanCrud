@@ -2,14 +2,15 @@ package de.gupta.clean.crud.template.useCases.operationOLD.creation.aggregate.se
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateDefinitionGuard;
-import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateLifecycleEngine;
 import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateSaveCoordinator;
 import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateServiceSupportFactory;
+import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.aggregate.policy.AggregateCreationPolicies;
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.application.service.QuarantinableCreationService;
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.handler.CreationHandlerRegistry;
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.model.CreationContext;
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.policy.evaluation.SourceAwareCreationPolicy;
+import de.gupta.clean.crud.template.useCases.operationOLD.creation.quarantine.application.recording.CreationQuarantineRecorder;
 import de.gupta.clean.crud.template.useCases.process.application.registration.DurableProcessStartRequest;
 
 import java.util.Collection;
@@ -25,8 +26,9 @@ public enum AggregateCreationServices
 			final String aggregateKey,
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycleEngine engine,
-			final CreationHandlerRegistry<DomainModelCreate> handlerRegistry)
+			final AggregateLifecycle engine,
+			final CreationHandlerRegistry<DomainModelCreate> handlerRegistry,
+			final CreationQuarantineRecorder creationQuarantineRecorder)
 	{
 		return creationService(
 				aggregateKey,
@@ -36,7 +38,8 @@ public enum AggregateCreationServices
 				_ -> List.of(),
 				AggregateServiceSupportFactory.definitionGuard(),
 				AggregateServiceSupportFactory.saveCoordinator(),
-				AggregateCreationPolicies.sourceAwarePolicy(definition));
+				AggregateCreationPolicies.sourceAwarePolicy(definition),
+				creationQuarantineRecorder);
 	}
 
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
@@ -44,13 +47,15 @@ public enum AggregateCreationServices
 			final String aggregateKey,
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycleEngine engine,
+			final AggregateLifecycle engine,
 			final CreationHandlerRegistry<DomainModelCreate> handlerRegistry,
 			final Function<CreationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
 					durableProcessStartRequests,
 			final AggregateDefinitionGuard definitionGuard,
 			final AggregateSaveCoordinator saveCoordinator,
-			final SourceAwareCreationPolicy<DomainModel> sourceAwareCreationPolicy)
+			final SourceAwareCreationPolicy<DomainModel> sourceAwareCreationPolicy,
+			final CreationQuarantineRecorder creationQuarantineRecorder
+	)
 	{
 		return new DefaultAggregateCreationService<>(
 				aggregateKey,
@@ -60,7 +65,8 @@ public enum AggregateCreationServices
 				durableProcessStartRequests,
 				definitionGuard,
 				saveCoordinator,
-				sourceAwareCreationPolicy);
+				sourceAwareCreationPolicy,
+				creationQuarantineRecorder);
 	}
 
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
@@ -68,10 +74,12 @@ public enum AggregateCreationServices
 			final String aggregateKey,
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycleEngine engine,
+			final AggregateLifecycle engine,
 			final CreationHandlerRegistry<DomainModelCreate> handlerRegistry,
 			final Function<CreationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
-					durableProcessStartRequests)
+					durableProcessStartRequests,
+			final CreationQuarantineRecorder creationQuarantineRecorder)
+
 	{
 		return creationService(
 				aggregateKey,
@@ -81,7 +89,8 @@ public enum AggregateCreationServices
 				durableProcessStartRequests,
 				AggregateServiceSupportFactory.definitionGuard(),
 				AggregateServiceSupportFactory.saveCoordinator(),
-				AggregateCreationPolicies.sourceAwarePolicy(definition));
+				AggregateCreationPolicies.sourceAwarePolicy(definition),
+				creationQuarantineRecorder);
 	}
 
 	public static <DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch, DomainModelResponse>
@@ -89,14 +98,15 @@ public enum AggregateCreationServices
 			final String aggregateKey,
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycleEngine engine,
+			final AggregateLifecycle engine,
 			final CreationHandlerRegistry<DomainModelCreate> handlerRegistry,
 			final AggregateDefinitionGuard definitionGuard,
 			final AggregateSaveCoordinator saveCoordinator,
-			final SourceAwareCreationPolicy<DomainModel> sourceAwareCreationPolicy)
+			final SourceAwareCreationPolicy<DomainModel> sourceAwareCreationPolicy,
+			final CreationQuarantineRecorder creationQuarantineRecorder)
 	{
 		return creationService(aggregateKey, definition, engine, handlerRegistry, _ -> List.of(), definitionGuard,
-				saveCoordinator, sourceAwareCreationPolicy);
+				saveCoordinator, sourceAwareCreationPolicy, creationQuarantineRecorder);
 	}
 
 }

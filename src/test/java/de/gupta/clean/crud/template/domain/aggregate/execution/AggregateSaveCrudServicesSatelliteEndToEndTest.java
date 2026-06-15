@@ -4,6 +4,8 @@ import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinit
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutation;
 import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteCreateIntent;
 import de.gupta.clean.crud.template.domain.aggregate.intent.SatelliteMutationIntent;
+import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
+import de.gupta.clean.crud.template.domain.aggregate.lifecycle.DefaultAggregateLifecycle;
 import de.gupta.clean.crud.template.domain.aggregate.port.AggregateFetchPort;
 import de.gupta.clean.crud.template.domain.aggregate.port.AggregateMutationPort;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.*;
@@ -107,8 +109,8 @@ final class AggregateSaveCrudServicesSatelliteEndToEndTest
 	{
 		private final TestMasterAggregateDefinition masterDefinition = new TestMasterAggregateDefinition();
 		private final TestTransactionRunner transactionRunner = new TestTransactionRunner();
-		private final AggregateLifecycleEngine engine =
-				DefaultAggregateLifecycleEngine.withTransactionRunner(transactionRunner);
+		private final AggregateLifecycle engine =
+				DefaultAggregateLifecycle.withTransactionRunner(transactionRunner);
 		private final TestSaveService saveService = new TestSaveService(masterDefinition, engine);
 		private final TestUpdateService updateService = new TestUpdateService(masterDefinition, engine);
 		private final TestFetchService fetchService = new TestFetchService(masterDefinition, engine);
@@ -607,7 +609,7 @@ final class AggregateSaveCrudServicesSatelliteEndToEndTest
 	{
 		private TestSaveService(
 				final AggregateDefinition<String, MasterModel, MasterCreate, MasterPatch, MasterResponse> definition,
-				final AggregateLifecycleEngine engine)
+				final AggregateLifecycle engine)
 		{
 			super(definition, DefaultAggregateSaveService.create(definition, engine));
 		}
@@ -618,7 +620,7 @@ final class AggregateSaveCrudServicesSatelliteEndToEndTest
 	{
 		private TestUpdateService(
 				final AggregateDefinition<String, MasterModel, MasterCreate, MasterPatch, MasterResponse> definition,
-				final AggregateLifecycleEngine engine)
+				final AggregateLifecycle engine)
 		{
 			super(definition, DefaultAggregateUpdateService.create(definition, engine));
 		}
@@ -629,7 +631,7 @@ final class AggregateSaveCrudServicesSatelliteEndToEndTest
 	{
 		private TestFetchService(
 				final AggregateDefinition<String, MasterModel, MasterCreate, MasterPatch, MasterResponse> definition,
-				final AggregateLifecycleEngine engine)
+				final AggregateLifecycle engine)
 		{
 			super(DefaultAggregateFetchService.create(definition, engine));
 		}
@@ -639,7 +641,7 @@ final class AggregateSaveCrudServicesSatelliteEndToEndTest
 	{
 		private TestDeleteService(
 				final AggregateDefinition<String, MasterModel, MasterCreate, MasterPatch, MasterResponse> definition,
-				final AggregateLifecycleEngine engine)
+				final AggregateLifecycle engine)
 		{
 			super(DefaultAggregateDeleteService.create(definition, engine));
 		}

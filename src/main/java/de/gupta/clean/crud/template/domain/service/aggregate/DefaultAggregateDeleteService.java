@@ -5,6 +5,7 @@ import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinit
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
 import de.gupta.clean.crud.template.domain.aggregate.execution.*;
+import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.domain.model.exceptions.DomainException;
 import de.gupta.clean.crud.template.domain.model.exceptions.resource.ResourceNotFoundException;
@@ -22,7 +23,7 @@ public final class DefaultAggregateDeleteService<DomainId, DomainModel, DomainMo
 {
 	private final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 			DomainModelResponse> definition;
-	private final AggregateLifecycleEngine engine;
+	private final AggregateLifecycle engine;
 	private final AggregateDefinitionGuard definitionGuard;
 	private final AggregateMutationValidationSupport validationSupport;
 	private final AggregateDeleteCoordinator deleteCoordinator;
@@ -31,7 +32,7 @@ public final class DefaultAggregateDeleteService<DomainId, DomainModel, DomainMo
 	AggregateDeleteService<DomainId, DomainModel> create(
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycleEngine engine)
+			final AggregateLifecycle engine)
 	{
 		return new DefaultAggregateDeleteService<>(definition, engine);
 	}
@@ -145,7 +146,7 @@ public final class DefaultAggregateDeleteService<DomainId, DomainModel, DomainMo
 	private DefaultAggregateDeleteService(
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycleEngine engine)
+			final AggregateLifecycle engine)
 	{
 		this(definition, engine, AggregateServiceSupportFactory.definitionGuard(),
 				AggregateServiceSupportFactory.validationSupport(),
@@ -155,7 +156,7 @@ public final class DefaultAggregateDeleteService<DomainId, DomainModel, DomainMo
 	private DefaultAggregateDeleteService(
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycleEngine engine,
+			final AggregateLifecycle engine,
 			final AggregateDefinitionGuard definitionGuard,
 			final AggregateMutationValidationSupport validationSupport,
 			final AggregateDeleteCoordinator deleteCoordinator)

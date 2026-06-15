@@ -1,4 +1,4 @@
-package de.gupta.clean.crud.template.domain.aggregate.execution;
+package de.gupta.clean.crud.template.domain.aggregate.lifecycle;
 
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutation;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;

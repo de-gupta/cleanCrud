@@ -3,7 +3,11 @@ package de.gupta.clean.crud.template.useCases.operationOLD.creation.aggregate.se
 import de.gupta.clean.crud.template.domain.aggregate.definition.AggregateDefinition;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationContext;
 import de.gupta.clean.crud.template.domain.aggregate.definition.PostCommitMutationKind;
-import de.gupta.clean.crud.template.domain.aggregate.execution.*;
+import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateDefinitionGuard;
+import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateSaveCoordinator;
+import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateServiceSupportFactory;
+import de.gupta.clean.crud.template.domain.aggregate.execution.AggregateWorkflowBuilder;
+import de.gupta.clean.crud.template.domain.aggregate.lifecycle.AggregateLifecycle;
 import de.gupta.clean.crud.template.domain.aggregate.relationship.AggregateRelationshipDefinition;
 import de.gupta.clean.crud.template.domain.model.exceptions.operation.InvalidRequestException;
 import de.gupta.clean.crud.template.domain.model.identified.IdentifiedModel;
@@ -20,6 +24,7 @@ import de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.model.
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.plan.AggregateCreationPlan;
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.policy.evaluation.SourceAwareCreationPolicy;
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.policy.quarantine.QuarantinedCreationException;
+import de.gupta.clean.crud.template.useCases.operationOLD.creation.quarantine.application.recording.CreationQuarantineRecorder;
 import de.gupta.clean.crud.template.useCases.operationOLD.creation.quarantine.application.recording.CreationQuarantineSubmission;
 import de.gupta.clean.crud.template.useCases.operationOLD.domain.model.ApplicationOperationPayload;
 import de.gupta.clean.crud.template.useCases.operationOLD.domain.model.OperationSource;
@@ -45,7 +50,7 @@ public final class DefaultAggregateCreationService<
 {
 	private final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 			DomainModelResponse> definition;
-	private final AggregateLifecycleEngine engine;
+	private final AggregateLifecycle engine;
 	private final CreationHandlerRegistry<DomainModelCreate> handlerRegistry;
 	private final Function<CreationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
 			durableProcessStartRequests;
@@ -53,18 +58,20 @@ public final class DefaultAggregateCreationService<
 	private final AggregateSaveCoordinator saveCoordinator;
 	private final SourceAwareCreationPolicy<DomainModel> sourceAwareCreationPolicy;
 	private final String aggregateType;
+	private final CreationQuarantineRecorder creationQuarantineRecorder;
 
 	public DefaultAggregateCreationService(
 			final String aggregateKey,
 			final AggregateDefinition<DomainId, DomainModel, DomainModelCreate, DomainModelUpdatePatch,
 					DomainModelResponse> definition,
-			final AggregateLifecycleEngine engine,
+			final AggregateLifecycle engine,
 			final CreationHandlerRegistry<DomainModelCreate> handlerRegistry,
 			final Function<CreationContext<DomainId, DomainModel>, Collection<DurableProcessStartRequest<?, ?>>>
 					durableProcessStartRequests,
 			final AggregateDefinitionGuard definitionGuard,
 			final AggregateSaveCoordinator saveCoordinator,
-			final SourceAwareCreationPolicy<DomainModel> sourceAwareCreationPolicy)
+			final SourceAwareCreationPolicy<DomainModel> sourceAwareCreationPolicy,
+			final CreationQuarantineRecorder creationQuarantineRecorder)
 	{
 		this.aggregateType = Objects.requireNonNull(aggregateKey, "aggregateKey");
 		this.definition = definition;
@@ -74,6 +81,7 @@ public final class DefaultAggregateCreationService<
 		this.definitionGuard = definitionGuard;
 		this.saveCoordinator = saveCoordinator;
 		this.sourceAwareCreationPolicy = sourceAwareCreationPolicy;
+		this.creationQuarantineRecorder = creationQuarantineRecorder;
 	}
 
 	@Override
@@ -171,10 +179,9 @@ public final class DefaultAggregateCreationService<
 			final CreationRequest<?> request,
 			final de.gupta.clean.crud.template.useCases.operationOLD.creation.domain.policy.evaluation.CreationPolicyDecision policyDecision)
 	{
-		var persistedRequest = engine.creationQuarantineRecorder().record(new CreationQuarantineSubmission(
-				aggregateType,
-				request,
-				policyDecision.quarantineRequest().orElseThrow()));
+		var persistedRequest = creationQuarantineRecorder.record(
+				new CreationQuarantineSubmission(aggregateType, request,
+						policyDecision.quarantineRequest().orElseThrow()));
 		return policyDecision.withQuarantineRequest(persistedRequest);
 	}
 
